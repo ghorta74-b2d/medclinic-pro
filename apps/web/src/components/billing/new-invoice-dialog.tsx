@@ -1,0 +1,243 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { api } from '@/lib/api'
+import { X, Plus, Trash2 } from 'lucide-react'
+import type { Patient, Service } from 'medclinic-shared'
+import { formatCurrency } from '@/lib/utils'
+
+interface NewInvoiceDialogProps {
+  onClose: () => void
+  onCreated: () => void
+}
+
+interface LineItem {
+  serviceId: string
+  description: string
+  quantity: number
+  unitPrice: number
+  taxRate: number
+}
+
+const emptyLine = (): LineItem => ({
+  serviceId: '', description: '', quantity: 1, unitPrice: 0, taxRate: 0.16,
+})
+
+export function NewInvoiceDialog({ onClose, onCreated }: NewInvoiceDialogProps) {
+  const [services, setServices] = useState<Service[]>([])
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [patientSearch, setPatientSearch] = useState('')
+  const [selectedPatientId, setSelectedPatientId] = useState('')
+  const [selectedPatientName, setSelectedPatientName] = useState('')
+  const [lines, setLines] = useState<LineItem[]>([emptyLine()])
+  const [notes, setNotes] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    api.billing.services()
+      .then((res) => setServices((res as { data: Service[] }).data))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (patientSearch.length >= 2) {
+      api.patients.list({ q: patientSearch, limit: '8' })
+        .then((res) => setPatients((res as { data: Patient[] }).data))
+        .catch(() => {})
+    } else {
+      setPatients([])
+    }
+  }, [patientSearch])
+
+  function selectService(idx: number, serviceId: string) {
+    const svc = services.find((s) => s.id === serviceId)
+    setLines((prev) => {
+      const n = [...prev]
+      n[idx] = {
+        ...n[idx]!,
+        serviceId,
+        description: svc?.name ?? '',
+        unitPrice: svc ? Number(svc.price) : 0,
+        taxRate: svc ? Number(svc.taxRate) : 0.16,
+      }
+      return n
+    })
+  }
+
+  function updateLine(idx: number, field: keyof LineItem, value: string | number) {
+    setLines((prev) => {
+      const n = [...prev]
+      n[idx] = { ...n[idx]!, [field]: value }
+      return n
+    })
+  }
+
+  const subtotal = lines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0)
+  const taxTotal = lines.reduce((sum, l) => sum + l.quantity * l.unitPrice * l.taxRate, 0)
+  const total = subtotal + taxTotal
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedPatientId) { setError('Seleccione un paciente'); return }
+    const validLines = lines.filter((l) => l.description && l.unitPrice > 0)
+    if (validLines.length === 0) { setError('Agregue al menos un concepto'); return }
+
+    setLoading(true)
+    setError('')
+    try {
+      await api.billing.createInvoice({
+        patientId: selectedPatientId,
+        items: validLines,
+        notes: notes || undefined,
+      })
+      onCreated()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al crear factura')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900">Nueva factura</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Patient */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+            {selectedPatientId ? (
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                <span className="text-sm font-medium text-green-800">{selectedPatientName}</span>
+                <button type="button" onClick={() => { setSelectedPatientId(''); setSelectedPatientName('') }}
+                  className="ml-auto"><X className="w-3.5 h-3.5 text-green-600" /></button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input type="text" placeholder="Buscar paciente..." value={patientSearch}
+                  onChange={(e) => setPatientSearch(e.target.value)} className={inputClass} />
+                {patients.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                    {patients.map((p) => (
+                      <button key={p.id} type="button"
+                        onClick={() => { setSelectedPatientId(p.id); setSelectedPatientName(`${p.firstName} ${p.lastName}`); setPatientSearch(''); setPatients([]) }}
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex justify-between">
+                        <span>{p.firstName} {p.lastName}</span>
+                        <span className="text-gray-400 text-xs">{p.phone}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Line items */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-semibold text-gray-800">Conceptos</label>
+              <button type="button" onClick={() => setLines((prev) => [...prev, emptyLine()])}
+                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium">
+                <Plus className="w-3.5 h-3.5" />Agregar concepto
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {lines.map((line, idx) => (
+                <div key={idx} className="border border-gray-200 rounded-xl p-3 bg-gray-50">
+                  <div className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-5">
+                      <label className="block text-xs text-gray-500 mb-1">Servicio / Descripción</label>
+                      <select value={line.serviceId}
+                        onChange={(e) => selectService(idx, e.target.value)} className={inputClass}>
+                        <option value="">Escribe o selecciona...</option>
+                        {services.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                      {!line.serviceId && (
+                        <input value={line.description}
+                          onChange={(e) => updateLine(idx, 'description', e.target.value)}
+                          placeholder="Descripción libre" className={`${inputClass} mt-1`} />
+                      )}
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs text-gray-500 mb-1">Cant.</label>
+                      <input type="number" min="1" step="any" value={line.quantity}
+                        onChange={(e) => updateLine(idx, 'quantity', parseFloat(e.target.value) || 1)}
+                        className={inputClass} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs text-gray-500 mb-1">Precio unit.</label>
+                      <input type="number" min="0" step="0.01" value={line.unitPrice}
+                        onChange={(e) => updateLine(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
+                        className={inputClass} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs text-gray-500 mb-1">IVA</label>
+                      <select value={line.taxRate}
+                        onChange={(e) => updateLine(idx, 'taxRate', parseFloat(e.target.value))}
+                        className={inputClass}>
+                        <option value={0}>0%</option>
+                        <option value={0.08}>8%</option>
+                        <option value={0.16}>16%</option>
+                      </select>
+                    </div>
+                    <div className="col-span-1 flex justify-center">
+                      {lines.length > 1 && (
+                        <button type="button" onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
+                          className="text-gray-400 hover:text-red-500 p-1">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right text-xs text-gray-500 mt-1">
+                    Subtotal: {formatCurrency(line.quantity * line.unitPrice)} + IVA {formatCurrency(line.quantity * line.unitPrice * line.taxRate)} = {formatCurrency(line.quantity * line.unitPrice * (1 + line.taxRate))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Total */}
+            <div className="bg-blue-50 rounded-xl p-4 mt-3">
+              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600 mb-2">
+                <span>IVA</span><span>{formatCurrency(taxTotal)}</span>
+              </div>
+              <div className="flex justify-between text-base font-bold text-gray-900 border-t border-blue-200 pt-2">
+                <span>Total</span><span>{formatCurrency(total)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notas internas</label>
+            <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
+              placeholder="Notas opcionales..." className={inputClass} />
+          </div>
+
+          {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+
+          <div className="flex gap-3">
+            <button type="button" onClick={onClose} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button type="submit" disabled={loading} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
+              {loading ? 'Creando...' : `Crear factura · ${formatCurrency(total)}`}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

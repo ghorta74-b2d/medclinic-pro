@@ -1,0 +1,109 @@
+'use client'
+
+import { useState } from 'react'
+import { createBrowserClient } from '@supabase/ssr'
+
+export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
+
+  const supabase = createBrowserClient(
+    process.env['NEXT_PUBLIC_SUPABASE_URL']!,
+    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
+  )
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/agenda`,
+      },
+    })
+
+    if (error) {
+      setError(error.message)
+    } else {
+      setSent(true)
+    }
+
+    setLoading(false)
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
+            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">MedClinic Pro</h1>
+          <p className="text-gray-500 text-sm mt-1">Plataforma de gestión clínica</p>
+        </div>
+
+        {sent ? (
+          <div className="text-center">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Revise su correo</h2>
+            <p className="text-gray-500 text-sm">
+              Enviamos un enlace de acceso a <strong>{email}</strong>.<br />
+              Haga clic en el enlace para ingresar.
+            </p>
+            <button
+              onClick={() => setSent(false)}
+              className="mt-4 text-blue-600 text-sm hover:underline"
+            >
+              Usar otro correo
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Correo electrónico
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="doctor@clinica.com"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {error && (
+              <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
+            >
+              {loading ? 'Enviando...' : 'Ingresar con Magic Link'}
+            </button>
+
+            <p className="text-center text-xs text-gray-400">
+              Recibirá un enlace seguro en su correo para acceder sin contraseña.
+            </p>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
