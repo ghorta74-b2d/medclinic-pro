@@ -1,7 +1,7 @@
 {
   "version": 2,
   "buildCommand": "prisma generate && tsc",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
