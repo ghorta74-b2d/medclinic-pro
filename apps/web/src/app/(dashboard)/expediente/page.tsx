@@ -31,7 +31,6 @@ interface NoteWithRelations extends ClinicalNote {
     bloodPressureDiastolic?: number; heartRate?: number; temperature?: number
     oxygenSaturation?: number; bmi?: number
   }
-  diagnoses?: { code: string; description: string; type: string }[]
 }
 
 const EMPTY_VITALS = { weight: '', height: '', bpSystolic: '', bpDiastolic: '', heartRate: '', temperature: '', oxygenSaturation: '' }
