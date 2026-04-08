@@ -31,8 +31,21 @@ export async function buildServer() {
     contentSecurityPolicy: false, // API only, no HTML
   })
 
+  const allowedOrigins = [
+    process.env['NEXT_PUBLIC_APP_URL'],
+    'http://localhost:3000',
+    'https://medclinic-web.vercel.app',
+    'https://medclinic-web-ghorta74-6617s-projects.vercel.app',
+  ].filter(Boolean) as string[]
+
   await server.register(cors, {
-    origin: process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000',
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.some(o => origin === o || origin.startsWith('https://medclinic-web'))) {
+        callback(null, true)
+      } else {
+        callback(new Error('Not allowed by CORS'), false)
+      }
+    },
     credentials: true,
   })
 
