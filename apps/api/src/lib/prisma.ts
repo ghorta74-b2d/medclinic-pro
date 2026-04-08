@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../../generated/index.js'
 
 // Singleton pattern for serverless — prevents connection pool exhaustion
 const globalForPrisma = globalThis as unknown as {

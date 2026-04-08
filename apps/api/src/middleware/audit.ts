@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma.js'
 import type { AuthUser } from './auth.js'
-import type { AuditAction } from '@prisma/client'
+import type { AuditAction } from '../../generated/index.js'
 
 interface AuditParams {
   user: AuthUser
