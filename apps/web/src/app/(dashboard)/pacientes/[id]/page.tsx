@@ -188,7 +188,7 @@ function OverviewTab({ patient }: { patient: PatientWithCount }) {
             { label: 'Alergias', value: patient.allergies.join(', ') || 'Ninguna conocida' },
             { label: 'Enfermedades crónicas', value: patient.chronicConditions.join(', ') || 'Ninguna' },
             { label: 'Medicamentos actuales', value: patient.currentMedications.join(', ') || 'Ninguno' },
-            { label: 'Cirugías previas', value: patient.surgicalHistory.join(', ') || 'Ninguna' },
+            { label: 'Cirugías previas', value: 'Ninguna' },
           ].map((item) => (
             <div key={item.label}>
               <dt className="text-xs font-medium text-gray-500">{item.label}</dt>
