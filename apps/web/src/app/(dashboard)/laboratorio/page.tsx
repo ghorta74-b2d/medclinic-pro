@@ -131,11 +131,6 @@ export default function LaboratorioPage() {
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                           {LAB_CATEGORY_LABELS[result.category]}
                         </span>
-                        {result.sourceWebhook && (
-                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                            Recibido del lab
-                          </span>
-                        )}
                       </div>
 
                       <p className="text-xs text-gray-500 mb-1">
