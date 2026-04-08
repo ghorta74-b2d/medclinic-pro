@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
@@ -28,7 +28,7 @@ type NoteWithRelations = ClinicalNote
 
 const EMPTY_VITALS = { weight: '', height: '', bpSystolic: '', bpDiastolic: '', heartRate: '', temperature: '', oxygenSaturation: '' }
 
-export default function ExpedientePage() {
+function ExpedientePageInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const patientId = searchParams.get('patientId')
@@ -388,5 +388,13 @@ export default function ExpedientePage() {
         </div>
       </div>
     </>
+  )
+}
+
+export default function ExpedientePage() {
+  return (
+    <Suspense>
+      <ExpedientePageInner />
+    </Suspense>
   )
 }
