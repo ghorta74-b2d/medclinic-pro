@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { X, Upload, Link } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { Patient } from 'medclinic-shared'
 
 interface NewLabResultDialogProps {
