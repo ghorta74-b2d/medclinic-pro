@@ -1,3 +1,3 @@
-export * from './types/index.js'
-export * from './constants/cie10.js'
-export * from './constants/medications.js'
+export * from './types/index'
+export * from './constants/cie10'
+export * from './constants/medications'
