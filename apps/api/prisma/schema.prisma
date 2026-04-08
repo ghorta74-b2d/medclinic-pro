@@ -2,7 +2,8 @@
 // NOM-004-SSA3-2012 compliant | Multi-tenant (clinic_id on every entity)
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
