@@ -24,9 +24,7 @@ const NOTE_STATUS_LABELS: Record<string, string> = {
   AMENDED: 'Enmendada',
 }
 
-interface NoteWithRelations extends ClinicalNote {
-  doctor?: { firstName: string; lastName: string }
-}
+type NoteWithRelations = ClinicalNote
 
 const EMPTY_VITALS = { weight: '', height: '', bpSystolic: '', bpDiastolic: '', heartRate: '', temperature: '', oxygenSaturation: '' }
 
