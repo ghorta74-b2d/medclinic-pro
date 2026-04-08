@@ -26,11 +26,6 @@ const NOTE_STATUS_LABELS: Record<string, string> = {
 
 interface NoteWithRelations extends ClinicalNote {
   doctor?: { firstName: string; lastName: string }
-  vitalSigns?: {
-    weight?: number; height?: number; bloodPressureSystolic?: number
-    bloodPressureDiastolic?: number; heartRate?: number; temperature?: number
-    oxygenSaturation?: number; bmi?: number
-  }
 }
 
 const EMPTY_VITALS = { weight: '', height: '', bpSystolic: '', bpDiastolic: '', heartRate: '', temperature: '', oxygenSaturation: '' }
@@ -88,13 +83,13 @@ export default function ExpedientePage() {
     setDiagnoses(note.diagnoses ?? [])
     const vs = note.vitalSigns
     setVitals(vs ? {
-      weight: vs.weight?.toString() ?? '',
-      height: vs.height?.toString() ?? '',
-      bpSystolic: vs.bloodPressureSystolic?.toString() ?? '',
-      bpDiastolic: vs.bloodPressureDiastolic?.toString() ?? '',
-      heartRate: vs.heartRate?.toString() ?? '',
-      temperature: vs.temperature?.toString() ?? '',
-      oxygenSaturation: vs.oxygenSaturation?.toString() ?? '',
+      weight: vs.weightKg?.toString() ?? '',
+      height: vs.heightCm?.toString() ?? '',
+      bpSystolic: vs.systolicBp?.toString() ?? '',
+      bpDiastolic: vs.diastolicBp?.toString() ?? '',
+      heartRate: vs.heartRateBpm?.toString() ?? '',
+      temperature: vs.temperatureC?.toString() ?? '',
+      oxygenSaturation: vs.spo2Percent?.toString() ?? '',
     } : EMPTY_VITALS)
   }
 
@@ -122,13 +117,13 @@ export default function ExpedientePage() {
       const payload = {
         patientId, chiefComplaint, physicalExam, treatmentPlan, evolutionNotes, diagnoses,
         vitalSigns: vitals.weight ? {
-          weight: parseFloat(vitals.weight) || undefined,
-          height: parseFloat(vitals.height) || undefined,
-          bloodPressureSystolic: parseInt(vitals.bpSystolic) || undefined,
-          bloodPressureDiastolic: parseInt(vitals.bpDiastolic) || undefined,
-          heartRate: parseInt(vitals.heartRate) || undefined,
-          temperature: parseFloat(vitals.temperature) || undefined,
-          oxygenSaturation: parseFloat(vitals.oxygenSaturation) || undefined,
+          weightKg: parseFloat(vitals.weight) || undefined,
+          heightCm: parseFloat(vitals.height) || undefined,
+          systolicBp: parseInt(vitals.bpSystolic) || undefined,
+          diastolicBp: parseInt(vitals.bpDiastolic) || undefined,
+          heartRateBpm: parseInt(vitals.heartRate) || undefined,
+          temperatureC: parseFloat(vitals.temperature) || undefined,
+          spo2Percent: parseFloat(vitals.oxygenSaturation) || undefined,
         } : undefined,
       }
       if (activeNote?.id) {
