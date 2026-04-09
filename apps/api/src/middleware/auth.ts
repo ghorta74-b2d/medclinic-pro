@@ -57,11 +57,11 @@ export async function authenticate(
     return Errors.FORBIDDEN(reply)
   }
 
-  // Find doctor record if role is DOCTOR
+  // Find doctor record for DOCTOR and ADMIN roles (both are stored as Doctor records)
   let doctorId: string | undefined
-  if (meta.role === 'DOCTOR') {
-    const doctor = await prisma.doctor.findUnique({
-      where: { authUserId: supabaseUser.id },
+  if (meta.role === 'DOCTOR' || meta.role === 'ADMIN') {
+    const doctor = await prisma.doctor.findFirst({
+      where: { authUserId: supabaseUser.id, clinicId: meta.clinic_id },
       select: { id: true },
     })
     doctorId = doctor?.id
