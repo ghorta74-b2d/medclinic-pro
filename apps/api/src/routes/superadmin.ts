@@ -379,21 +379,24 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       }
     }
 
-    // Step 2: generate invite link via direct REST call (bypass JS SDK)
-    const { actionLink, userId } = await generateInviteLink(doctor.email, metadata, redirectTo)
+    // Step 2: generate invite link + send email
+    try {
+      const { actionLink, userId } = await generateInviteLink(doctor.email, metadata, redirectTo)
 
-    // Step 3: link authUserId
-    if (userId) {
-      await prisma.doctor.update({
-        where: { id: doctor.id },
-        data: { authUserId: userId },
-      }).catch(() => {})
+      if (userId) {
+        await prisma.doctor.update({
+          where: { id: doctor.id },
+          data: { authUserId: userId },
+        }).catch(() => {})
+      }
+
+      await sendInviteEmail(doctor.email, actionLink, doctor.firstName)
+      return { data: { sent: true, email: doctor.email } }
+    } catch (err: any) {
+      const msg = err?.message || String(err) || 'Error al enviar invitación'
+      console.error('[resend-invite] error:', msg)
+      return reply.status(400).send({ error: { message: msg } })
     }
-
-    // Step 4: send email via Resend directly
-    await sendInviteEmail(doctor.email, actionLink, doctor.firstName)
-
-    return { data: { sent: true, email: doctor.email } }
   })
 
   // ── PATCH /api/superadmin/doctors/:doctorId ───────────────────
