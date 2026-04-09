@@ -187,14 +187,14 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
         licenseNumber: body.admin.licenseNumber,
         isActive: true,
         scheduleConfig: {
-          monday: { start: '09:00', end: '18:00', enabled: true },
-          tuesday: { start: '09:00', end: '18:00', enabled: true },
-          wednesday: { start: '09:00', end: '18:00', enabled: true },
-          thursday: { start: '09:00', end: '18:00', enabled: true },
-          friday: { start: '09:00', end: '18:00', enabled: true },
-          saturday: { start: '09:00', end: '14:00', enabled: false },
-          sunday: { start: '09:00', end: '14:00', enabled: false },
+          mon: [{ start: '09:00', end: '18:00' }],
+          tue: [{ start: '09:00', end: '18:00' }],
+          wed: [{ start: '09:00', end: '18:00' }],
+          thu: [{ start: '09:00', end: '18:00' }],
+          fri: [{ start: '09:00', end: '18:00' }],
+          sat: [{ start: '09:00', end: '14:00' }],
         },
+        consultationDuration: 30,
       },
     })
 
@@ -312,14 +312,14 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
         licenseNumber: body.licenseNumber,
         isActive: true,
         scheduleConfig: {
-          monday: { start: '09:00', end: '18:00', enabled: true },
-          tuesday: { start: '09:00', end: '18:00', enabled: true },
-          wednesday: { start: '09:00', end: '18:00', enabled: true },
-          thursday: { start: '09:00', end: '18:00', enabled: true },
-          friday: { start: '09:00', end: '18:00', enabled: true },
-          saturday: { start: '09:00', end: '14:00', enabled: false },
-          sunday: { start: '09:00', end: '14:00', enabled: false },
+          mon: [{ start: '09:00', end: '18:00' }],
+          tue: [{ start: '09:00', end: '18:00' }],
+          wed: [{ start: '09:00', end: '18:00' }],
+          thu: [{ start: '09:00', end: '18:00' }],
+          fri: [{ start: '09:00', end: '18:00' }],
+          sat: [{ start: '09:00', end: '14:00' }],
         },
+        consultationDuration: 30,
       },
     })
 

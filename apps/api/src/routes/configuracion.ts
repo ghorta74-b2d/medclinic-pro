@@ -66,6 +66,70 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
     return { data: clinic }
   })
 
+  // ── GET /api/configuracion/schedule ──────────────────────────────────────
+  // Returns the authenticated doctor's schedule config
+  fastify.get('/schedule', async (request, reply) => {
+    const { clinicId, authUserId } = request.authUser
+
+    const doctor = await prisma.doctor.findFirst({
+      where: { clinicId, authUserId },
+      select: { id: true, scheduleConfig: true, consultationDuration: true },
+    })
+    if (!doctor) return Errors.NOT_FOUND(reply, 'Doctor')
+
+    const DEFAULT_SCHEDULE = {
+      mon: [{ start: '09:00', end: '18:00' }],
+      tue: [{ start: '09:00', end: '18:00' }],
+      wed: [{ start: '09:00', end: '18:00' }],
+      thu: [{ start: '09:00', end: '18:00' }],
+      fri: [{ start: '09:00', end: '18:00' }],
+      sat: [{ start: '09:00', end: '14:00' }],
+    }
+
+    return {
+      data: {
+        doctorId: doctor.id,
+        scheduleConfig: (doctor.scheduleConfig as Record<string, { start: string; end: string }[]> | null) ?? DEFAULT_SCHEDULE,
+        consultationDuration: doctor.consultationDuration || 30,
+      },
+    }
+  })
+
+  // ── PATCH /api/configuracion/schedule ─────────────────────────────────────
+  // Allows a doctor/admin to update their schedule
+  fastify.patch('/schedule', async (request, reply) => {
+    const { clinicId, authUserId, role } = request.authUser
+
+    // Only DOCTOR and ADMIN can update schedule
+    if (!['DOCTOR', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
+      return Errors.FORBIDDEN(reply)
+    }
+
+    const body = request.body as {
+      scheduleConfig?: Record<string, { start: string; end: string }[]>
+      consultationDuration?: number
+      doctorId?: string // ADMIN can update another doctor's schedule
+    }
+
+    // Find the doctor record
+    const doctor = body.doctorId && ['ADMIN', 'SUPER_ADMIN'].includes(role)
+      ? await prisma.doctor.findFirst({ where: { id: body.doctorId, clinicId } })
+      : await prisma.doctor.findFirst({ where: { clinicId, authUserId } })
+
+    if (!doctor) return Errors.NOT_FOUND(reply, 'Doctor')
+
+    const updated = await prisma.doctor.update({
+      where: { id: doctor.id },
+      data: {
+        ...(body.scheduleConfig !== undefined && { scheduleConfig: body.scheduleConfig }),
+        ...(body.consultationDuration !== undefined && { consultationDuration: body.consultationDuration }),
+      },
+      select: { id: true, scheduleConfig: true, consultationDuration: true },
+    })
+
+    return { data: updated }
+  })
+
   // ── GET /api/configuracion/doctors ────────────────────────────────────────
   // Kept for backwards compatibility — returns only active doctors
   fastify.get('/doctors', async (request) => {

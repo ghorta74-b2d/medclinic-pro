@@ -157,6 +157,9 @@ export const api = {
       request(`/api/configuracion/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     resendInvite: (id: string) =>
       request(`/api/configuracion/users/${id}/resend-invite`, { method: 'POST' }),
+    getSchedule: () => request('/api/configuracion/schedule'),
+    updateSchedule: (data: unknown) =>
+      request('/api/configuracion/schedule', { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
   superadmin: {

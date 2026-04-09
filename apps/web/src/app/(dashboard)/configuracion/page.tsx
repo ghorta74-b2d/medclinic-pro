@@ -6,11 +6,12 @@ import { api } from '@/lib/api'
 import { Save, Plus, Loader2, Mail, UserCheck, UserX, RefreshCw, Shield, Stethoscope } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type TabId = 'clinica' | 'usuarios' | 'tipos-cita' | 'catalogo' | 'plantillas' | 'whatsapp' | 'pagos' | 'privacidad'
+type TabId = 'clinica' | 'usuarios' | 'horarios' | 'tipos-cita' | 'catalogo' | 'plantillas' | 'whatsapp' | 'pagos' | 'privacidad'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'clinica',     label: 'Perfil clínica' },
   { id: 'usuarios',    label: 'Usuarios' },
+  { id: 'horarios',    label: 'Horarios' },
   { id: 'tipos-cita',  label: 'Tipos de cita' },
   { id: 'catalogo',    label: 'Catálogo' },
   { id: 'plantillas',  label: 'Plantillas' },
@@ -367,6 +368,167 @@ function UsuariosTab() {
   )
 }
 
+// ── Horarios ─────────────────────────────────────────────────────
+const DAYS = [
+  { key: 'mon', label: 'Lunes' },
+  { key: 'tue', label: 'Martes' },
+  { key: 'wed', label: 'Miércoles' },
+  { key: 'thu', label: 'Jueves' },
+  { key: 'fri', label: 'Viernes' },
+  { key: 'sat', label: 'Sábado' },
+  { key: 'sun', label: 'Domingo' },
+]
+const TIME_OPTIONS: string[] = (() => {
+  const t: string[] = []
+  for (let h = 6; h <= 22; h++) {
+    t.push(`${String(h).padStart(2,'0')}:00`)
+    if (h < 22) t.push(`${String(h).padStart(2,'0')}:30`)
+  }
+  return t
+})()
+const DURATION_OPTIONS = [15, 20, 30, 45, 60, 90]
+
+type DayConfig = { enabled: boolean; start: string; end: string }
+type WeekConfig = Record<string, DayConfig>
+
+function scheduleToWeek(cfg: any): WeekConfig {
+  const defaults: Record<string, DayConfig> = {
+    mon: { enabled: true,  start: '09:00', end: '18:00' },
+    tue: { enabled: true,  start: '09:00', end: '18:00' },
+    wed: { enabled: true,  start: '09:00', end: '18:00' },
+    thu: { enabled: true,  start: '09:00', end: '18:00' },
+    fri: { enabled: true,  start: '09:00', end: '18:00' },
+    sat: { enabled: true,  start: '09:00', end: '14:00' },
+    sun: { enabled: false, start: '09:00', end: '14:00' },
+  }
+  if (!cfg || typeof cfg !== 'object') return defaults
+  const result: WeekConfig = { ...defaults }
+  for (const day of DAYS.map(d => d.key)) {
+    const val = cfg[day]
+    if (Array.isArray(val) && val.length > 0) {
+      result[day] = { enabled: true, start: val[0].start ?? '09:00', end: val[0].end ?? '18:00' }
+    } else if (val === undefined || val === null) {
+      result[day] = { ...defaults[day]!, enabled: false }
+    }
+  }
+  return result
+}
+
+function weekToSchedule(week: WeekConfig): Record<string, { start: string; end: string }[]> {
+  const out: Record<string, { start: string; end: string }[]> = {}
+  for (const [day, cfg] of Object.entries(week)) {
+    if (cfg.enabled) out[day] = [{ start: cfg.start, end: cfg.end }]
+  }
+  return out
+}
+
+function HorariosTab() {
+  const [week, setWeek] = useState<WeekConfig>({} as WeekConfig)
+  const [duration, setDuration] = useState(30)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    api.configuracion.getSchedule()
+      .then((res: any) => {
+        setWeek(scheduleToWeek(res?.data?.scheduleConfig))
+        setDuration(res?.data?.consultationDuration ?? 30)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  function toggleDay(day: string) {
+    setWeek(w => ({ ...w, [day]: { ...w[day]!, enabled: !w[day]!.enabled } }))
+  }
+
+  function setDayTime(day: string, field: 'start' | 'end', value: string) {
+    setWeek(w => ({ ...w, [day]: { ...w[day]!, [field]: value } }))
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    setSaved(false)
+    try {
+      await api.configuracion.updateSchedule({ scheduleConfig: weekToSchedule(week), consultationDuration: duration })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (e: any) {
+      alert(e.message ?? 'Error al guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /></div>
+
+  return (
+    <div className="max-w-lg space-y-6">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <p className="text-sm font-semibold text-gray-800">Horario de atención semanal</p>
+          <p className="text-xs text-gray-500 mt-0.5">Define los días y horas en que se pueden agendar citas</p>
+        </div>
+        <div className="divide-y divide-gray-100">
+          {DAYS.map(({ key, label }) => {
+            const day = week[key] ?? { enabled: false, start: '09:00', end: '18:00' }
+            return (
+              <div key={key} className="flex items-center gap-3 px-4 py-3">
+                {/* Toggle */}
+                <button type="button" onClick={() => toggleDay(key)}
+                  className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${day.enabled ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${day.enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </button>
+                {/* Día */}
+                <span className={`w-24 text-sm font-medium ${day.enabled ? 'text-gray-800' : 'text-gray-400'}`}>{label}</span>
+                {/* Horas */}
+                {day.enabled ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <select value={day.start} onChange={e => setDayTime(key, 'start', e.target.value)}
+                      className="flex-1 text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <span className="text-xs text-gray-400">a</span>
+                    <select value={day.end} onChange={e => setDayTime(key, 'end', e.target.value)}
+                      className="flex-1 text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <span className="text-sm text-gray-400 italic">Cerrado</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Duración de consulta */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <p className="text-sm font-semibold text-gray-800 mb-1">Duración de consulta por defecto</p>
+        <p className="text-xs text-gray-500 mb-3">Tiempo que se bloquea en agenda por cada cita</p>
+        <div className="flex gap-2 flex-wrap">
+          {DURATION_OPTIONS.map(d => (
+            <button key={d} type="button" onClick={() => setDuration(d)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                duration === d ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-blue-400'
+              }`}>
+              {d < 60 ? `${d} min` : d === 60 ? '1 hora' : `${d/60} horas`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={handleSave} disabled={saving}
+        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-50 transition-colors">
+        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        {saved ? '✓ Guardado' : 'Guardar horario'}
+      </button>
+    </div>
+  )
+}
+
 // ── Appointment Types ────────────────────────────────────────────
 function AppointmentTypesTab() {
   const [types, setTypes] = useState<any[]>([])
@@ -557,6 +719,7 @@ function PrivacidadTab() {
 const TAB_COMPONENTS: Record<TabId, React.ComponentType> = {
   clinica:     ClinicTab,
   usuarios:    UsuariosTab,
+  horarios:    HorariosTab,
   'tipos-cita': AppointmentTypesTab,
   catalogo:    CatalogoTab,
   plantillas:  PlantillasTab,

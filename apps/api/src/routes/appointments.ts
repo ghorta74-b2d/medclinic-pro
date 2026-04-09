@@ -6,6 +6,16 @@ import { Errors } from '../lib/errors.js'
 import { scheduleReminders } from '../services/scheduling.js'
 import { sendWhatsAppMessage } from '../services/whatsapp.js'
 
+// ── Default schedule (Mon-Fri 9-18, Sat 9-14) ───────────────
+export const DEFAULT_SCHEDULE: Record<string, { start: string; end: string }[]> = {
+  mon: [{ start: '09:00', end: '18:00' }],
+  tue: [{ start: '09:00', end: '18:00' }],
+  wed: [{ start: '09:00', end: '18:00' }],
+  thu: [{ start: '09:00', end: '18:00' }],
+  fri: [{ start: '09:00', end: '18:00' }],
+  sat: [{ start: '09:00', end: '14:00' }],
+}
+
 // ── Schemas ─────────────────────────────────────────────────
 
 const CreateAppointmentSchema = z.object({
@@ -94,11 +104,11 @@ export async function appointmentsRoutes(server: FastifyInstance) {
       select: { startsAt: true, endsAt: true },
     })
 
-    // Generate slots from schedule config
-    const config = (doctor.scheduleConfig as Record<string, { start: string; end: string }[]> | null) ?? {}
+    // Generate slots from schedule config — fallback to default Mon-Fri 9-18 / Sat 9-14
+    const config = (doctor.scheduleConfig as Record<string, { start: string; end: string }[]> | null) ?? DEFAULT_SCHEDULE
     const dayName = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][dayStart.getDay()]!
     const daySchedule = config[dayName] ?? []
-    const duration = doctor.consultationDuration
+    const duration = doctor.consultationDuration || 30 // default 30 min if not set
 
     const slots: { startsAt: string; endsAt: string; available: boolean }[] = []
 
