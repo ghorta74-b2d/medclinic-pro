@@ -132,7 +132,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
         ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }] }
         : undefined,
       include: {
-        _count: { select: { doctors: true, patients: true, appointments: true } },
+        _count: { select: { doctors: true, patients: true } },
       },
       orderBy: { createdAt: 'desc' },
     })

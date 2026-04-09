@@ -15,7 +15,7 @@ interface ClinicRow {
   plan: string
   isActive: boolean
   createdAt: string
-  _count: { doctors: number; patients: number; appointments: number }
+  _count: { doctors: number; patients: number }
 }
 
 const PLAN_LABELS: Record<string, string> = { FREE: 'Free', STARTER: 'Starter', PRO: 'Pro', ENTERPRISE: 'Enterprise' }
@@ -32,8 +32,8 @@ export default function ClinicasPage() {
   const [search, setSearch] = useState('')
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (showSkeleton = false) => {
+    if (showSkeleton) setLoading(true)
     try {
       const params: Record<string, string> = {}
       if (search) params['q'] = search
@@ -44,7 +44,8 @@ export default function ClinicasPage() {
   }, [search])
 
   useEffect(() => {
-    const t = setTimeout(load, search ? 350 : 0)
+    // Show skeleton only on first load or when search changes
+    const t = setTimeout(() => load(true), search ? 350 : 0)
     return () => clearTimeout(t)
   }, [load, search])
 
@@ -52,7 +53,7 @@ export default function ClinicasPage() {
     setTogglingId(clinic.id)
     try {
       await (api as any).superadmin.updateClinic(clinic.id, { isActive: !clinic.isActive })
-      await load()
+      await load(false)
     } catch { alert('Error al actualizar') }
     finally { setTogglingId(null) }
   }
@@ -83,7 +84,7 @@ export default function ClinicasPage() {
         <table className="w-full">
           <thead className="border-b border-gray-800">
             <tr>
-              {['Clínica', 'Plan', 'Médicos', 'Pacientes', 'Citas', 'Alta', 'Estado', ''].map(h => (
+              {['Clínica', 'Plan', 'Médicos', 'Pacientes', 'Alta', 'Estado', ''].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
@@ -91,12 +92,12 @@ export default function ClinicasPage() {
           <tbody className="divide-y divide-gray-800">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}>{Array.from({ length: 8 }).map((_, j) => (
+                <tr key={i}>{Array.from({ length: 7 }).map((_, j) => (
                   <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-800 rounded animate-pulse" /></td>
                 ))}</tr>
               ))
             ) : clinics.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-16 text-center text-gray-500 text-sm">
+              <tr><td colSpan={7} className="px-4 py-16 text-center text-gray-500 text-sm">
                 {search ? `No se encontraron clínicas para "${search}"` : 'No hay clínicas registradas'}
               </td></tr>
             ) : clinics.map((clinic) => (
@@ -119,7 +120,6 @@ export default function ClinicasPage() {
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-300">{clinic._count.doctors}</td>
                 <td className="px-4 py-3 text-sm text-gray-300">{clinic._count.patients}</td>
-                <td className="px-4 py-3 text-sm text-gray-300">{clinic._count.appointments}</td>
                 <td className="px-4 py-3 text-xs text-gray-400">{formatDate(clinic.createdAt)}</td>
                 <td className="px-4 py-3">
                   <button onClick={() => toggleActive(clinic)} disabled={togglingId === clinic.id}

@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { Shield, LayoutDashboard, Building2, LogOut } from 'lucide-react'
+import { Shield, LayoutDashboard, Building2 } from 'lucide-react'
+import { LogoutButton } from './logout-button'
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -35,10 +36,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           <div className="w-8 h-8 bg-purple-700 rounded-full flex items-center justify-center text-white text-xs font-bold">
             SA
           </div>
-          <button className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-400 transition-colors">
-            <LogOut className="w-3.5 h-3.5" />
-            Salir
-          </button>
+          <LogoutButton />
         </div>
       </header>
 
