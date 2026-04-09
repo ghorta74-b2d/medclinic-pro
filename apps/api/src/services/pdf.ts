@@ -91,7 +91,7 @@ interface PrescriptionForPdf {
   doctor: {
     firstName: string
     lastName: string
-    cedula: string | null
+    licenseNumber: string | null
     specialty: string | null
     institution: string | null
   }
@@ -141,8 +141,8 @@ function PrescriptionDocument({
           React.createElement(Text, { style: styles.doctorInfo },
             prescription.doctor.specialty ?? ''
           ),
-          prescription.doctor.cedula && React.createElement(Text, { style: styles.doctorInfo },
-            `Cédula Profesional: ${prescription.doctor.cedula}`
+          prescription.doctor.licenseNumber && React.createElement(Text, { style: styles.doctorInfo },
+            `Cédula Profesional: ${prescription.doctor.licenseNumber}`
           ),
           prescription.doctor.institution && React.createElement(Text, { style: styles.doctorInfo },
             prescription.doctor.institution
@@ -220,10 +220,10 @@ function PrescriptionDocument({
           React.createElement(Text, { style: { fontSize: 9, color: '#374151', textAlign: 'center' } },
             `Dr. ${prescription.doctor.firstName} ${prescription.doctor.lastName}`
           ),
-          prescription.doctor.cedula && React.createElement(Text, {
+          prescription.doctor.licenseNumber && React.createElement(Text, {
             style: { fontSize: 8, color: '#6b7280', textAlign: 'center' },
           },
-            `Cédula: ${prescription.doctor.cedula}`
+            `Cédula: ${prescription.doctor.licenseNumber}`
           ),
         ),
       ),

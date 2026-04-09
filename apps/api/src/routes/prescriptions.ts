@@ -64,7 +64,7 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
         doctor: {
           select: {
             id: true, firstName: true, lastName: true,
-            cedula: true, specialty: true, institution: true, signatureUrl: true,
+            licenseNumber: true, specialty: true, institution: true, signatureUrl: true,
           },
         },
         items: { include: { medication: true }, orderBy: { sortOrder: 'asc' } },
@@ -124,7 +124,7 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
         doctor: {
           select: {
             id: true, firstName: true, lastName: true,
-            cedula: true, specialty: true, institution: true, signatureUrl: true,
+            licenseNumber: true, specialty: true, institution: true, signatureUrl: true,
           },
         },
         items: { include: { medication: true }, orderBy: { sortOrder: 'asc' } },
@@ -154,7 +154,7 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
         doctor: {
           select: {
             id: true, firstName: true, lastName: true,
-            cedula: true, specialty: true, institution: true, signatureUrl: true,
+            licenseNumber: true, specialty: true, institution: true, signatureUrl: true,
           },
         },
         items: { include: { medication: true }, orderBy: { sortOrder: 'asc' } },
