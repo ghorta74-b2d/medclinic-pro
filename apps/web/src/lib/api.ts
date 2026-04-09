@@ -120,6 +120,10 @@ export const api = {
     services: () => request('/api/billing/services'),
     createService: (data: unknown) =>
       request('/api/billing/services', { method: 'POST', body: JSON.stringify(data) }),
+    updateService: (id: string, data: unknown) =>
+      request(`/api/billing/services/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    deleteService: (id: string) =>
+      request(`/api/billing/services/${id}`, { method: 'DELETE' }),
     invoices: (params?: Record<string, string>) => {
       const qs = params ? '?' + new URLSearchParams(params).toString() : ''
       return request(`/api/billing/invoices${qs}`)

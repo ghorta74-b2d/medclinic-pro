@@ -346,21 +346,15 @@ d43e438  feat(pacientes): editar paciente desde expediente y teléfono +52
 | Commits | Estado |
 |---------|--------|
 | `main` local | ✅ Al día |
-| `origin/main` | ⚠️ Pendiente push |
-| Vercel | ⚠️ Desactualizado |
-
-**Para deployar:**
-```bash
-cd "/Users/gerardohorta/Library/Mobile Documents/com~apple~CloudDocs/B2D Automation/CLAUDE/CLINIC/medclinic-pro"
-git push origin main
-```
+| `origin/main` | ✅ Pusheado |
+| Vercel | ✅ Desplegado (2026-04-09) |
 
 ---
 
 ## 16. Pendientes / Next Steps
 
 ### Alta prioridad
-- [ ] **Push a producción:** `git push origin main` desde terminal del usuario
+- [x] **Push a producción:** desplegado en Vercel el 2026-04-09
 - [ ] **Test flujo completo de recetas:** crear → ver en /recetas → abrir /recetas/[id] → imprimir → editar → ver cambios
 - [ ] **WhatsApp + PDF:** El `pdfUrl` se invalida al editar una receta. Hay que decidir: (a) regenerar PDF automáticamente en el PATCH, o (b) deshabilitar WhatsApp si no hay `pdfUrl`
 

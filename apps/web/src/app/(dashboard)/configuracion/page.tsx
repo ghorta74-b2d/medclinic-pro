@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
-import { Save, Plus, Loader2, Mail, UserCheck, UserX, RefreshCw, Shield, Stethoscope } from 'lucide-react'
+import { Save, Plus, Loader2, Mail, UserCheck, UserX, RefreshCw, Shield, Stethoscope, Pencil, Trash2, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type TabId = 'clinica' | 'usuarios' | 'horarios' | 'tipos-cita' | 'catalogo' | 'plantillas' | 'whatsapp' | 'pagos' | 'privacidad'
@@ -557,34 +557,247 @@ function AppointmentTypesTab() {
 }
 
 // ── Services Catalog ─────────────────────────────────────────────
+const DEFAULT_SERVICES = [
+  { name: 'Consulta primera vez',          price: 800,  category: 'Consulta',      taxRate: 0 },
+  { name: 'Consulta de seguimiento',        price: 600,  category: 'Consulta',      taxRate: 0 },
+  { name: 'Consulta de urgencia',           price: 1000, category: 'Consulta',      taxRate: 0 },
+  { name: 'Telemedicina',                   price: 500,  category: 'Consulta',      taxRate: 0 },
+  { name: 'Procedimiento en consultorio',   price: 1500, category: 'Procedimiento', taxRate: 0 },
+]
+
 function CatalogoTab() {
   const [services, setServices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  useEffect(() => {
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({ name: '', price: '', category: '', taxRate: '0' })
+  const [showNew, setShowNew] = useState(false)
+  const [newForm, setNewForm] = useState({ name: '', price: '', category: '', taxRate: '0' })
+  const [saving, setSaving] = useState(false)
+  const [seeding, setSeeding] = useState(false)
+
+  const load = () => {
+    setLoading(true)
     api.billing.services()
       .then((res: any) => { setServices(res?.data ?? []); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  }
+  useEffect(load, [])
+
+  async function handleCreate() {
+    if (!newForm.name || !newForm.price) return
+    setSaving(true)
+    try {
+      await api.billing.createService({
+        name: newForm.name,
+        price: parseFloat(newForm.price),
+        category: newForm.category || undefined,
+        taxRate: parseFloat(newForm.taxRate) || 0,
+      })
+      setNewForm({ name: '', price: '', category: '', taxRate: '0' })
+      setShowNew(false)
+      load()
+    } catch (e: any) { alert(e.message ?? 'Error') }
+    finally { setSaving(false) }
+  }
+
+  async function handleUpdate(id: string) {
+    setSaving(true)
+    try {
+      await api.billing.updateService(id, {
+        name: editForm.name,
+        price: parseFloat(editForm.price),
+        category: editForm.category || undefined,
+        taxRate: parseFloat(editForm.taxRate) || 0,
+      })
+      setEditId(null)
+      load()
+    } catch (e: any) { alert(e.message ?? 'Error') }
+    finally { setSaving(false) }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('¿Desactivar este servicio del catálogo?')) return
+    try {
+      await api.billing.deleteService(id)
+      load()
+    } catch (e: any) { alert(e.message ?? 'Error') }
+  }
+
+  async function handleSeedDefaults() {
+    setSeeding(true)
+    try {
+      await Promise.all(DEFAULT_SERVICES.map((s) => api.billing.createService(s)))
+      load()
+    } catch (e: any) { alert(e.message ?? 'Error') }
+    finally { setSeeding(false) }
+  }
+
+  const inputCls = 'w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+
   if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /></div>
+
   return (
-    <div className="max-w-2xl bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-gray-50 border-b border-gray-200">
-          <tr>{['Servicio', 'Categoría', 'Precio'].map(h => (
-            <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
-          ))}</tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {services.map((s, i) => (
-            <tr key={i} className="hover:bg-gray-50">
-              <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.name}</td>
-              <td className="px-4 py-3 text-sm text-gray-500">{s.category}</td>
-              <td className="px-4 py-3 text-sm text-gray-700">${s.price} MXN</td>
+    <div className="max-w-2xl space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-500">Servicios que aparecen en el selector al crear una factura</p>
+        <button onClick={() => setShowNew(true)}
+          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg">
+          <Plus className="w-3.5 h-3.5" /> Agregar servicio
+        </button>
+      </div>
+
+      {/* New service form */}
+      {showNew && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-800">Nuevo servicio</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block text-xs text-gray-500 mb-1">Nombre *</label>
+              <input value={newForm.name} onChange={(e) => setNewForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Consulta de primera vez" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Precio (MXN) *</label>
+              <input type="text" inputMode="decimal" value={newForm.price}
+                onChange={(e) => setNewForm(f => ({ ...f, price: e.target.value.replace(/[^0-9.]/g, '') }))}
+                placeholder="800" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Categoría</label>
+              <input value={newForm.category} onChange={(e) => setNewForm(f => ({ ...f, category: e.target.value }))}
+                placeholder="Consulta" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">IVA</label>
+              <div className="flex rounded-lg overflow-hidden border border-gray-300 text-sm">
+                <button type="button" onClick={() => setNewForm(f => ({ ...f, taxRate: '0' }))}
+                  className={cn('flex-1 py-1.5 text-center font-medium transition-colors',
+                    newForm.taxRate === '0' ? 'bg-gray-700 text-white' : 'bg-white text-gray-500 hover:bg-gray-50')}>
+                  No
+                </button>
+                <button type="button" onClick={() => setNewForm(f => ({ ...f, taxRate: '0.16' }))}
+                  className={cn('flex-1 py-1.5 text-center font-medium transition-colors',
+                    newForm.taxRate === '0.16' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50')}>
+                  16%
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleCreate} disabled={saving || !newForm.name || !newForm.price}
+              className="flex items-center gap-1.5 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Guardar
+            </button>
+            <button onClick={() => setShowNew(false)}
+              className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Services table */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              {['Servicio', 'Categoría', 'Precio', 'IVA', ''].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
+              ))}
             </tr>
-          ))}
-          {services.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-sm text-gray-400">Sin servicios</td></tr>}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {services.map((s) => editId === s.id ? (
+              <tr key={s.id} className="bg-blue-50">
+                <td className="px-4 py-2">
+                  <input value={editForm.name} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
+                    className={inputCls} />
+                </td>
+                <td className="px-4 py-2">
+                  <input value={editForm.category} onChange={(e) => setEditForm(f => ({ ...f, category: e.target.value }))}
+                    placeholder="Categoría" className={inputCls} />
+                </td>
+                <td className="px-4 py-2">
+                  <input type="text" inputMode="decimal" value={editForm.price}
+                    onChange={(e) => setEditForm(f => ({ ...f, price: e.target.value.replace(/[^0-9.]/g, '') }))}
+                    className={inputCls} />
+                </td>
+                <td className="px-4 py-2">
+                  <div className="flex rounded-lg overflow-hidden border border-gray-300 text-xs w-20">
+                    <button type="button" onClick={() => setEditForm(f => ({ ...f, taxRate: '0' }))}
+                      className={cn('flex-1 py-1.5 text-center font-medium',
+                        editForm.taxRate === '0' ? 'bg-gray-700 text-white' : 'bg-white text-gray-500')}>No</button>
+                    <button type="button" onClick={() => setEditForm(f => ({ ...f, taxRate: '0.16' }))}
+                      className={cn('flex-1 py-1.5 text-center font-medium',
+                        editForm.taxRate === '0.16' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500')}>16%</button>
+                  </div>
+                </td>
+                <td className="px-4 py-2">
+                  <div className="flex gap-1.5">
+                    <button onClick={() => handleUpdate(s.id)} disabled={saving}
+                      className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                      {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    </button>
+                    <button onClick={() => setEditId(null)}
+                      className="p-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-500">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              <tr key={s.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.name}</td>
+                <td className="px-4 py-3 text-sm text-gray-500">{s.category ?? '—'}</td>
+                <td className="px-4 py-3 text-sm text-gray-700">${Number(s.price).toFixed(2)}</td>
+                <td className="px-4 py-3">
+                  <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full',
+                    Number(s.taxRate) > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500')}>
+                    {Number(s.taxRate) > 0 ? '16%' : 'Sin IVA'}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-1.5">
+                    <button onClick={() => {
+                      setEditId(s.id)
+                      setEditForm({ name: s.name, price: String(Number(s.price)), category: s.category ?? '', taxRate: String(Number(s.taxRate)) })
+                    }}
+                      className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-600">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleDelete(s.id)}
+                      className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-red-500">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {services.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-10 text-center">
+                  <p className="text-sm text-gray-400 mb-3">Sin servicios en el catálogo</p>
+                  <button onClick={handleSeedDefaults} disabled={seeding}
+                    className="flex items-center gap-2 mx-auto bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50">
+                    {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Cargar 5 servicios por defecto
+                  </button>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {services.length > 0 && (
+        <button onClick={handleSeedDefaults} disabled={seeding}
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 disabled:opacity-50">
+          {seeding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+          Agregar servicios por defecto
+        </button>
+      )}
     </div>
   )
 }

@@ -14,12 +14,16 @@ const CreateInvoiceSchema = z.object({
     description: z.string().min(1),
     quantity: z.number().positive().default(1),
     unitPrice: z.number().positive(),
-    taxRate: z.number().min(0).max(1).default(0.16),
+    taxRate: z.number().min(0).max(1).default(0),
     insuranceId: z.string().optional(),
     insuranceCovers: z.number().min(0).optional(),
   })).min(1),
   notes: z.string().optional(),
   dueAt: z.string().datetime().optional(),
+  payment: z.object({
+    method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INSURANCE', 'STRIPE_ONLINE']),
+    reference: z.string().optional(),
+  }).optional(),
 })
 
 const RecordPaymentSchema = z.object({
@@ -67,6 +71,44 @@ export async function billingRoutes(server: FastifyInstance) {
     })
 
     return reply.status(201).send({ data: service })
+  })
+
+  // PATCH /api/billing/services/:id
+  server.patch('/services/:id', { preHandler: requireStaff }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { clinicId } = request.authUser
+    const body = request.body as {
+      name?: string; description?: string; price?: number
+      category?: string; taxRate?: number; isActive?: boolean
+    }
+
+    const service = await prisma.service.findFirst({ where: { id, clinicId } })
+    if (!service) return Errors.NOT_FOUND(reply, 'Service')
+
+    const updated = await prisma.service.update({
+      where: { id },
+      data: {
+        ...(body.name        !== undefined && { name:        body.name }),
+        ...(body.description !== undefined && { description: body.description }),
+        ...(body.price       !== undefined && { price:       body.price }),
+        ...(body.category    !== undefined && { category:    body.category }),
+        ...(body.taxRate     !== undefined && { taxRate:     body.taxRate }),
+        ...(body.isActive    !== undefined && { isActive:    body.isActive }),
+      },
+    })
+    return reply.send({ data: updated })
+  })
+
+  // DELETE /api/billing/services/:id — soft delete
+  server.delete('/services/:id', { preHandler: requireStaff }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { clinicId } = request.authUser
+
+    const service = await prisma.service.findFirst({ where: { id, clinicId } })
+    if (!service) return Errors.NOT_FOUND(reply, 'Service')
+
+    await prisma.service.update({ where: { id }, data: { isActive: false } })
+    return reply.status(204).send()
   })
 
   // GET /api/billing/invoices
@@ -193,6 +235,24 @@ export async function billingRoutes(server: FastifyInstance) {
         patient: { select: { id: true, firstName: true, lastName: true, phone: true } },
       },
     })
+
+    // If payment info was provided, record it and mark invoice as PAID
+    if (data.payment) {
+      await prisma.paymentRecord.create({
+        data: {
+          invoiceId: invoice.id,
+          amount: total,
+          currency: 'MXN',
+          method: data.payment.method,
+          reference: data.payment.reference,
+          recordedBy: request.authUser.authUserId,
+        },
+      })
+      await prisma.invoice.update({
+        where: { id: invoice.id },
+        data: { paidAmount: total, status: 'PAID', paidAt: new Date() },
+      })
+    }
 
     return reply.status(201).send({ data: invoice })
   })
