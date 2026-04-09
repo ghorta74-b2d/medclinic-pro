@@ -80,7 +80,7 @@ export async function clinicalNotesRoutes(server: FastifyInstance) {
       where: { id, clinicId },
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, dateOfBirth: true, gender: true, allergies: true } },
-        doctor: { select: { id: true, firstName: true, lastName: true, cedula: true, specialty: true, institution: true, signatureUrl: true } },
+        doctor: { select: { id: true, firstName: true, lastName: true, licenseNumber: true, specialty: true, institution: true, signatureUrl: true } },
         appointment: { select: { id: true, startsAt: true, mode: true, appointmentType: true } },
         vitalSigns: true,
         prescriptions: { include: { items: { include: { medication: true } } } },

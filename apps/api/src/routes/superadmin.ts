@@ -42,7 +42,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       await Promise.all([
         prisma.clinic.count({ where: { isActive: true } }),
         prisma.doctor.count({ where: { isActive: true } }),
-        prisma.patient.count({ where: { deletedAt: null } }),
+        prisma.patient.count({ where: { isActive: true } }),
         prisma.appointment.count({ where: { startsAt: { gte: monthStart } } }),
         prisma.clinic.findMany({
           take: 5,
