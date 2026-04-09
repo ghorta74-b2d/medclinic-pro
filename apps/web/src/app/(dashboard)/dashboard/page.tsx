@@ -80,21 +80,6 @@ function RevenueChart({ data }: { data: { date: string; amount: number }[] }) {
   )
 }
 
-const MOCK_ACTIVITY = [
-  { id: 1, text: 'Recordatorio enviado a Ana Sofía Hernández — Cita mañana 9:00 AM', time: '08:15', type: 'reminder' },
-  { id: 2, text: 'María Elena Rodríguez confirmó su cita de las 10:00 AM', time: '08:22', type: 'confirm' },
-  { id: 3, text: 'Recordatorio enviado a Laura P. Mendoza — Cita hoy 11:30 AM', time: '08:30', type: 'reminder' },
-  { id: 4, text: 'Liga de pago enviada a Fernando Castillo — $4,500 MXN', time: '09:00', type: 'payment' },
-  { id: 5, text: 'Paciente preguntó: ¿Necesito ir en ayunas?', time: '09:15', type: 'message' },
-  { id: 6, text: 'Roberto C. Flores confirmó su cita de las 12:00 PM', time: '09:30', type: 'confirm' },
-]
-
-const ACTIVITY_COLORS: Record<string, string> = {
-  reminder: 'text-blue-500',
-  confirm: 'text-green-500',
-  payment: 'text-purple-500',
-  message: 'text-orange-500',
-}
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -105,7 +90,6 @@ export default function DashboardPage() {
   const [showNewPat, setShowNewPat] = useState(false)
 
   const today = new Date()
-  const clinicName = 'Clínica Integral de la Mujer'
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -199,7 +183,7 @@ export default function DashboardPage() {
     <>
       <Header
         title="Dashboard"
-        subtitle={`${todayStr} · ${clinicName}`}
+        subtitle={todayStr}
       />
 
       <div className="flex-1 p-6 overflow-auto space-y-6">
@@ -321,15 +305,9 @@ export default function DashboardPage() {
                 <Bot className="w-4 h-4 text-blue-600" />
                 <h2 className="text-sm font-semibold text-gray-900">Asistente IA · Actividad reciente</h2>
               </div>
-              <div className="divide-y divide-gray-50 max-h-64 overflow-y-auto">
-                {MOCK_ACTIVITY.map((item) => (
-                  <div key={item.id} className="px-4 py-2.5 flex items-start gap-3">
-                    <span className={cn('text-xs font-mono shrink-0 pt-0.5', ACTIVITY_COLORS[item.type] ?? 'text-gray-400')}>
-                      {item.time}
-                    </span>
-                    <p className="text-xs text-gray-600 leading-relaxed">{item.text}</p>
-                  </div>
-                ))}
+              <div className="px-4 py-8 text-center">
+                <Bot className="w-8 h-8 mx-auto mb-2 text-gray-200" />
+                <p className="text-xs text-gray-400">Sin actividad reciente</p>
               </div>
               <div className="px-4 py-2 border-t border-gray-100">
                 <button onClick={() => router.push('/asistente-ia')}

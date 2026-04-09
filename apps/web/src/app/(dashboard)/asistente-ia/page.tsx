@@ -5,44 +5,6 @@ import { Header } from '@/components/layout/header'
 import { Bot, MessageSquare, Phone, CheckCircle, TrendingUp, Clock, Zap, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const ACTIVITY_LOG = [
-  { id: 1, text: 'Recordatorio enviado a Ana Sofía Hernández — Cita mañana 9:00 AM', time: '08:15', type: 'reminder' },
-  { id: 2, text: 'María Elena Rodríguez confirmó su cita de las 10:00 AM', time: '08:22', type: 'confirm' },
-  { id: 3, text: 'Recordatorio enviado a Laura P. Mendoza — Cita hoy 11:30 AM', time: '08:30', type: 'reminder' },
-  { id: 4, text: 'Liga de pago enviada a Fernando Castillo — $4,500 MXN', time: '09:00', type: 'payment' },
-  { id: 5, text: 'Alejandra Vargas preguntó: ¿Necesito ir en ayunas?', time: '09:15', type: 'message' },
-  { id: 6, text: 'Roberto C. Flores confirmó su cita de las 12:00 PM', time: '09:30', type: 'confirm' },
-  { id: 7, text: 'Resultado disponible notificado a Ana Sofía Hernández (perfil tiroideo)', time: '10:00', type: 'result' },
-  { id: 8, text: 'Formulario pre-consulta enviado a Carolina Jiménez', time: '10:15', type: 'form' },
-]
-
-const TYPE_COLORS: Record<string, string> = {
-  reminder: 'text-blue-500',
-  confirm: 'text-green-500',
-  payment: 'text-purple-500',
-  message: 'text-orange-500',
-  result: 'text-teal-500',
-  form: 'text-indigo-500',
-}
-
-const TYPE_DOTS: Record<string, string> = {
-  reminder: 'bg-blue-400',
-  confirm: 'bg-green-400',
-  payment: 'bg-purple-400',
-  message: 'bg-orange-400',
-  result: 'bg-teal-400',
-  form: 'bg-indigo-400',
-}
-
-const INTENTS = [
-  { label: 'Confirmar cita', count: 145, pct: 35, color: 'bg-blue-500' },
-  { label: 'Reagendar cita', count: 62, pct: 15, color: 'bg-green-500' },
-  { label: 'Preguntas sobre estudios', count: 48, pct: 12, color: 'bg-orange-500' },
-  { label: 'Estado de resultados', count: 41, pct: 10, color: 'bg-teal-500' },
-  { label: 'Información de pagos', count: 38, pct: 9, color: 'bg-purple-500' },
-  { label: 'Dudas de medicamentos', count: 33, pct: 8, color: 'bg-red-400' },
-  { label: 'Otras consultas', count: 45, pct: 11, color: 'bg-gray-400' },
-]
 
 const FLOWS = [
   {
@@ -92,10 +54,10 @@ export default function AsistenteIAPage() {
   }
 
   const kpis = [
-    { label: 'Mensajes enviados (mes)', value: '1,247', sub: '+18% vs mes anterior', icon: MessageSquare, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Citas confirmadas por IA', value: '89%', sub: 'vs 72% manual', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Tiempo prom. respuesta', value: '< 30s', sub: 'Respuesta inmediata', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Cobros recuperados por IA', value: '$42,800', sub: 'Este mes', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Mensajes enviados (mes)', value: '0', sub: 'Sin actividad aún', icon: MessageSquare, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Citas confirmadas por IA', value: '—', sub: 'Sin datos suficientes', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: 'Tiempo prom. respuesta', value: '—', sub: 'Sin actividad aún', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Cobros recuperados por IA', value: '$0', sub: 'Este mes', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
   ]
 
   return (
@@ -175,7 +137,7 @@ export default function AsistenteIAPage() {
                   </div>
                 ))}
                 <div className="px-4 py-2.5 bg-gray-50">
-                  <p className="text-xs text-gray-500">Llamadas realizadas este mes: <strong className="text-gray-800">312</strong></p>
+                  <p className="text-xs text-gray-500">Llamadas realizadas este mes: <strong className="text-gray-800">0</strong></p>
                 </div>
               </div>
             </div>
@@ -187,18 +149,11 @@ export default function AsistenteIAPage() {
               <Bot className="w-4 h-4 text-blue-600" />
               <h3 className="text-sm font-semibold text-gray-900">Conversaciones recientes</h3>
             </div>
-            <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
-              {ACTIVITY_LOG.map((item) => (
-                <div key={item.id} className="px-4 py-2.5 flex items-start gap-3">
-                  <div className={cn('w-1.5 h-1.5 rounded-full mt-1.5 shrink-0', TYPE_DOTS[item.type] ?? 'bg-gray-300')} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-700 leading-relaxed">{item.text}</p>
-                  </div>
-                  <span className={cn('text-xs font-mono shrink-0', TYPE_COLORS[item.type] ?? 'text-gray-400')}>
-                    {item.time}
-                  </span>
-                </div>
-              ))}
+            <div className="flex-1 flex items-center justify-center py-12">
+              <div className="text-center">
+                <MessageSquare className="w-8 h-8 mx-auto mb-2 text-gray-200" />
+                <p className="text-xs text-gray-400">Sin conversaciones aún</p>
+              </div>
             </div>
           </div>
 
@@ -207,18 +162,9 @@ export default function AsistenteIAPage() {
             {/* Intent analytics */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Intenciones de pacientes (mes)</h3>
-              <div className="space-y-2.5">
-                {INTENTS.map((intent) => (
-                  <div key={intent.label}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-600">{intent.label}</span>
-                      <span className="text-xs font-semibold text-gray-800">{intent.count} · {intent.pct}%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5">
-                      <div className={cn('h-1.5 rounded-full', intent.color)} style={{ width: `${intent.pct}%` }} />
-                    </div>
-                  </div>
-                ))}
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <TrendingUp className="w-8 h-8 mb-2 text-gray-200" />
+                <p className="text-xs text-gray-400">Sin datos suficientes aún</p>
               </div>
             </div>
 
