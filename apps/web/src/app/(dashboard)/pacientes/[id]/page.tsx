@@ -7,7 +7,7 @@ import { api } from '@/lib/api'
 import { formatDate, formatDateTime, formatRelative, getInitials, calculateAge, formatCurrency } from '@/lib/utils'
 import {
   ArrowLeft, Phone, Mail, Calendar, Droplets, AlertTriangle,
-  FileText, Pill, FlaskConical, ChevronRight, Clock, Pencil, X, Check, Loader2,
+  FileText, Pill, FlaskConical, ChevronRight, Clock, Pencil, X, Check, Loader2, Printer,
 } from 'lucide-react'
 import type { Patient, ClinicalNote, Appointment, Prescription, LabResult } from 'medclinic-shared'
 import { GENDER_LABELS, BLOOD_TYPE_LABELS, STATUS_LABELS } from 'medclinic-shared'
@@ -608,14 +608,39 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: 
   prescriptions: Prescription[]
   onRefresh: () => void
 }) {
+  const router = useRouter()
   const [showBuilder, setShowBuilder] = useState(false)
+  const [editingRx, setEditingRx] = useState<any>(null)
+
+  function openEdit(rx: Prescription) {
+    setEditingRx({
+      id: rx.id,
+      patientId,
+      patientName,
+      items: (rx.items ?? []).map((it: any) => ({
+        medicationName: it.medicationName ?? '',
+        dose:           it.dose ?? '',
+        route:          it.route ?? 'oral',
+        frequency:      it.frequency ?? 'cada 8 horas',
+        duration:       it.duration ?? '7 días',
+        quantity:       it.quantity ?? '',
+        instructions:   it.instructions ?? '',
+      })),
+      instructions: rx.instructions ?? '',
+      followUpDate: rx.followUpDate ? new Date(rx.followUpDate).toISOString().split('T')[0]! : '',
+    })
+  }
+
+  const STATUS_STYLE: Record<string, string> = {
+    ACTIVE: 'bg-green-100 text-green-700', COMPLETED: 'bg-gray-100 text-gray-500', CANCELLED: 'bg-red-100 text-red-600',
+  }
 
   return (
     <div>
       <div className="flex justify-end mb-4">
         <button
           onClick={() => setShowBuilder(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           <Pill className="w-4 h-4" />
           Nueva receta
@@ -624,37 +649,76 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: 
 
       {prescriptions.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-gray-100">
+          <Pill className="w-8 h-8 mx-auto mb-2 opacity-30" />
           No hay recetas registradas
         </div>
       ) : (
         <div className="space-y-3">
           {prescriptions.map((rx) => (
-            <div key={rx.id} className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="text-xs text-gray-500">
-                    Dr. {rx.doctor?.firstName} {rx.doctor?.lastName} · {formatDate(rx.createdAt)}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  {rx.pdfUrl && (
-                    <a href={rx.pdfUrl} target="_blank" rel="noopener noreferrer"
-                       className="text-xs text-blue-600 hover:underline">
-                      Ver PDF
-                    </a>
-                  )}
+            <div key={rx.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:border-gray-300 transition-colors">
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+                <p className="text-xs text-gray-500">
+                  Dr. {rx.doctor?.firstName} {rx.doctor?.lastName} · {formatDate(rx.createdAt)}
+                </p>
+                <div className="flex items-center gap-2">
                   {rx.sentViaWhatsApp && (
-                    <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded">Enviada</span>
+                    <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">✓ Enviada</span>
                   )}
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${STATUS_STYLE[rx.status] ?? STATUS_STYLE['ACTIVE']}`}>
+                    {rx.status === 'ACTIVE' ? 'Activa' : rx.status === 'COMPLETED' ? 'Completada' : 'Cancelada'}
+                  </span>
                 </div>
               </div>
-              <div className="space-y-1">
-                {rx.items?.map((item, i) => (
-                  <p key={i} className="text-sm text-gray-800">
-                    <span className="font-medium">{item.medicationName}</span>
-                    {' '}<span className="text-gray-500">{item.dose} · {item.frequency} · {item.duration}</span>
-                  </p>
+
+              {/* Medications */}
+              <div className="px-4 py-3 space-y-2">
+                {rx.items?.map((item: any, i: number) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <span className="text-sm font-semibold text-gray-900">{item.medicationName}</span>
+                      <span className="text-sm text-gray-500"> {item.dose}</span>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {item.route} · {item.frequency} · {item.duration}
+                        {item.instructions && ` · ${item.instructions}`}
+                      </p>
+                    </div>
+                  </div>
                 ))}
+                {rx.instructions && (
+                  <p className="text-xs text-gray-500 italic pt-2 border-t border-gray-100">{rx.instructions}</p>
+                )}
+                {rx.followUpDate && (
+                  <div className="flex items-center gap-1.5 pt-2 border-t border-gray-100">
+                    <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="text-xs text-gray-500">
+                      Seguimiento: <span className="font-medium text-gray-700">{formatDate(rx.followUpDate)}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 px-4 py-2.5 border-t border-gray-100 bg-gray-50">
+                <button
+                  onClick={() => router.push(`/recetas/${rx.id}`)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-white transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Ver / Imprimir
+                </button>
+                {rx.status === 'ACTIVE' && (
+                  <button
+                    onClick={() => openEdit(rx)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-white transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    Editar
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -666,6 +730,14 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: 
           patientId={patientId}
           onClose={() => setShowBuilder(false)}
           onCreated={() => { setShowBuilder(false); onRefresh() }}
+        />
+      )}
+
+      {editingRx && (
+        <PrescriptionBuilder
+          onClose={() => setEditingRx(null)}
+          onCreated={() => { setEditingRx(null); onRefresh() }}
+          existing={editingRx}
         />
       )}
     </div>
