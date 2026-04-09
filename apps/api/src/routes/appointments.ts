@@ -188,7 +188,7 @@ export async function appointmentsRoutes(server: FastifyInstance) {
       },
     })
     if (conflict) {
-      return Errors.VALIDATION(reply, { message: 'Time slot already booked' })
+      return reply.status(409).send({ error: { message: 'Ese horario ya está ocupado. Elige otro.' } })
     }
 
     const appointment = await prisma.appointment.create({
