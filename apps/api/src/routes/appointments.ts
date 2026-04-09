@@ -142,7 +142,7 @@ export async function appointmentsRoutes(server: FastifyInstance) {
       where: { id, clinicId },
       include: {
         patient: true,
-        doctor: { select: { id: true, firstName: true, lastName: true, cedula: true, specialty: true } },
+        doctor: { select: { id: true, firstName: true, lastName: true, licenseNumber: true, specialty: true } },
         appointmentType: true,
         clinicalNote: { select: { id: true, status: true } },
         invoice: { select: { id: true, status: true, total: true } },

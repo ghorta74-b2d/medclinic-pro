@@ -54,7 +54,7 @@ export async function clinicalNotesRoutes(server: FastifyInstance) {
       prisma.clinicalNote.findMany({
         where: { patientId: query.patientId, clinicId },
         include: {
-          doctor: { select: { id: true, firstName: true, lastName: true, cedula: true } },
+          doctor: { select: { id: true, firstName: true, lastName: true, licenseNumber: true } },
           vitalSigns: true,
           _count: { select: { prescriptions: true, labResults: true } },
         },
