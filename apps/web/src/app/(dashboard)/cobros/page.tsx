@@ -116,7 +116,7 @@ export default function CobrosPage() {
     Array.from({ length: 7 }, (_, i) => {
       const d = new Date()
       d.setDate(d.getDate() - 6 + i)
-      return { date: d.toISOString().split('T')[0]!, amount: Math.floor(Math.random() * 18000 + 2000) }
+      return { date: d.toISOString().split('T')[0]!, amount: 0 }
     })
   )
 
@@ -147,12 +147,7 @@ export default function CobrosPage() {
     finally { setActionLoading((a) => ({ ...a, [invoice.id]: '' })) }
   }
 
-  // Mock payment methods breakdown
-  const paymentMethods = stats?.byPaymentMethod ?? [
-    { method: 'CARD', amount: 8200 },
-    { method: 'TRANSFER', amount: 12500 },
-    { method: 'STRIPE_LINK', amount: 5300 },
-  ]
+  const paymentMethods = stats?.byPaymentMethod ?? []
 
   return (
     <>
@@ -182,10 +177,10 @@ export default function CobrosPage() {
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Ingresos totales', value: formatCurrency(stats?.totalBilled ?? 26000), icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: 'Cobrado', value: formatCurrency(stats?.totalCollected ?? 6000), sub: `${invoices.filter(i => i.status === 'PAID').length} facturas`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
-            { label: 'Pendiente', value: formatCurrency(stats?.pendingAmount ?? 15500), sub: `${invoices.filter(i => ['SENT','PARTIALLY_PAID'].includes(i.status)).length} facturas`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-            { label: 'Vencido', value: formatCurrency(stats?.overdueAmount ?? 4500), sub: `${invoices.filter(i => i.status === 'OVERDUE').length} facturas`, icon: CreditCard, color: 'text-red-600', bg: 'bg-red-50' },
+            { label: 'Ingresos totales', value: formatCurrency(stats?.totalBilled ?? 0), icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: 'Cobrado', value: formatCurrency(stats?.totalCollected ?? 0), sub: `${invoices.filter(i => i.status === 'PAID').length} facturas`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
+            { label: 'Pendiente', value: formatCurrency(stats?.pendingAmount ?? 0), sub: `${invoices.filter(i => ['SENT','PARTIALLY_PAID'].includes(i.status)).length} facturas`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+            { label: 'Vencido', value: formatCurrency(stats?.overdueAmount ?? 0), sub: `${invoices.filter(i => i.status === 'OVERDUE').length} facturas`, icon: CreditCard, color: 'text-red-600', bg: 'bg-red-50' },
           ].map(({ label, value, sub, icon: Icon, color, bg }) => (
             <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
               <div className="flex items-start justify-between">
