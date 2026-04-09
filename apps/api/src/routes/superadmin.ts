@@ -3,6 +3,34 @@ import { createClient } from '@supabase/supabase-js'
 import { prisma } from '../lib/prisma.js'
 import { Errors } from '../lib/errors.js'
 
+// Call GoTrue admin generate_link directly (bypass JS SDK quirks)
+async function generateInviteLink(email: string, metadata: Record<string, unknown>, redirectTo: string) {
+  const supabaseUrl = process.env['SUPABASE_URL']!
+  const serviceKey = process.env['SUPABASE_SERVICE_ROLE_KEY']!
+
+  const res = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${serviceKey}`,
+      'apikey': serviceKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ type: 'invite', email, data: metadata, redirect_to: redirectTo }),
+  })
+
+  const body = await res.json() as any
+  if (!res.ok) {
+    throw new Error(body?.msg || body?.message || body?.error_description || `GoTrue ${res.status}`)
+  }
+
+  // action_link is in body.action_link or body.properties.action_link
+  const actionLink: string = body.action_link ?? body.properties?.action_link
+  const userId: string = body.id ?? body.user?.id ?? body.data?.user?.id
+
+  if (!actionLink) throw new Error('GoTrue did not return action_link')
+  return { actionLink, userId }
+}
+
 async function sendInviteEmail(to: string, inviteUrl: string, firstName: string) {
   const resendKey = process.env['RESEND_API_KEY']
   if (!resendKey) throw new Error('RESEND_API_KEY not configured')
@@ -170,39 +198,26 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       },
     })
 
-    // 3. Create user in Supabase Auth + generate invite link
+    // 3. Create Supabase user + generate invite link (direct REST, bypasses JS SDK)
     const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'invite',
-      email: body.admin.email,
-      options: {
-        data: { clinic_id: clinic.id, role: 'ADMIN', firstName: body.admin.firstName, lastName: body.admin.lastName, doctor_id: doctor.id },
-        redirectTo,
-      },
-    })
-
-    // 4. Link auth user id to doctor
-    if (linkData?.user?.id) {
-      await prisma.doctor.update({
-        where: { id: doctor.id },
-        data: { authUserId: linkData.user.id },
-      }).catch(() => {})
-    }
-
-    // 5. Send invite email via Resend directly
     let inviteSent = false
     let inviteEmailError: string | null = null
-    if (linkData?.properties?.action_link) {
-      try {
-        await sendInviteEmail(body.admin.email, linkData.properties.action_link, body.admin.firstName)
-        inviteSent = true
-      } catch (emailErr: any) {
-        inviteEmailError = emailErr.message
-        console.error('[POST /clinics] Resend error:', emailErr.message)
+    try {
+      const { actionLink, userId } = await generateInviteLink(
+        body.admin.email,
+        { clinic_id: clinic.id, role: 'ADMIN', firstName: body.admin.firstName, lastName: body.admin.lastName, doctor_id: doctor.id },
+        redirectTo,
+      )
+      // 4. Link auth user id to doctor
+      if (userId) {
+        await prisma.doctor.update({ where: { id: doctor.id }, data: { authUserId: userId } }).catch(() => {})
       }
-    } else if (linkError) {
-      inviteEmailError = linkError.message
-      console.error('[POST /clinics] generateLink error:', linkError.message)
+      // 5. Send via Resend directly
+      await sendInviteEmail(body.admin.email, actionLink, body.admin.firstName)
+      inviteSent = true
+    } catch (inviteErr: any) {
+      inviteEmailError = inviteErr.message
+      console.error('[POST /clinics] invite error:', inviteErr.message)
     }
 
     return reply.status(201).send({
@@ -347,7 +362,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
 
     const supabaseAdmin = getSupabaseAdmin()
     const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`
-    const inviteData = {
+    const metadata = {
       clinic_id: clinicId,
       role: 'DOCTOR',
       firstName: doctor.firstName,
@@ -364,31 +379,19 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       }
     }
 
-    // Step 2: generate invite link (creates Supabase user, no SMTP)
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'invite',
-      email: doctor.email,
-      options: { data: inviteData, redirectTo },
-    })
-
-    if (linkError) {
-      return reply.status(400).send({ error: { message: linkError.message || 'Error al generar invite link' } })
-    }
+    // Step 2: generate invite link via direct REST call (bypass JS SDK)
+    const { actionLink, userId } = await generateInviteLink(doctor.email, metadata, redirectTo)
 
     // Step 3: link authUserId
-    if (linkData?.user?.id) {
+    if (userId) {
       await prisma.doctor.update({
         where: { id: doctor.id },
-        data: { authUserId: linkData.user.id },
+        data: { authUserId: userId },
       }).catch(() => {})
     }
 
     // Step 4: send email via Resend directly
-    if (!linkData?.properties?.action_link) {
-      return reply.status(500).send({ error: { message: 'No se pudo generar el link de invitación' } })
-    }
-
-    await sendInviteEmail(doctor.email, linkData.properties.action_link, doctor.firstName)
+    await sendInviteEmail(doctor.email, actionLink, doctor.firstName)
 
     return { data: { sent: true, email: doctor.email } }
   })
