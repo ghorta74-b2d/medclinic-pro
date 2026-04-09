@@ -4,12 +4,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
 import { formatDate, formatCurrency } from '@/lib/utils'
-import { CreditCard, Plus, Link2, DollarSign, TrendingUp, Clock, Loader2, MessageSquare, Building2 } from 'lucide-react'
+import { CreditCard, Plus, Link2, DollarSign, TrendingUp, Clock, Loader2, MessageSquare, Building2, Eye } from 'lucide-react'
 import type { Invoice } from 'medclinic-shared'
 import { INVOICE_STATUS_LABELS } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
 import { NewInvoiceDialog } from '@/components/billing/new-invoice-dialog'
 import { RecordPaymentDialog } from '@/components/billing/record-payment-dialog'
+import { InvoiceDetailDialog } from '@/components/billing/invoice-detail-dialog'
 
 interface InvoicesResponse { data: Invoice[]; pagination: { total: number } }
 interface DashboardData {
@@ -111,6 +112,7 @@ export default function CobrosPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('mes')
   const [showNew, setShowNew] = useState(false)
   const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null)
+  const [detailInvoiceId, setDetailInvoiceId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({})
   const [chartData] = useState(() =>
     Array.from({ length: 7 }, (_, i) => {
@@ -302,6 +304,11 @@ export default function CobrosPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2 flex-wrap">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDetailInvoiceId(invoice.id) }}
+                            className="flex items-center gap-1.5 text-xs text-gray-600 border border-gray-300 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 font-medium">
+                            <Eye className="w-3.5 h-3.5" /> Ver
+                          </button>
                           {isPending && remaining > 0 && (
                             <>
                               <button onClick={(e) => { e.stopPropagation(); setPayingInvoice(invoice) }}
@@ -342,6 +349,9 @@ export default function CobrosPage() {
       )}
       {payingInvoice && (
         <RecordPaymentDialog invoice={payingInvoice} onClose={() => setPayingInvoice(null)} onRecorded={() => { setPayingInvoice(null); load() }} />
+      )}
+      {detailInvoiceId && (
+        <InvoiceDetailDialog invoiceId={detailInvoiceId} onClose={() => setDetailInvoiceId(null)} />
       )}
     </>
   )
