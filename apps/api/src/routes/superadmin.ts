@@ -321,7 +321,8 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
     })
 
     if (linkError) {
-      console.log('[resend-invite] generateLink failed:', linkError.message, '— trying inviteUserByEmail')
+      const linkMsg = linkError.message || (linkError as any).msg || JSON.stringify(linkError)
+      console.log('[resend-invite] generateLink failed:', linkMsg, 'status:', (linkError as any).status, '— trying inviteUserByEmail')
       // Fallback: try inviteUserByEmail (for new users)
       const { error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(doctor.email, {
         data: {
@@ -334,8 +335,9 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
         redirectTo,
       })
       if (inviteError) {
-        console.log('[resend-invite] inviteUserByEmail also failed:', inviteError.message)
-        return reply.status(400).send({ error: { message: inviteError.message } })
+        const msg = inviteError.message || (inviteError as any).msg || JSON.stringify(inviteError)
+        console.log('[resend-invite] inviteUserByEmail also failed:', msg, 'status:', (inviteError as any).status)
+        return reply.status(400).send({ error: { message: msg || 'Supabase invite error' } })
       }
     }
 
