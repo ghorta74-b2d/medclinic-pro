@@ -96,7 +96,7 @@ export default function ClinicDetailPage() {
     try {
       await (api as any).superadmin.resendInvite(id, doctor.id)
       alert(`Invitación reenviada a ${doctor.email}`)
-    } catch { alert('Error al reenviar') }
+    } catch (err) { alert(err instanceof Error ? err.message : 'Error al reenviar') }
     finally { setResendingId(null) }
   }
 

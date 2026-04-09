@@ -304,6 +304,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
     const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`
 
     // Try generateLink first (works for existing unconfirmed users)
+    console.log('[resend-invite] Attempting generateLink for', doctor.email)
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'invite',
       email: doctor.email,
@@ -320,6 +321,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
     })
 
     if (linkError) {
+      console.log('[resend-invite] generateLink failed:', linkError.message, '— trying inviteUserByEmail')
       // Fallback: try inviteUserByEmail (for new users)
       const { error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(doctor.email, {
         data: {
@@ -331,7 +333,10 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
         },
         redirectTo,
       })
-      if (inviteError) return reply.status(400).send({ error: { message: inviteError.message } })
+      if (inviteError) {
+        console.log('[resend-invite] inviteUserByEmail also failed:', inviteError.message)
+        return reply.status(400).send({ error: { message: inviteError.message } })
+      }
     }
 
     // Link auth user id if not already linked
