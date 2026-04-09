@@ -6,6 +6,13 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 
 console.log('[STARTUP] api/index.ts loading, Node:', process.version)
 
+process.on('unhandledRejection', (reason: any) => {
+  console.error('[UNHANDLED] Reason:', reason?.message ?? reason)
+  console.error('[UNHANDLED] Stack:', reason?.stack)
+  console.error('[UNHANDLED] Code:', reason?.code)
+  console.error('[UNHANDLED] Meta:', JSON.stringify(reason?.meta ?? {}))
+})
+
 let appPromise: Promise<any> | null = null
 
 function getApp() {
@@ -16,8 +23,9 @@ function getApp() {
       await app.ready()
       console.log('[STARTUP] Fastify ready')
       return app
-    }).catch((err) => {
-      console.error('[STARTUP] Failed to initialize Fastify:', err)
+    }).catch((err: any) => {
+      console.error('[STARTUP] Failed to initialize Fastify:', err?.message ?? err)
+      console.error('[STARTUP] Stack:', err?.stack)
       appPromise = null
       throw err
     })
