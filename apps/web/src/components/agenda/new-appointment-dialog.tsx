@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { X, UserPlus, Search } from 'lucide-react'
-import type { Patient, AppointmentType } from 'medclinic-shared'
+import type { Patient, AppointmentType, Doctor } from 'medclinic-shared'
 
 interface NewAppointmentDialogProps {
   defaultDate: Date
@@ -20,6 +20,7 @@ export function NewAppointmentDialog({
 }: NewAppointmentDialogProps) {
   const [patients, setPatients] = useState<Patient[]>([])
   const [types, setTypes] = useState<AppointmentType[]>([])
+  const [doctors, setDoctors] = useState<Doctor[]>([])
   const [patientSearch, setPatientSearch] = useState('')
   const [patientMode, setPatientMode] = useState<PatientMode>('search')
   const [loading, setLoading] = useState(false)
@@ -45,6 +46,7 @@ export function NewAppointmentDialog({
 
   useEffect(() => {
     loadTypes()
+    loadDoctors()
   }, [])
 
   useEffect(() => {
@@ -59,6 +61,17 @@ export function NewAppointmentDialog({
     try {
       const res = await api.appointments.types() as { data: AppointmentType[] }
       setTypes(res.data)
+    } catch {}
+  }
+
+  async function loadDoctors() {
+    try {
+      const res = await api.configuracion.doctors() as { data: Doctor[] }
+      setDoctors(res.data)
+      // Auto-select if only one doctor
+      if (res.data.length === 1) {
+        setForm((f) => ({ ...f, doctorId: res.data[0]!.id }))
+      }
     } catch {}
   }
 
@@ -308,6 +321,27 @@ export function NewAppointmentDialog({
               </div>
             )}
           </div>
+
+          {/* Doctor selector — shown only when multiple doctors */}
+          {doctors.length > 1 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Doctor <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={form.doctorId}
+                onChange={(e) => setForm((f) => ({ ...f, doctorId: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Seleccionar doctor...</option>
+                {doctors.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    Dr. {d.firstName} {d.lastName}{d.specialty ? ` — ${d.specialty}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Appointment type */}
           <div>

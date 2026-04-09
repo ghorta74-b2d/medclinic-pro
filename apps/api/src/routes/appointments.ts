@@ -10,7 +10,7 @@ import { sendWhatsAppMessage } from '../services/whatsapp.js'
 
 const CreateAppointmentSchema = z.object({
   patientId: z.string(),
-  doctorId: z.string(),
+  doctorId: z.string().optional(), // auto-resolves to first active doctor if omitted
   appointmentTypeId: z.string().optional(),
   startsAt: z.string().datetime(),
   endsAt: z.string().datetime(),
@@ -162,18 +162,22 @@ export async function appointmentsRoutes(server: FastifyInstance) {
     const { clinicId } = request.authUser
     const data = parsed.data
 
-    // Verify patient and doctor belong to this clinic
-    const [patient, doctor] = await Promise.all([
-      prisma.patient.findFirst({ where: { id: data.patientId, clinicId } }),
-      prisma.doctor.findFirst({ where: { id: data.doctorId, clinicId } }),
-    ])
+    // Verify patient belongs to this clinic
+    const patient = await prisma.patient.findFirst({ where: { id: data.patientId, clinicId } })
     if (!patient) return Errors.NOT_FOUND(reply, 'Patient')
+
+    // Resolve doctor: use provided ID or fall back to first active doctor in clinic
+    const doctor = data.doctorId
+      ? await prisma.doctor.findFirst({ where: { id: data.doctorId, clinicId, isActive: true } })
+      : await prisma.doctor.findFirst({ where: { clinicId, isActive: true }, orderBy: { createdAt: 'asc' } })
     if (!doctor) return Errors.NOT_FOUND(reply, 'Doctor')
+
+    const resolvedDoctorId = doctor.id
 
     // Check for conflicts
     const conflict = await prisma.appointment.findFirst({
       where: {
-        doctorId: data.doctorId,
+        doctorId: resolvedDoctorId,
         status: { notIn: ['CANCELLED', 'NO_SHOW'] },
         OR: [
           {
@@ -191,7 +195,7 @@ export async function appointmentsRoutes(server: FastifyInstance) {
       data: {
         clinicId,
         patientId: data.patientId,
-        doctorId: data.doctorId,
+        doctorId: resolvedDoctorId,
         appointmentTypeId: data.appointmentTypeId,
         startsAt: new Date(data.startsAt),
         endsAt: new Date(data.endsAt),
