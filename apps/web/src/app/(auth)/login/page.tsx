@@ -8,9 +8,7 @@ export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [mode, setMode] = useState<'magic' | 'password'>('magic')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
 
   const supabase = createBrowserClient(
@@ -23,20 +21,20 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    if (mode === 'magic') {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: `${window.location.origin}/agenda` },
-      })
-      if (error) setError(error.message)
-      else setSent(true)
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setError(error.message)
-      else router.push('/agenda')
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
     }
 
-    setLoading(false)
+    const role = data.user?.user_metadata?.role
+    if (role === 'SUPER_ADMIN') {
+      router.push('/superadmin')
+    } else {
+      router.push('/agenda')
+    }
   }
 
   return (
@@ -54,77 +52,49 @@ export default function LoginPage() {
           <p className="text-gray-500 text-sm mt-1">Plataforma de gestión clínica</p>
         </div>
 
-        {sent ? (
-          <div className="text-center">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Revise su correo</h2>
-            <p className="text-gray-500 text-sm">
-              Enviamos un enlace de acceso a <strong>{email}</strong>.<br />
-              Haga clic en el enlace para ingresar.
-            </p>
-            <button onClick={() => setSent(false)} className="mt-4 text-blue-600 text-sm hover:underline">
-              Usar otro correo
-            </button>
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              Correo electrónico
+            </label>
+            <input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="doctor@clinica.com"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
           </div>
-        ) : (
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Correo electrónico
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="doctor@clinica.com"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
 
-            {mode === 'password' && (
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Contraseña
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            )}
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              Contraseña
+            </label>
+            <input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
 
-            {error && (
-              <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
-            )}
+          {error && (
+            <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+          )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
-            >
-              {loading ? 'Ingresando...' : mode === 'magic' ? 'Ingresar con Magic Link' : 'Ingresar'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { setMode(mode === 'magic' ? 'password' : 'magic'); setError('') }}
-              className="w-full text-center text-xs text-gray-400 hover:text-gray-600"
-            >
-              {mode === 'magic' ? 'Ingresar con contraseña' : 'Ingresar con Magic Link'}
-            </button>
-          </form>
-        )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
+          >
+            {loading ? 'Ingresando…' : 'Ingresar'}
+          </button>
+        </form>
       </div>
     </div>
   )
