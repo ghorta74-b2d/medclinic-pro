@@ -10,6 +10,7 @@ export default function InvitePage() {
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [tokenError, setTokenError] = useState('')
   const [ready, setReady] = useState(false)
 
   const supabase = createBrowserClient(
@@ -18,21 +19,35 @@ export default function InvitePage() {
   )
 
   useEffect(() => {
-    // Supabase browser client automatically exchanges the #access_token hash.
-    // We just wait until getSession() resolves with a valid session.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setReady(true)
-      } else {
-        // Hash not yet processed — listen for the auth state change
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if (session) {
+    // @supabase/ssr does NOT auto-process the hash fragment — do it manually.
+    const hash = window.location.hash.substring(1)
+    const params = new URLSearchParams(hash)
+    const accessToken = params.get('access_token')
+    const refreshToken = params.get('refresh_token')
+
+    if (accessToken && refreshToken) {
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ data, error }) => {
+          if (data.session) {
+            // Remove tokens from URL bar
+            window.history.replaceState(null, '', window.location.pathname)
             setReady(true)
-            subscription.unsubscribe()
+          } else {
+            setTokenError(error?.message || 'Token de invitación inválido o expirado')
+            setReady(true)
           }
         })
-      }
-    })
+    } else {
+      // No hash — maybe they're already logged in from a previous invite click
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          setReady(true)
+        } else {
+          setTokenError('Link de invitación inválido o ya utilizado.')
+          setReady(true)
+        }
+      })
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(e: React.FormEvent) {
@@ -62,6 +77,23 @@ export default function InvitePage() {
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-gray-500 text-sm">Verificando invitación…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (tokenError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">Link inválido</h2>
+          <p className="text-gray-500 text-sm mb-6">{tokenError}</p>
+          <p className="text-gray-400 text-xs">Pide a tu administrador que reenvíe la invitación.</p>
         </div>
       </div>
     )
