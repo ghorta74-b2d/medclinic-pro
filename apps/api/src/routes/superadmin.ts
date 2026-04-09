@@ -302,50 +302,41 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
 
     const supabaseAdmin = getSupabaseAdmin()
     const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`
-
-    // Try generateLink first (works for existing unconfirmed users)
-    console.log('[resend-invite] Attempting generateLink for', doctor.email)
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'invite',
-      email: doctor.email,
-      options: {
-        data: {
-          clinic_id: clinicId,
-          role: 'DOCTOR',
-          firstName: doctor.firstName,
-          lastName: doctor.lastName,
-          doctor_id: doctor.id,
-        },
-        redirectTo,
-      },
-    })
-
-    if (linkError) {
-      const linkMsg = linkError.message || (linkError as any).msg || JSON.stringify(linkError)
-      console.log('[resend-invite] generateLink failed:', linkMsg, 'status:', (linkError as any).status, '— trying inviteUserByEmail')
-      // Fallback: try inviteUserByEmail (for new users)
-      const { error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(doctor.email, {
-        data: {
-          clinic_id: clinicId,
-          role: 'DOCTOR',
-          firstName: doctor.firstName,
-          lastName: doctor.lastName,
-          doctor_id: doctor.id,
-        },
-        redirectTo,
-      })
-      if (inviteError) {
-        const msg = inviteError.message || (inviteError as any).msg || JSON.stringify(inviteError)
-        console.log('[resend-invite] inviteUserByEmail also failed:', msg, 'status:', (inviteError as any).status)
-        return reply.status(400).send({ error: { message: msg || 'Supabase invite error' } })
-      }
+    const inviteData = {
+      clinic_id: clinicId,
+      role: 'DOCTOR',
+      firstName: doctor.firstName,
+      lastName: doctor.lastName,
+      doctor_id: doctor.id,
     }
 
-    // Link auth user id if not already linked
-    if (linkData?.user?.id && !doctor.authUserId) {
+    // Step 1: check if user exists in Supabase
+    const { data: listData } = await supabaseAdmin.auth.admin.listUsers()
+    const existingUser = listData?.users?.find((u: any) => u.email === doctor.email)
+
+    if (existingUser && !existingUser.email_confirmed_at) {
+      // User exists but hasn't accepted invite — delete and re-invite
+      console.log('[resend-invite] Deleting existing unconfirmed user', existingUser.id)
+      await supabaseAdmin.auth.admin.deleteUser(existingUser.id).catch(() => {})
+    }
+
+    // Step 2: invite (creates user + sends email via SMTP)
+    const { data: newUser, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      doctor.email,
+      { data: inviteData, redirectTo }
+    )
+
+    if (inviteError) {
+      const msg = inviteError.message || String(inviteError) || 'Error al enviar invitación'
+      console.error('[resend-invite] inviteUserByEmail failed:', msg, 'status:', (inviteError as any).status)
+      return reply.status(400).send({ error: { message: msg } })
+    }
+
+    // Step 3: link authUserId
+    if (newUser?.user?.id) {
       await prisma.doctor.update({
         where: { id: doctor.id },
-        data: { authUserId: linkData.user.id },
+        data: { authUserId: newUser.user.id },
       }).catch(() => {})
     }
 
