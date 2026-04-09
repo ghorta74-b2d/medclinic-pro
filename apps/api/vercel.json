@@ -4,6 +4,7 @@
   "installCommand": "npm install -g pnpm@10.7.1 && pnpm install --no-frozen-lockfile",
   "functions": {
     "api/index.ts": {
+      "runtime": "nodejs20.x",
       "maxDuration": 30,
       "includeFiles": "src/**,prisma/**,generated/**"
     }
