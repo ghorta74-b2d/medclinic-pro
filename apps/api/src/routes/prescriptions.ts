@@ -4,7 +4,9 @@ import { prisma } from '../lib/prisma.js'
 import { requireDoctor } from '../middleware/auth.js'
 import { auditLog } from '../middleware/audit.js'
 import { Errors } from '../lib/errors.js'
-import { generatePrescriptionPdf } from '../services/pdf.js'
+// Lazy-loaded to avoid @react-pdf/renderer initializing at module load time
+// (yoga layout engine crashes Vercel serverless on cold start)
+const getPdfGenerator = () => import('../services/pdf.js').then(m => m.generatePrescriptionPdf)
 import { sendWhatsAppMessage } from '../services/whatsapp.js'
 
 const PrescriptionItemSchema = z.object({
@@ -162,6 +164,7 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
 
     const clinic = await prisma.clinic.findUnique({ where: { id: clinicId } })
 
+    const generatePrescriptionPdf = await getPdfGenerator()
     const pdfUrl = await generatePrescriptionPdf(prescription, clinic)
 
     const updated = await prisma.prescription.update({
