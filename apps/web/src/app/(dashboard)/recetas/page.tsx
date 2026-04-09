@@ -4,17 +4,46 @@ import { useState, useEffect, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
 import { formatDate, formatCurrency } from '@/lib/utils'
-import { Plus, FileText, MessageCircle, Loader2 } from 'lucide-react'
+import { Plus, FileText, MessageCircle, Loader2, Pencil } from 'lucide-react'
 import type { Prescription } from 'medclinic-shared'
 import { PrescriptionBuilder } from '@/components/prescriptions/prescription-builder'
 
 interface PrescriptionsResponse { data: Prescription[] }
 
+interface EditingRx {
+  id: string
+  patientId: string
+  patientName: string
+  items: Array<{ medicationName: string; dose: string; route: string; frequency: string; duration: string; quantity: string; instructions: string }>
+  instructions: string
+  followUpDate: string
+}
+
 export default function RecetasPage() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [loading, setLoading] = useState(true)
   const [showBuilder, setShowBuilder] = useState(false)
+  const [editingRx, setEditingRx] = useState<EditingRx | null>(null)
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({})
+
+  function openEdit(rx: Prescription) {
+    setEditingRx({
+      id: rx.id,
+      patientId: rx.patient?.id ?? '',
+      patientName: `${rx.patient?.firstName ?? ''} ${rx.patient?.lastName ?? ''}`.trim(),
+      items: (rx.items ?? []).map((it: any) => ({
+        medicationName: it.medicationName ?? '',
+        dose: it.dose ?? '',
+        route: it.route ?? 'oral',
+        frequency: it.frequency ?? 'cada 8 horas',
+        duration: it.duration ?? '7 días',
+        quantity: it.quantity ?? '',
+        instructions: it.instructions ?? '',
+      })),
+      instructions: rx.instructions ?? '',
+      followUpDate: rx.followUpDate ? new Date(rx.followUpDate).toISOString().split('T')[0]! : '',
+    })
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -107,7 +136,18 @@ export default function RecetasPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex gap-2 shrink-0 items-start">
+                    {/* Edit button */}
+                    {rx.status === 'ACTIVE' && (
+                      <button
+                        onClick={() => openEdit(rx)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50"
+                        title="Editar receta"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        Editar
+                      </button>
+                    )}
                     {rx.pdfUrl ? (
                       <a
                         href={rx.pdfUrl}
@@ -156,6 +196,14 @@ export default function RecetasPage() {
         <PrescriptionBuilder
           onClose={() => setShowBuilder(false)}
           onCreated={() => { setShowBuilder(false); load() }}
+        />
+      )}
+
+      {editingRx && (
+        <PrescriptionBuilder
+          onClose={() => setEditingRx(null)}
+          onCreated={() => { setEditingRx(null); load() }}
+          existing={editingRx}
         />
       )}
     </>

@@ -12,6 +12,7 @@ import {
 import type { Patient, ClinicalNote, Appointment, Prescription, LabResult } from 'medclinic-shared'
 import { GENDER_LABELS, BLOOD_TYPE_LABELS, STATUS_LABELS } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
+import { PrescriptionBuilder } from '@/components/prescriptions/prescription-builder'
 
 // ── Phone helpers ──────────────────────────────────────────────────────────────
 function extractPhone(phone: string): { prefix: string; digits: string } {
@@ -411,7 +412,12 @@ export default function PatientDetailPage() {
             <NotesTab patientId={id} notes={timeline?.notes ?? []} onRefresh={loadTimeline} />
           )}
           {activeTab === 'recetas' && (
-            <PrescriptionsTab patientId={id} prescriptions={timeline?.prescriptions ?? []} />
+            <PrescriptionsTab
+              patientId={id}
+              patientName={`${patient.firstName} ${patient.lastName}`}
+              prescriptions={timeline?.prescriptions ?? []}
+              onRefresh={loadTimeline}
+            />
           )}
           {activeTab === 'lab' && (
             <LabTab patientId={id} results={timeline?.labResults ?? []} onRefresh={loadTimeline} />
@@ -596,9 +602,26 @@ function NotesTab({ patientId, notes, onRefresh }: { patientId: string; notes: C
   )
 }
 
-function PrescriptionsTab({ patientId, prescriptions }: { patientId: string; prescriptions: Prescription[] }) {
+function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: {
+  patientId: string
+  patientName: string
+  prescriptions: Prescription[]
+  onRefresh: () => void
+}) {
+  const [showBuilder, setShowBuilder] = useState(false)
+
   return (
     <div>
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setShowBuilder(true)}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+        >
+          <Pill className="w-4 h-4" />
+          Nueva receta
+        </button>
+      </div>
+
       {prescriptions.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-gray-100">
           No hay recetas registradas
@@ -636,6 +659,14 @@ function PrescriptionsTab({ patientId, prescriptions }: { patientId: string; pre
             </div>
           ))}
         </div>
+      )}
+
+      {showBuilder && (
+        <PrescriptionBuilder
+          patientId={patientId}
+          onClose={() => setShowBuilder(false)}
+          onCreated={() => { setShowBuilder(false); onRefresh() }}
+        />
       )}
     </div>
   )

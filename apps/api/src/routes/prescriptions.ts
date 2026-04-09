@@ -142,6 +142,79 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
     return reply.status(201).send({ data: prescription })
   })
 
+  // PATCH /api/prescriptions/:id
+  server.patch('/:id', { preHandler: requireDoctor }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { clinicId, authUserId, role, doctorId } = request.authUser
+    if (!doctorId) return Errors.FORBIDDEN(reply)
+
+    const body = request.body as {
+      items?: Array<{
+        medicationName: string; dose: string; route: string
+        frequency: string; duration: string; quantity?: string; instructions?: string; sortOrder?: number
+      }>
+      instructions?: string
+      followUpDate?: string | null
+      status?: 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
+    }
+
+    const rx = await prisma.prescription.findFirst({ where: { id, clinicId } })
+    if (!rx) return Errors.NOT_FOUND(reply, 'Prescription')
+
+    // Update inside transaction: optionally delete+recreate items
+    const updated = await prisma.$transaction(async (tx) => {
+      if (body.items && body.items.length > 0) {
+        await tx.prescriptionItem.deleteMany({ where: { prescriptionId: id } })
+        await tx.prescriptionItem.createMany({
+          data: body.items.map((item, i) => ({
+            prescriptionId: id,
+            medicationName: item.medicationName,
+            dose: item.dose,
+            route: item.route,
+            frequency: item.frequency,
+            duration: item.duration,
+            quantity: item.quantity,
+            instructions: item.instructions,
+            sortOrder: item.sortOrder ?? i,
+          })),
+        })
+      }
+
+      return tx.prescription.update({
+        where: { id },
+        data: {
+          ...(body.instructions !== undefined && { instructions: body.instructions }),
+          ...(body.followUpDate !== undefined && {
+            followUpDate: body.followUpDate ? new Date(body.followUpDate) : null,
+          }),
+          ...(body.status !== undefined && { status: body.status }),
+          // Invalidate PDF when prescription changes
+          ...(body.items && { pdfUrl: null, pdfGeneratedAt: null }),
+        },
+        include: {
+          patient: { select: { id: true, firstName: true, lastName: true, phone: true } },
+          doctor: {
+            select: {
+              id: true, firstName: true, lastName: true,
+              licenseNumber: true, specialty: true, institution: true, signatureUrl: true,
+            },
+          },
+          items: { orderBy: { sortOrder: 'asc' } },
+        },
+      })
+    })
+
+    await auditLog({
+      user: { authUserId, clinicId, role },
+      action: 'UPDATE',
+      resourceType: 'Prescription',
+      resourceId: id,
+      newValue: { itemCount: body.items?.length, status: body.status },
+    })
+
+    return reply.send({ data: updated })
+  })
+
   // POST /api/prescriptions/:id/generate-pdf
   server.post('/:id/generate-pdf', { preHandler: requireDoctor }, async (request, reply) => {
     const { id } = request.params as { id: string }

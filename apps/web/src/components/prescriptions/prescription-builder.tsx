@@ -16,10 +16,20 @@ interface RxItem {
   instructions: string
 }
 
+interface ExistingPrescription {
+  id: string
+  patientId: string
+  patientName: string
+  items: RxItem[]
+  instructions: string
+  followUpDate: string // YYYY-MM-DD or ''
+}
+
 interface PrescriptionBuilderProps {
   onClose: () => void
   onCreated: () => void
   patientId?: string
+  existing?: ExistingPrescription
 }
 
 const ROUTES = ['oral', 'sublingual', 'tópico', 'IM', 'IV', 'SC', 'inhalado', 'vaginal', 'rectal', 'oftálmico', 'ótico']
@@ -30,20 +40,23 @@ const emptyItem = (): RxItem => ({
   medicationName: '', dose: '', route: 'oral', frequency: 'cada 8 horas', duration: '7 días', quantity: '', instructions: '',
 })
 
-export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPatientId }: PrescriptionBuilderProps) {
+export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPatientId, existing }: PrescriptionBuilderProps) {
+  const isEditing = !!existing
+
   const [patients, setPatients] = useState<Patient[]>([])
   const [patientSearch, setPatientSearch] = useState('')
-  const [selectedPatientId, setSelectedPatientId] = useState(defaultPatientId ?? '')
-  const [selectedPatientName, setSelectedPatientName] = useState('')
-  const [items, setItems] = useState<RxItem[]>([emptyItem()])
-  const [instructions, setInstructions] = useState('')
-  const [followUpDate, setFollowUpDate] = useState('')
+  const [selectedPatientId, setSelectedPatientId] = useState(existing?.patientId ?? defaultPatientId ?? '')
+  const [selectedPatientName, setSelectedPatientName] = useState(existing?.patientName ?? '')
+  const [items, setItems] = useState<RxItem[]>(existing?.items ?? [emptyItem()])
+  const [instructions, setInstructions] = useState(existing?.instructions ?? '')
+  const [followUpDate, setFollowUpDate] = useState(existing?.followUpDate ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   // Medication autocomplete per item
-  const [medSearch, setMedSearch] = useState<string[]>([''])
-  const [medResults, setMedResults] = useState<MedicationEntry[][]>([[]])
+  const initMedSearch = existing?.items.map(it => it.medicationName) ?? ['']
+  const [medSearch, setMedSearch] = useState<string[]>(initMedSearch)
+  const [medResults, setMedResults] = useState<MedicationEntry[][]>(initMedSearch.map(() => []))
 
   useEffect(() => {
     if (patientSearch.length >= 2) {
@@ -114,15 +127,19 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
     setLoading(true)
     setError('')
     try {
-      await api.prescriptions.create({
-        patientId: selectedPatientId,
+      const payload = {
         items: validItems.map((it, i) => ({ ...it, sortOrder: i })),
         instructions: instructions || undefined,
         followUpDate: followUpDate ? new Date(followUpDate).toISOString() : undefined,
-      })
+      }
+      if (isEditing && existing) {
+        await (api.prescriptions as any).update(existing.id, payload)
+      } else {
+        await api.prescriptions.create({ patientId: selectedPatientId, ...payload })
+      }
       onCreated()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear receta')
+      setError(err instanceof Error ? err.message : isEditing ? 'Error al actualizar receta' : 'Error al crear receta')
     } finally {
       setLoading(false)
     }
@@ -134,15 +151,20 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-semibold text-gray-900">Nueva receta médica</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{isEditing ? 'Editar receta' : 'Nueva receta médica'}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Patient */}
-          {!defaultPatientId && (
+          {/* Patient — locked when editing */}
+          {isEditing ? (
+            <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              <p className="text-xs text-blue-500 font-medium mb-0.5">Paciente</p>
+              <p className="text-sm font-semibold text-gray-900">{existing?.patientName}</p>
+            </div>
+          ) : !defaultPatientId && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
               {selectedPatientId ? (
@@ -319,7 +341,7 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
               Cancelar
             </button>
             <button type="submit" disabled={loading} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
-              {loading ? 'Creando...' : 'Crear receta'}
+              {loading ? (isEditing ? 'Guardando...' : 'Creando...') : (isEditing ? 'Guardar cambios' : 'Crear receta')}
             </button>
           </div>
         </form>

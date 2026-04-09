@@ -92,6 +92,8 @@ export const api = {
     get: (id: string) => request(`/api/prescriptions/${id}`),
     create: (data: unknown) =>
       request('/api/prescriptions', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: unknown) =>
+      request(`/api/prescriptions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     generatePdf: (id: string) =>
       request(`/api/prescriptions/${id}/generate-pdf`, { method: 'POST' }),
     sendWhatsApp: (id: string) =>
