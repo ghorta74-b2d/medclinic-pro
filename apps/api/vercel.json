@@ -5,7 +5,7 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
-      "includeFiles": "src/**,prisma/**,generated/**"
+      "includeFiles": "src/**,prisma/**,generated/**,node_modules/.pnpm/**/*.so.node"
     }
   },
   "rewrites": [
