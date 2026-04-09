@@ -3,6 +3,39 @@ import { createClient } from '@supabase/supabase-js'
 import { prisma } from '../lib/prisma.js'
 import { Errors } from '../lib/errors.js'
 
+async function sendInviteEmail(to: string, inviteUrl: string, firstName: string) {
+  const resendKey = process.env['RESEND_API_KEY']
+  if (!resendKey) throw new Error('RESEND_API_KEY not configured')
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${resendKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'MedClinic PRO <medclinic@glasshaus.mx>',
+      to: [to],
+      subject: 'Invitación a MedClinic PRO',
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <h2>Hola ${firstName},</h2>
+          <p>Has sido invitado a MedClinic PRO. Haz clic en el botón para activar tu cuenta y establecer tu contraseña.</p>
+          <a href="${inviteUrl}" style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">
+            Activar cuenta
+          </a>
+          <p style="color:#888;font-size:12px">Si no esperabas esta invitación, ignora este mensaje.</p>
+        </div>
+      `,
+    }),
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(`Resend error ${res.status}: ${(body as any).message ?? res.statusText}`)
+  }
+}
+
 // Admin Supabase client (bypasses RLS, can create users)
 function getSupabaseAdmin() {
   return createClient(
@@ -137,36 +170,48 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       },
     })
 
-    // 3. Invite admin via Supabase Auth (sends invite email)
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      body.admin.email,
-      {
-        data: {
-          clinic_id: clinic.id,
-          role: 'ADMIN',
-          firstName: body.admin.firstName,
-          lastName: body.admin.lastName,
-          doctor_id: doctor.id,
-        },
-        redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`,
-      }
-    )
+    // 3. Create user in Supabase Auth + generate invite link
+    const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'invite',
+      email: body.admin.email,
+      options: {
+        data: { clinic_id: clinic.id, role: 'ADMIN', firstName: body.admin.firstName, lastName: body.admin.lastName, doctor_id: doctor.id },
+        redirectTo,
+      },
+    })
 
-    // 4. Link auth user id to doctor (if invite succeeded)
-    if (inviteData?.user?.id) {
+    // 4. Link auth user id to doctor
+    if (linkData?.user?.id) {
       await prisma.doctor.update({
         where: { id: doctor.id },
-        data: { authUserId: inviteData.user.id },
+        data: { authUserId: linkData.user.id },
       }).catch(() => {})
+    }
+
+    // 5. Send invite email via Resend directly
+    let inviteSent = false
+    let inviteEmailError: string | null = null
+    if (linkData?.properties?.action_link) {
+      try {
+        await sendInviteEmail(body.admin.email, linkData.properties.action_link, body.admin.firstName)
+        inviteSent = true
+      } catch (emailErr: any) {
+        inviteEmailError = emailErr.message
+        console.error('[POST /clinics] Resend error:', emailErr.message)
+      }
+    } else if (linkError) {
+      inviteEmailError = linkError.message
+      console.error('[POST /clinics] generateLink error:', linkError.message)
     }
 
     return reply.status(201).send({
       data: {
         clinic,
         doctor,
-        inviteSent: !inviteError,
+        inviteSent,
         inviteEmail: body.admin.email,
-        inviteError: inviteError?.message ?? null,
+        inviteError: inviteEmailError,
       },
     })
     } catch (err: any) {
@@ -310,35 +355,40 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       doctor_id: doctor.id,
     }
 
-    // Step 1: check if user exists in Supabase
-    const { data: listData } = await supabaseAdmin.auth.admin.listUsers()
-    const existingUser = listData?.users?.find((u: any) => u.email === doctor.email)
-
-    if (existingUser && !existingUser.email_confirmed_at) {
-      // User exists but hasn't accepted invite — delete and re-invite
-      console.log('[resend-invite] Deleting existing unconfirmed user', existingUser.id)
-      await supabaseAdmin.auth.admin.deleteUser(existingUser.id).catch(() => {})
+    // Step 1: delete existing unconfirmed Supabase user if any
+    if (doctor.authUserId) {
+      const { data: existingUser } = await supabaseAdmin.auth.admin.getUserById(doctor.authUserId)
+      if (existingUser?.user && !existingUser.user.email_confirmed_at) {
+        await supabaseAdmin.auth.admin.deleteUser(doctor.authUserId).catch(() => {})
+        await prisma.doctor.update({ where: { id: doctor.id }, data: { authUserId: null } }).catch(() => {})
+      }
     }
 
-    // Step 2: invite (creates user + sends email via SMTP)
-    const { data: newUser, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      doctor.email,
-      { data: inviteData, redirectTo }
-    )
+    // Step 2: generate invite link (creates Supabase user, no SMTP)
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'invite',
+      email: doctor.email,
+      options: { data: inviteData, redirectTo },
+    })
 
-    if (inviteError) {
-      const msg = inviteError.message || String(inviteError) || 'Error al enviar invitación'
-      console.error('[resend-invite] inviteUserByEmail failed:', msg, 'status:', (inviteError as any).status)
-      return reply.status(400).send({ error: { message: msg } })
+    if (linkError) {
+      return reply.status(400).send({ error: { message: linkError.message || 'Error al generar invite link' } })
     }
 
     // Step 3: link authUserId
-    if (newUser?.user?.id) {
+    if (linkData?.user?.id) {
       await prisma.doctor.update({
         where: { id: doctor.id },
-        data: { authUserId: newUser.user.id },
+        data: { authUserId: linkData.user.id },
       }).catch(() => {})
     }
+
+    // Step 4: send email via Resend directly
+    if (!linkData?.properties?.action_link) {
+      return reply.status(500).send({ error: { message: 'No se pudo generar el link de invitación' } })
+    }
+
+    await sendInviteEmail(doctor.email, linkData.properties.action_link, doctor.firstName)
 
     return { data: { sent: true, email: doctor.email } }
   })
