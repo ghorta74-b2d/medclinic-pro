@@ -301,18 +301,47 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
     if (!doctor) return reply.status(404).send({ error: { message: 'Doctor no encontrado' } })
 
     const supabaseAdmin = getSupabaseAdmin()
-    const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(doctor.email, {
-      data: {
-        clinic_id: clinicId,
-        role: 'DOCTOR',
-        firstName: doctor.firstName,
-        lastName: doctor.lastName,
-        doctor_id: doctor.id,
+    const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`
+
+    // Try generateLink first (works for existing unconfirmed users)
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'invite',
+      email: doctor.email,
+      options: {
+        data: {
+          clinic_id: clinicId,
+          role: 'DOCTOR',
+          firstName: doctor.firstName,
+          lastName: doctor.lastName,
+          doctor_id: doctor.id,
+        },
+        redirectTo,
       },
-      redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`,
     })
 
-    if (error) return reply.status(400).send({ error: { message: error.message } })
+    if (linkError) {
+      // Fallback: try inviteUserByEmail (for new users)
+      const { error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(doctor.email, {
+        data: {
+          clinic_id: clinicId,
+          role: 'DOCTOR',
+          firstName: doctor.firstName,
+          lastName: doctor.lastName,
+          doctor_id: doctor.id,
+        },
+        redirectTo,
+      })
+      if (inviteError) return reply.status(400).send({ error: { message: inviteError.message } })
+    }
+
+    // Link auth user id if not already linked
+    if (linkData?.user?.id && !doctor.authUserId) {
+      await prisma.doctor.update({
+        where: { id: doctor.id },
+        data: { authUserId: linkData.user.id },
+      }).catch(() => {})
+    }
+
     return { data: { sent: true, email: doctor.email } }
   })
 
