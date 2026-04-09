@@ -125,7 +125,7 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
           lastName: body.lastName,
           doctor_id: doctor.id,
         },
-        redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`,
+        redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`,
       }
     )
 
@@ -245,7 +245,7 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
           lastName: body.lastName,
           doctor_id: doctor.id,
         },
-        redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`,
+        redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`,
       }
     )
 
@@ -320,7 +320,7 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
         lastName: doctor.lastName,
         doctor_id: doctor.id,
       },
-      redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`,
+      redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`,
     })
 
     if (error) return reply.status(400).send({ error: { message: error.message } })

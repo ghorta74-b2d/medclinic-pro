@@ -199,7 +199,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
     })
 
     // 3. Create Supabase user + generate invite link (direct REST, bypasses JS SDK)
-    const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`
+    const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`
     let inviteSent = false
     let inviteEmailError: string | null = null
     try {
@@ -334,7 +334,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
           lastName: body.lastName,
           doctor_id: doctor.id,
         },
-        redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`,
+        redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`,
       }
     )
 
@@ -361,7 +361,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
     if (!doctor) return reply.status(404).send({ error: { message: 'Doctor no encontrado' } })
 
     const supabaseAdmin = getSupabaseAdmin()
-    const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/dashboard`
+    const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`
     const metadata = {
       clinic_id: clinicId,
       role: 'DOCTOR',
