@@ -26,6 +26,7 @@ export default function NuevaClinicaPage() {
   const [step, setStep] = useState<Step>('clinica')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [inviteSent, setInviteSent] = useState(true)
 
   const [clinic, setClinic] = useState({
     name: '', rfc: '', phone: '', email: '', address: '',
@@ -47,7 +48,8 @@ export default function NuevaClinicaPage() {
   async function handleSubmit() {
     setSaving(true)
     try {
-      await (api as any).superadmin.createClinic({ clinic: { ...clinic, plan }, admin })
+      const result = await (api as any).superadmin.createClinic({ clinic: { ...clinic, plan }, admin })
+      setInviteSent(result?.data?.inviteSent ?? true)
       setSuccess(true)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error al crear la clínica')
@@ -63,12 +65,25 @@ export default function NuevaClinicaPage() {
           <Check className="w-8 h-8 text-green-400" />
         </div>
         <h2 className="text-xl font-bold text-white mb-2">¡Clínica creada exitosamente!</h2>
-        <p className="text-gray-400 text-sm mb-2">
-          Se envió un email de invitación a <strong className="text-white">{admin.email}</strong>
-        </p>
-        <p className="text-gray-500 text-xs mb-8">
-          El médico deberá hacer clic en el link del email para activar su cuenta y establecer contraseña.
-        </p>
+        {inviteSent ? (
+          <>
+            <p className="text-gray-400 text-sm mb-2">
+              Se envió un email de invitación a <strong className="text-white">{admin.email}</strong>
+            </p>
+            <p className="text-gray-500 text-xs mb-8">
+              El médico deberá hacer clic en el link del email para activar su cuenta y establecer contraseña.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-gray-400 text-sm mb-2">
+              La clínica y el médico fueron creados. El email de invitación a <strong className="text-white">{admin.email}</strong> no pudo enviarse (límite de emails de Supabase).
+            </p>
+            <p className="text-yellow-500 text-xs mb-8">
+              Puedes reenviar la invitación desde el detalle de la clínica.
+            </p>
+          </>
+        )}
         <div className="flex gap-3 justify-center">
           <button onClick={() => router.push('/superadmin/clinicas')}
             className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg text-sm font-medium">

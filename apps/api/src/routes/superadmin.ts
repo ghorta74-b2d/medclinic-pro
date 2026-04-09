@@ -152,14 +152,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       }
     )
 
-    if (inviteError) {
-      // Rollback
-      await prisma.doctor.delete({ where: { id: doctor.id } }).catch(() => {})
-      await prisma.clinic.delete({ where: { id: clinic.id } }).catch(() => {})
-      return reply.status(400).send({ error: { message: inviteError.message } })
-    }
-
-    // 4. Link auth user id to doctor
+    // 4. Link auth user id to doctor (if invite succeeded)
     if (inviteData?.user?.id) {
       await prisma.doctor.update({
         where: { id: doctor.id },
@@ -168,7 +161,13 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     return reply.status(201).send({
-      data: { clinic, doctor, inviteSent: true, inviteEmail: body.admin.email },
+      data: {
+        clinic,
+        doctor,
+        inviteSent: !inviteError,
+        inviteEmail: body.admin.email,
+        inviteError: inviteError?.message ?? null,
+      },
     })
     } catch (err: any) {
       console.error('[POST /clinics] Error:', err?.message)
