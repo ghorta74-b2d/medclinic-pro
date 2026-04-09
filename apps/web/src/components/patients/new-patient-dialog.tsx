@@ -9,13 +9,18 @@ interface NewPatientDialogProps {
   onCreated: () => void
 }
 
+// Normaliza los 10 dígitos a formato +52XXXXXXXXXX
+function buildPhone(digits: string): string {
+  return `+52${digits.replace(/\D/g, '').slice(0, 10)}`
+}
+
 export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [phoneDigits, setPhoneDigits] = useState('')
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
-    phone: '',
     email: '',
     dateOfBirth: '',
     gender: '',
@@ -36,8 +41,17 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
     setForm((f) => ({ ...f, [field]: value }))
   }
 
+  function handlePhoneChange(raw: string) {
+    const digits = raw.replace(/\D/g, '').slice(0, 10)
+    setPhoneDigits(digits)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (phoneDigits.length !== 10) {
+      setError('El teléfono debe tener exactamente 10 dígitos')
+      return
+    }
     if (!form.privacyConsent || !form.dataConsent) {
       setError('El paciente debe aceptar el aviso de privacidad y el consentimiento de datos')
       return
@@ -50,7 +64,7 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
       await api.patients.create({
         firstName: form.firstName,
         lastName: form.lastName,
-        phone: form.phone,
+        phone: buildPhone(phoneDigits),
         email: form.email || undefined,
         dateOfBirth: form.dateOfBirth ? new Date(form.dateOfBirth).toISOString() : undefined,
         gender: form.gender || undefined,
@@ -101,8 +115,23 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
                 <input required value={form.lastName} onChange={(e) => set('lastName', e.target.value)} className={inputClass} />
               </div>
               <div>
-                <label className={labelClass}>WhatsApp (con lada) *</label>
-                <input required placeholder="+521234567890" value={form.phone} onChange={(e) => set('phone', e.target.value)} className={inputClass} />
+                <label className={labelClass}>WhatsApp *</label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-sm text-gray-600 font-medium select-none">+52</span>
+                  <input
+                    required
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="5512345678"
+                    value={phoneDigits}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    maxLength={10}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                {phoneDigits.length > 0 && phoneDigits.length < 10 && (
+                  <p className="text-xs text-amber-600 mt-0.5">{10 - phoneDigits.length} dígitos restantes</p>
+                )}
               </div>
               <div>
                 <label className={labelClass}>Correo electrónico</label>

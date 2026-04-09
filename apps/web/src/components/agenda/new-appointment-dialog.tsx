@@ -109,7 +109,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
   const [patients, setPatients] = useState<Patient[]>([])
   const [selectedPatientId, setSelectedPatientId] = useState('')
   const [selectedPatientName, setSelectedPatientName] = useState('')
-  const [newPatient, setNewPatient] = useState({ firstName: '', lastName: '', phone: '' })
+  const [newPatient, setNewPatient] = useState({ firstName: '', lastName: '', phoneDigits: '' })
 
   // ── Cita ─────────────────────────────────────────────────────
   const [doctors, setDoctors] = useState<Doctor[]>([])
@@ -206,13 +206,13 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
     setSelectedPatientName('')
     setPatients([])
     const parts = patientSearch.trim().split(' ')
-    setNewPatient({ firstName: parts[0] ?? '', lastName: parts.slice(1).join(' '), phone: '' })
+    setNewPatient({ firstName: parts[0] ?? '', lastName: parts.slice(1).join(' '), phoneDigits: '' })
     setPatientSearch('')
   }
 
   function switchToSearch() {
     setPatientMode('search')
-    setNewPatient({ firstName: '', lastName: '', phone: '' })
+    setNewPatient({ firstName: '', lastName: '', phoneDigits: '' })
     setSelectedPatientId('')
     setSelectedPatientName('')
   }
@@ -226,8 +226,12 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
     let patientId = selectedPatientId
 
     if (patientMode === 'new') {
-      if (!newPatient.firstName.trim() || !newPatient.lastName.trim() || !newPatient.phone.trim()) {
-        setError('Nombre, apellido y teléfono son requeridos')
+      if (!newPatient.firstName.trim() || !newPatient.lastName.trim()) {
+        setError('Nombre y apellido son requeridos')
+        return
+      }
+      if (newPatient.phoneDigits.length !== 10) {
+        setError('El teléfono debe tener exactamente 10 dígitos')
         return
       }
       setLoading(true)
@@ -236,7 +240,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
         const res = await api.patients.create({
           firstName: newPatient.firstName.trim(),
           lastName:  newPatient.lastName.trim(),
-          phone:     newPatient.phone.trim(),
+          phone:     `+52${newPatient.phoneDigits}`,
         }) as { data: Patient }
         patientId = res.data.id
       } catch (err) {
@@ -364,10 +368,21 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Teléfono WhatsApp <span className="text-red-500">*</span></label>
-                  <input type="tel" placeholder="+521234567890" value={newPatient.phone}
-                    onChange={e => setNewPatient(p => ({ ...p, phone: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <p className="text-xs text-gray-400 mt-0.5">Formato internacional, ej. +5255xxxxxxxx</p>
+                  <div className="flex">
+                    <span className="inline-flex items-center px-2 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-xs text-gray-600 font-medium select-none">+52</span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      placeholder="5512345678"
+                      value={newPatient.phoneDigits}
+                      onChange={e => setNewPatient(p => ({ ...p, phoneDigits: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                      maxLength={10}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  {newPatient.phoneDigits.length > 0 && newPatient.phoneDigits.length < 10 && (
+                    <p className="text-xs text-amber-500 mt-0.5">{10 - newPatient.phoneDigits.length} dígitos restantes</p>
+                  )}
                 </div>
               </div>
             )}

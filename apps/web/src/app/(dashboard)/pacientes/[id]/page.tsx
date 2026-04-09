@@ -7,11 +7,246 @@ import { api } from '@/lib/api'
 import { formatDate, formatDateTime, formatRelative, getInitials, calculateAge, formatCurrency } from '@/lib/utils'
 import {
   ArrowLeft, Phone, Mail, Calendar, Droplets, AlertTriangle,
-  FileText, Pill, FlaskConical, CreditCard, ChevronRight, Clock,
+  FileText, Pill, FlaskConical, ChevronRight, Clock, Pencil, X, Check, Loader2,
 } from 'lucide-react'
 import type { Patient, ClinicalNote, Appointment, Prescription, LabResult } from 'medclinic-shared'
 import { GENDER_LABELS, BLOOD_TYPE_LABELS, STATUS_LABELS } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
+
+// ── Phone helpers ──────────────────────────────────────────────────────────────
+function extractPhone(phone: string): { prefix: string; digits: string } {
+  if (phone.startsWith('+52')) return { prefix: '+52', digits: phone.slice(3) }
+  if (phone.startsWith('52') && phone.length === 12) return { prefix: '+52', digits: phone.slice(2) }
+  return { prefix: '+52', digits: phone.replace(/\D/g, '').slice(-10) }
+}
+
+// ── EditPatientModal ───────────────────────────────────────────────────────────
+function EditPatientModal({
+  patient,
+  onClose,
+  onSaved,
+}: {
+  patient: PatientWithCount
+  onClose: () => void
+  onSaved: (updated: PatientWithCount) => void
+}) {
+  const { digits: initDigits } = extractPhone(patient.phone ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [phoneDigits, setPhoneDigits] = useState(initDigits)
+  const [form, setForm] = useState({
+    firstName:         patient.firstName,
+    lastName:          patient.lastName,
+    email:             patient.email ?? '',
+    dateOfBirth:       patient.dateOfBirth ? patient.dateOfBirth.toString().slice(0, 10) : '',
+    gender:            patient.gender ?? '',
+    bloodType:         patient.bloodType ?? 'UNKNOWN',
+    curp:              patient.curp ?? '',
+    address:           patient.address ?? '',
+    city:              patient.city ?? '',
+    state:             patient.state ?? '',
+    allergies:         patient.allergies.join(', '),
+    chronicConditions: patient.chronicConditions.join(', '),
+    currentMedications:patient.currentMedications.join(', '),
+    emergencyName:     patient.emergencyName ?? '',
+    emergencyPhone:    patient.emergencyPhone ?? '',
+    notes:             (patient as any).notes ?? '',
+  })
+
+  function set(field: string, value: string) {
+    setForm(f => ({ ...f, [field]: value }))
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    if (phoneDigits.length !== 10) {
+      setError('El teléfono debe tener exactamente 10 dígitos')
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      const res = await api.patients.update(patient.id, {
+        firstName:          form.firstName.trim(),
+        lastName:           form.lastName.trim(),
+        phone:              `+52${phoneDigits}`,
+        email:              form.email || undefined,
+        dateOfBirth:        form.dateOfBirth ? new Date(form.dateOfBirth).toISOString() : undefined,
+        gender:             form.gender || undefined,
+        bloodType:          form.bloodType || 'UNKNOWN',
+        curp:               form.curp || undefined,
+        address:            form.address || undefined,
+        city:               form.city || undefined,
+        state:              form.state || undefined,
+        allergies:          form.allergies ? form.allergies.split(',').map(s => s.trim()).filter(Boolean) : [],
+        chronicConditions:  form.chronicConditions ? form.chronicConditions.split(',').map(s => s.trim()).filter(Boolean) : [],
+        currentMedications: form.currentMedications ? form.currentMedications.split(',').map(s => s.trim()).filter(Boolean) : [],
+        emergencyName:      form.emergencyName || undefined,
+        emergencyPhone:     form.emergencyPhone || undefined,
+        notes:              form.notes || undefined,
+      }) as { data: PatientWithCount }
+      onSaved(res.data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const lbl = 'block text-xs font-medium text-gray-600 mb-1'
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
+          <h2 className="text-lg font-semibold text-gray-900">Editar paciente</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSave} className="p-6 space-y-6">
+
+          {/* Datos personales */}
+          <section>
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Datos personales</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Nombre(s) *</label>
+                <input required value={form.firstName} onChange={e => set('firstName', e.target.value)} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Apellidos *</label>
+                <input required value={form.lastName} onChange={e => set('lastName', e.target.value)} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>WhatsApp *</label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-sm text-gray-600 font-medium select-none">+52</span>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="5512345678"
+                    value={phoneDigits}
+                    onChange={e => setPhoneDigits(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    maxLength={10}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                {phoneDigits.length > 0 && phoneDigits.length < 10 && (
+                  <p className="text-xs text-amber-600 mt-0.5">{10 - phoneDigits.length} dígitos restantes</p>
+                )}
+              </div>
+              <div>
+                <label className={lbl}>Correo electrónico</label>
+                <input type="email" value={form.email} onChange={e => set('email', e.target.value)} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Fecha de nacimiento</label>
+                <input type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Sexo</label>
+                <select value={form.gender} onChange={e => set('gender', e.target.value)} className={inp}>
+                  <option value="">Sin especificar</option>
+                  <option value="FEMALE">Femenino</option>
+                  <option value="MALE">Masculino</option>
+                  <option value="OTHER">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label className={lbl}>Grupo sanguíneo</label>
+                <select value={form.bloodType} onChange={e => set('bloodType', e.target.value)} className={inp}>
+                  {['UNKNOWN','A_POS','A_NEG','B_POS','B_NEG','AB_POS','AB_NEG','O_POS','O_NEG'].map(bt => (
+                    <option key={bt} value={bt}>
+                      {bt === 'UNKNOWN' ? 'Desconocido' : bt.replace('_POS', '+').replace('_NEG', '-')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={lbl}>CURP</label>
+                <input maxLength={18} value={form.curp} onChange={e => set('curp', e.target.value.toUpperCase())} placeholder="18 caracteres" className={inp} />
+              </div>
+            </div>
+          </section>
+
+          {/* Domicilio */}
+          <section>
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Domicilio</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className={lbl}>Dirección</label>
+                <input value={form.address} onChange={e => set('address', e.target.value)} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Ciudad</label>
+                <input value={form.city} onChange={e => set('city', e.target.value)} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Estado</label>
+                <input value={form.state} onChange={e => set('state', e.target.value)} className={inp} />
+              </div>
+            </div>
+          </section>
+
+          {/* Antecedentes médicos */}
+          <section>
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Antecedentes médicos</h3>
+            <div className="space-y-3">
+              <div>
+                <label className={lbl}>Alergias <span className="font-normal text-gray-400">(separadas por comas)</span></label>
+                <input value={form.allergies} onChange={e => set('allergies', e.target.value)} placeholder="Penicilina, Sulfa..." className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Enfermedades crónicas <span className="font-normal text-gray-400">(separadas por comas)</span></label>
+                <input value={form.chronicConditions} onChange={e => set('chronicConditions', e.target.value)} placeholder="Diabetes, Hipertensión..." className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Medicamentos actuales <span className="font-normal text-gray-400">(separados por comas)</span></label>
+                <input value={form.currentMedications} onChange={e => set('currentMedications', e.target.value)} placeholder="Metformina 500mg, Losartán..." className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Notas internas</label>
+                <textarea rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} className={`${inp} resize-none`} placeholder="Observaciones del expediente..." />
+              </div>
+            </div>
+          </section>
+
+          {/* Contacto de emergencia */}
+          <section>
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">Contacto de emergencia</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Nombre</label>
+                <input value={form.emergencyName} onChange={e => set('emergencyName', e.target.value)} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Teléfono</label>
+                <input value={form.emergencyPhone} onChange={e => set('emergencyPhone', e.target.value)} className={inp} />
+              </div>
+            </div>
+          </section>
+
+          {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
 
 interface PatientWithCount extends Patient {
   insurances: unknown[]
@@ -34,6 +269,7 @@ export default function PatientDetailPage() {
   const [timeline, setTimeline] = useState<Timeline | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [loading, setLoading] = useState(true)
+  const [showEdit, setShowEdit] = useState(false)
 
   useEffect(() => {
     loadPatient()
@@ -77,13 +313,22 @@ export default function PatientDetailPage() {
         title={`${patient.firstName} ${patient.lastName}`}
         subtitle={patient.dateOfBirth ? `${calculateAge(patient.dateOfBirth)} años · ${patient.gender ? GENDER_LABELS[patient.gender] : ''}` : ''}
         actions={
-          <button
-            onClick={() => router.push('/pacientes')}
-            className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 text-sm"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowEdit(true)}
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Editar
+            </button>
+            <button
+              onClick={() => router.push('/pacientes')}
+              className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 text-sm"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Volver
+            </button>
+          </div>
         }
       />
 
@@ -173,6 +418,17 @@ export default function PatientDetailPage() {
           )}
         </div>
       </div>
+
+      {showEdit && patient && (
+        <EditPatientModal
+          patient={patient}
+          onClose={() => setShowEdit(false)}
+          onSaved={(updated) => {
+            setPatient(prev => prev ? { ...prev, ...updated } : updated)
+            setShowEdit(false)
+          }}
+        />
+      )}
     </>
   )
 }
