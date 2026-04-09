@@ -183,5 +183,15 @@ export const api = {
 
     updateDoctor: (doctorId: string, data: unknown) =>
       request(`/api/superadmin/doctors/${doctorId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    listAdmins: () => request('/api/superadmin/admins'),
+    inviteAdmin: (data: unknown) =>
+      request('/api/superadmin/admins', { method: 'POST', body: JSON.stringify(data) }),
+    updateAdmin: (userId: string, data: unknown) =>
+      request(`/api/superadmin/admins/${userId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    listAllUsers: (params?: Record<string, string>) => {
+      const qs = params && Object.keys(params).length ? '?' + new URLSearchParams(params).toString() : ''
+      return request(`/api/superadmin/all-users${qs}`)
+    },
   },
 }

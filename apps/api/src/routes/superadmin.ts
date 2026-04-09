@@ -399,6 +399,70 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
     }
   })
 
+  // ── GET /api/superadmin/admins ────────────────────────────────
+  fastify.get('/admins', async (_request, reply) => {
+    const supabaseAdmin = getSupabaseAdmin()
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+    if (error) return reply.status(500).send({ error: { message: error.message } })
+    const admins = (data.users ?? [])
+      .filter((u: any) => u.user_metadata?.role === 'SUPER_ADMIN')
+      .map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        firstName: u.user_metadata?.firstName ?? '',
+        lastName: u.user_metadata?.lastName ?? '',
+        createdAt: u.created_at,
+        lastSignInAt: u.last_sign_in_at,
+        isBanned: !!(u.banned_until),
+        emailConfirmed: !!(u.email_confirmed_at),
+      }))
+    return { data: admins }
+  })
+
+  // ── POST /api/superadmin/admins ───────────────────────────────
+  fastify.post('/admins', async (request, reply) => {
+    const { email, firstName, lastName } = request.body as { email: string; firstName: string; lastName: string }
+    const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`
+    try {
+      const { actionLink } = await generateInviteLink(email, { role: 'SUPER_ADMIN', firstName, lastName }, redirectTo)
+      await sendInviteEmail(email, actionLink, firstName || email)
+      return { data: { sent: true } }
+    } catch (err: any) {
+      return reply.status(400).send({ error: { message: err?.message || 'Error al invitar' } })
+    }
+  })
+
+  // ── PATCH /api/superadmin/admins/:userId ──────────────────────
+  fastify.patch('/admins/:userId', async (request, reply) => {
+    const { userId } = request.params as { userId: string }
+    const { isBanned } = request.body as { isBanned: boolean }
+    const supabaseAdmin = getSupabaseAdmin()
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      ban_duration: isBanned ? '876600h' : 'none',
+    } as any)
+    if (error) return reply.status(400).send({ error: { message: error.message } })
+    return { data: { updated: true } }
+  })
+
+  // ── GET /api/superadmin/all-users ─────────────────────────────
+  fastify.get('/all-users', async (request) => {
+    const { q, clinicId } = request.query as { q?: string; clinicId?: string }
+    const where: any = {}
+    if (clinicId) where.clinicId = clinicId
+    if (q) where.OR = [
+      { firstName: { contains: q, mode: 'insensitive' } },
+      { lastName: { contains: q, mode: 'insensitive' } },
+      { email: { contains: q, mode: 'insensitive' } },
+    ]
+    const users = await prisma.doctor.findMany({
+      where,
+      include: { clinic: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    })
+    return { data: users }
+  })
+
   // ── PATCH /api/superadmin/doctors/:doctorId ───────────────────
   fastify.patch('/doctors/:doctorId', async (request, reply) => {
     const { doctorId } = request.params as { doctorId: string }
