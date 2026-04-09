@@ -1,10 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [mode, setMode] = useState<'magic' | 'password'>('magic')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
@@ -19,17 +23,17 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/agenda`,
-      },
-    })
-
-    if (error) {
-      setError(error.message)
+    if (mode === 'magic') {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/agenda` },
+      })
+      if (error) setError(error.message)
+      else setSent(true)
     } else {
-      setSent(true)
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) setError(error.message)
+      else router.push('/agenda')
     }
 
     setLoading(false)
@@ -62,10 +66,7 @@ export default function LoginPage() {
               Enviamos un enlace de acceso a <strong>{email}</strong>.<br />
               Haga clic en el enlace para ingresar.
             </p>
-            <button
-              onClick={() => setSent(false)}
-              className="mt-4 text-blue-600 text-sm hover:underline"
-            >
+            <button onClick={() => setSent(false)} className="mt-4 text-blue-600 text-sm hover:underline">
               Usar otro correo
             </button>
           </div>
@@ -86,6 +87,23 @@ export default function LoginPage() {
               />
             </div>
 
+            {mode === 'password' && (
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Contraseña
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            )}
+
             {error && (
               <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
             )}
@@ -95,12 +113,16 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
             >
-              {loading ? 'Enviando...' : 'Ingresar con Magic Link'}
+              {loading ? 'Ingresando...' : mode === 'magic' ? 'Ingresar con Magic Link' : 'Ingresar'}
             </button>
 
-            <p className="text-center text-xs text-gray-400">
-              Recibirá un enlace seguro en su correo para acceder sin contraseña.
-            </p>
+            <button
+              type="button"
+              onClick={() => { setMode(mode === 'magic' ? 'password' : 'magic'); setError('') }}
+              className="w-full text-center text-xs text-gray-400 hover:text-gray-600"
+            >
+              {mode === 'magic' ? 'Ingresar con contraseña' : 'Ingresar con Magic Link'}
+            </button>
           </form>
         )}
       </div>
