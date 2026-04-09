@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { prisma } from '../lib/prisma.js'
 import { Errors } from '../lib/errors.js'
 import { authenticate } from '../middleware/auth.js'
-import type { Role } from '../../../generated/index.js'
+import type { Role } from '../../generated/index.js'
 
 // ── Supabase admin client (bypasses RLS, can invite users) ───────────────────
 function getSupabaseAdmin() {
