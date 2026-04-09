@@ -29,9 +29,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   try {
     const app = await getApp()
     app.server.emit('request', req, res)
-  } catch (err) {
-    console.error('[HANDLER] Error:', err)
+  } catch (err: any) {
+    console.error('[HANDLER] Error:', err?.message ?? err)
+    console.error('[HANDLER] Stack:', err?.stack)
+    console.error('[HANDLER] Code:', err?.code)
     res.writeHead(500, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ error: 'Internal server error', message: String(err) }))
+    res.end(JSON.stringify({ error: 'Internal server error', message: String(err?.message ?? err) }))
   }
 }
