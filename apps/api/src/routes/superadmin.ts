@@ -81,6 +81,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
 
   // ── POST /api/superadmin/clinics ──────────────────────────────
   fastify.post('/clinics', async (request, reply) => {
+    try {
     const body = request.body as {
       clinic: {
         name: string
@@ -169,6 +170,12 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.status(201).send({
       data: { clinic, doctor, inviteSent: true, inviteEmail: body.admin.email },
     })
+    } catch (err: any) {
+      console.error('[POST /clinics] Error:', err?.message)
+      console.error('[POST /clinics] Code:', err?.code)
+      console.error('[POST /clinics] Meta:', JSON.stringify(err?.meta))
+      return reply.status(500).send({ error: { message: err?.message ?? String(err), code: err?.code, meta: err?.meta } })
+    }
   })
 
   // ── GET /api/superadmin/clinics/:id ───────────────────────────
