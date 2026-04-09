@@ -393,13 +393,13 @@ type WeekConfig = Record<string, DayConfig>
 
 function scheduleToWeek(cfg: any): WeekConfig {
   const defaults: Record<string, DayConfig> = {
-    mon: { enabled: true,  start: '09:00', end: '18:00' },
-    tue: { enabled: true,  start: '09:00', end: '18:00' },
-    wed: { enabled: true,  start: '09:00', end: '18:00' },
-    thu: { enabled: true,  start: '09:00', end: '18:00' },
-    fri: { enabled: true,  start: '09:00', end: '18:00' },
-    sat: { enabled: true,  start: '09:00', end: '14:00' },
-    sun: { enabled: false, start: '09:00', end: '14:00' },
+    mon: { enabled: true,  start: '09:00', end: '19:00' },
+    tue: { enabled: true,  start: '09:00', end: '19:00' },
+    wed: { enabled: true,  start: '09:00', end: '19:00' },
+    thu: { enabled: true,  start: '09:00', end: '19:00' },
+    fri: { enabled: true,  start: '09:00', end: '19:00' },
+    sat: { enabled: true,  start: '09:00', end: '15:00' },
+    sun: { enabled: false, start: '09:00', end: '15:00' },
   }
   if (!cfg || typeof cfg !== 'object') return defaults
   const result: WeekConfig = { ...defaults }

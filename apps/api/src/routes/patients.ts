@@ -164,12 +164,12 @@ export async function patientsRoutes(server: FastifyInstance) {
     const { clinicId, authUserId, role } = request.authUser
     const data = parsed.data
 
-    // Check for duplicate phone in this clinic
+    // Find-or-create by phone — idempotent for multi-channel (WhatsApp, voz, web)
     const existing = await prisma.patient.findFirst({
       where: { clinicId, phone: data.phone },
     })
     if (existing) {
-      return Errors.VALIDATION(reply, { phone: 'Phone number already registered' })
+      return reply.status(200).send({ data: existing, existed: true })
     }
 
     const patient = await prisma.patient.create({

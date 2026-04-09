@@ -78,12 +78,12 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
     if (!doctor) return Errors.NOT_FOUND(reply, 'Doctor')
 
     const DEFAULT_SCHEDULE = {
-      mon: [{ start: '09:00', end: '18:00' }],
-      tue: [{ start: '09:00', end: '18:00' }],
-      wed: [{ start: '09:00', end: '18:00' }],
-      thu: [{ start: '09:00', end: '18:00' }],
-      fri: [{ start: '09:00', end: '18:00' }],
-      sat: [{ start: '09:00', end: '14:00' }],
+      mon: [{ start: '09:00', end: '19:00' }],
+      tue: [{ start: '09:00', end: '19:00' }],
+      wed: [{ start: '09:00', end: '19:00' }],
+      thu: [{ start: '09:00', end: '19:00' }],
+      fri: [{ start: '09:00', end: '19:00' }],
+      sat: [{ start: '09:00', end: '15:00' }],
     }
 
     return {

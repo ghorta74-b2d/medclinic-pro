@@ -5,22 +5,21 @@ import { api } from '@/lib/api'
 import { X, UserPlus, Search, Clock, Loader2 } from 'lucide-react'
 import type { Patient, Doctor } from 'medclinic-shared'
 
-// ── Horario por defecto (Mon-Fri 9-18, Sab 9-14) ─────────────
+// ── Horario por defecto (Lun-Vie 9-19, Sab 9-15) ─────────────
 const DEFAULT_SCHEDULE: Record<string, { start: string; end: string }[]> = {
-  mon: [{ start: '09:00', end: '18:00' }],
-  tue: [{ start: '09:00', end: '18:00' }],
-  wed: [{ start: '09:00', end: '18:00' }],
-  thu: [{ start: '09:00', end: '18:00' }],
-  fri: [{ start: '09:00', end: '18:00' }],
-  sat: [{ start: '09:00', end: '14:00' }],
+  mon: [{ start: '09:00', end: '19:00' }],
+  tue: [{ start: '09:00', end: '19:00' }],
+  wed: [{ start: '09:00', end: '19:00' }],
+  thu: [{ start: '09:00', end: '19:00' }],
+  fri: [{ start: '09:00', end: '19:00' }],
+  sat: [{ start: '09:00', end: '15:00' }],
 }
 
-// Normaliza formato antiguo { monday: {start,end,enabled} } y nuevo { mon: [{start,end}] }
+// Normaliza formato viejo { monday:{start,end,enabled} } y nuevo { mon:[{start,end}] }
 function normalizeSchedule(cfg: unknown): Record<string, { start: string; end: string }[]> {
   if (!cfg || typeof cfg !== 'object') return DEFAULT_SCHEDULE
   const c = cfg as Record<string, unknown>
   if (c['mon'] && Array.isArray(c['mon'])) return c as Record<string, { start: string; end: string }[]>
-  // old format
   const map: Record<string, string> = {
     monday: 'mon', tuesday: 'tue', wednesday: 'wed',
     thursday: 'thu', friday: 'fri', saturday: 'sat', sunday: 'sun',
@@ -28,62 +27,61 @@ function normalizeSchedule(cfg: unknown): Record<string, { start: string; end: s
   const out: Record<string, { start: string; end: string }[]> = {}
   for (const [long, short] of Object.entries(map)) {
     const d = c[long] as { start?: string; end?: string; enabled?: boolean } | undefined
-    if (d && d.enabled !== false) out[short] = [{ start: d.start ?? '09:00', end: d.end ?? '18:00' }]
+    if (d && d.enabled !== false) out[short] = [{ start: d.start ?? '09:00', end: d.end ?? '19:00' }]
   }
   return Object.keys(out).length > 0 ? out : DEFAULT_SCHEDULE
 }
 
-// Slots disponibles en el horario de trabajo de un día dado
-function getScheduleSlots(schedule: Record<string, { start: string; end: string }[]>, date: string): Set<string> {
+// Slots dentro del horario laboral de un día dado (30 min cada uno)
+function buildScheduleSlots(schedule: Record<string, { start: string; end: string }[]>, date: string): string[] {
   const dayIdx = new Date(`${date}T12:00:00`).getDay()
   const dayName = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][dayIdx]!
   const windows = schedule[dayName] ?? []
-  const slots = new Set<string>()
+  const slots: string[] = []
   for (const w of windows) {
     const [sh, sm] = w.start.split(':').map(Number)
     const [eh, em] = w.end.split(':').map(Number)
     if (sh === undefined) continue
     let h = sh, m = sm ?? 0
-    const endMins = (eh ?? 18) * 60 + (em ?? 0)
+    const endMins = (eh ?? 19) * 60 + (em ?? 0)
     while (h * 60 + m < endMins) {
-      slots.add(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+      slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
       m += 30; if (m >= 60) { h++; m -= 60 }
     }
   }
   return slots
 }
 
-// ── Catálogo de motivos por especialidad ─────────────────────
-const COMPLAINTS_CATALOG: Record<string, string[]> = {
-  'medicina general': ['Fiebre', 'Tos y gripe', 'Dolor de cabeza', 'Dolor abdominal', 'Presión arterial', 'Control de diabetes', 'Revisión general', 'Seguimiento'],
-  pediatría: ['Fiebre', 'Tos', 'Diarrea', 'Vacunación', 'Control del niño sano', 'Revisión de crecimiento', 'Llanto excesivo', 'Primera vez'],
-  ginecología: ['Revisión anual', 'Control prenatal', 'Dolor pélvico', 'Papanicolaou', 'Planificación familiar', 'Irregularidad menstrual'],
-  cardiología: ['Dolor en el pecho', 'Palpitaciones', 'Presión alta', 'Falta de aire', 'Mareos', 'Control cardiológico'],
-  dermatología: ['Erupción cutánea', 'Acné', 'Revisión de lunares', 'Caída de cabello', 'Comezón', 'Manchas en piel'],
-  ortopedia: ['Dolor de rodilla', 'Dolor lumbar', 'Dolor de hombro', 'Fractura', 'Lesión deportiva', 'Artritis'],
-  oftalmología: ['Revisión de vista', 'Ojo rojo', 'Visión borrosa', 'Lentes nuevos', 'Dolor ocular'],
-  neurología: ['Dolor de cabeza crónico', 'Migraña', 'Mareos', 'Convulsiones', 'Entumecimiento'],
-  psiquiatría: ['Ansiedad', 'Depresión', 'Insomnio', 'Control de medicamento', 'Estrés'],
-  endocrinología: ['Control de diabetes', 'Tiroides', 'Sobrepeso', 'Control hormonal', 'Colesterol alto'],
-  nutrición: ['Control de peso', 'Plan alimenticio', 'Diabetes nutricional', 'Colesterol', 'Obesidad'],
-  default: ['Revisión general', 'Consulta de seguimiento', 'Primera vez', 'Urgencia', 'Control mensual', 'Postoperatorio'],
-}
-function getComplaints(specialty?: string | null): string[] {
-  if (!specialty) return COMPLAINTS_CATALOG['default']!
-  const s = specialty.toLowerCase()
-  const key = Object.keys(COMPLAINTS_CATALOG).find((k) => s.includes(k))
-  return COMPLAINTS_CATALOG[key ?? 'default'] ?? COMPLAINTS_CATALOG['default']!
+// ¿El slot ya pasó hoy?
+function isPastSlot(slot: string, date: string): boolean {
+  const todayStr = new Date().toLocaleDateString('sv-SE') // YYYY-MM-DD en local
+  if (date !== todayStr) return false
+  const [sh, sm] = slot.split(':').map(Number)
+  const now = new Date()
+  return now.getHours() * 60 + now.getMinutes() >= (sh ?? 0) * 60 + (sm ?? 0)
 }
 
-// ── Grid de todos los slots posibles 7am–8pm cada 30 min ─────
-const ALL_SLOTS: string[] = (() => {
-  const slots: string[] = []
-  for (let h = 7; h <= 20; h++) {
-    slots.push(`${String(h).padStart(2, '0')}:00`)
-    if (h < 20) slots.push(`${String(h).padStart(2, '0')}:30`)
-  }
-  return slots
-})()
+// ── Catálogo de motivos por especialidad ─────────────────────
+const COMPLAINTS: Record<string, string[]> = {
+  'medicina general': ['Fiebre', 'Tos y gripe', 'Dolor de cabeza', 'Dolor abdominal', 'Presión arterial', 'Control de diabetes', 'Revisión general', 'Seguimiento'],
+  pediatría:         ['Fiebre', 'Tos', 'Diarrea', 'Vacunación', 'Control del niño sano', 'Revisión de crecimiento', 'Llanto excesivo'],
+  ginecología:       ['Revisión anual', 'Control prenatal', 'Dolor pélvico', 'Papanicolaou', 'Planificación familiar', 'Irregularidad menstrual'],
+  cardiología:       ['Dolor en el pecho', 'Palpitaciones', 'Presión alta', 'Falta de aire', 'Mareos', 'Control cardiológico'],
+  dermatología:      ['Erupción cutánea', 'Acné', 'Revisión de lunares', 'Caída de cabello', 'Comezón', 'Manchas en piel'],
+  ortopedia:         ['Dolor de rodilla', 'Dolor lumbar', 'Dolor de hombro', 'Fractura', 'Lesión deportiva', 'Artritis'],
+  oftalmología:      ['Revisión de vista', 'Ojo rojo', 'Visión borrosa', 'Lentes nuevos', 'Dolor ocular'],
+  neurología:        ['Dolor de cabeza crónico', 'Migraña', 'Mareos', 'Convulsiones', 'Entumecimiento'],
+  psiquiatría:       ['Ansiedad', 'Depresión', 'Insomnio', 'Control de medicamento', 'Estrés'],
+  endocrinología:    ['Control de diabetes', 'Tiroides', 'Sobrepeso', 'Control hormonal', 'Colesterol alto'],
+  nutrición:         ['Control de peso', 'Plan alimenticio', 'Diabetes nutricional', 'Colesterol', 'Obesidad'],
+  default:           ['Revisión general', 'Consulta de seguimiento', 'Primera vez', 'Urgencia', 'Control mensual', 'Postoperatorio'],
+}
+function getComplaints(specialty?: string | null): string[] {
+  if (!specialty) return COMPLAINTS['default']!
+  const s = specialty.toLowerCase()
+  const key = Object.keys(COMPLAINTS).find(k => s.includes(k))
+  return COMPLAINTS[key ?? 'default'] ?? COMPLAINTS['default']!
+}
 
 const DURATIONS = [
   { label: '30 min', value: 30 },
@@ -101,7 +99,9 @@ interface NewAppointmentDialogProps {
 }
 
 export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewAppointmentDialogProps) {
-  const dateStr = defaultDate.toISOString().split('T')[0]!
+  // Fecha local (no UTC) para que el día sea correcto en México
+  const todayLocal = new Date().toLocaleDateString('sv-SE')
+  const defaultDateLocal = defaultDate.toLocaleDateString('sv-SE')
 
   // ── Paciente ─────────────────────────────────────────────────
   const [patientMode, setPatientMode] = useState<PatientMode>('search')
@@ -114,14 +114,14 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
   // ── Cita ─────────────────────────────────────────────────────
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [doctorId, setDoctorId] = useState('')
-  const [selectedDate, setSelectedDate] = useState(dateStr)
+  const [selectedDate, setSelectedDate] = useState(defaultDateLocal)
   const [selectedTime, setSelectedTime] = useState('')
   const [durationMins, setDurationMins] = useState(30)
   const [mode, setMode] = useState<'IN_PERSON' | 'TELEMEDICINE'>('IN_PERSON')
 
   // ── Disponibilidad ───────────────────────────────────────────
-  const [scheduleSlots, setScheduleSlots] = useState<Set<string>>(new Set())
-  const [bookedSlots, setBookedSlots] = useState<Set<string>>(new Set())
+  const [scheduleSlots, setScheduleSlots] = useState<string[]>([])   // slots en horario laboral
+  const [bookedSet, setBookedSet] = useState<Set<string>>(new Set()) // slots ocupados
   const [loadingSlots, setLoadingSlots] = useState(false)
 
   // ── Motivo ───────────────────────────────────────────────────
@@ -133,16 +133,8 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Carga doctores al abrir
   useEffect(() => { loadDoctors() }, [])
-
-  // Carga disponibilidad cuando cambia fecha o doctor
-  useEffect(() => {
-    loadDayAvailability()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, doctorId, doctors])
-
-  // Busca pacientes existentes
+  useEffect(() => { loadDayAvailability() }, [selectedDate, doctorId, doctors])
   useEffect(() => {
     if (patientSearch.length >= 2 && patientMode === 'search') searchPatients()
     else setPatients([])
@@ -156,45 +148,45 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
     } catch {}
   }
 
-  const loadDayAvailability = useCallback(async () => {
-    const effectiveDoctorId = doctorId || (doctors.length === 1 ? doctors[0]!.id : '')
-    if (!effectiveDoctorId || !selectedDate) return
+  async function loadDayAvailability() {
+    const effectiveId = doctorId || (doctors.length === 1 ? doctors[0]!.id : '')
+    if (!effectiveId || !selectedDate) return
 
     setLoadingSlots(true)
     try {
-      // 1. Horario del doctor
-      const doctor = doctors.find(d => d.id === effectiveDoctorId)
-      const schedule = normalizeSchedule((doctor as any)?.scheduleConfig)
-      const workSlots = getScheduleSlots(schedule, selectedDate)
-      setScheduleSlots(workSlots)
+      const doc = doctors.find(d => d.id === effectiveId)
+      const schedule = normalizeSchedule((doc as any)?.scheduleConfig)
+      const slots = buildScheduleSlots(schedule, selectedDate)
+      setScheduleSlots(slots)
 
-      // 2. Citas existentes del día
+      // Citas del día para marcar ocupados
       const from = new Date(`${selectedDate}T00:00:00`).toISOString()
-      const to = new Date(`${selectedDate}T23:59:59`).toISOString()
-      const apptRes = await api.appointments.list({ doctorId: effectiveDoctorId, from, to }) as { data: any[] }
+      const to   = new Date(`${selectedDate}T23:59:59`).toISOString()
+      const res = await api.appointments.list({ doctorId: effectiveId, from, to }) as { data: any[] }
 
       const booked = new Set<string>()
-      for (const appt of apptRes.data) {
+      for (const appt of res.data) {
         if (['CANCELLED', 'NO_SHOW'].includes(appt.status)) continue
         const start = new Date(appt.startsAt)
-        const end = new Date(appt.endsAt)
-        // Marca todos los slots de 30 min que se solapan
+        const end   = new Date(appt.endsAt)
         let cur = new Date(`${selectedDate}T${String(start.getHours()).padStart(2,'0')}:${String(start.getMinutes()).padStart(2,'0')}`)
         while (cur < end) {
           booked.add(`${String(cur.getHours()).padStart(2,'0')}:${String(cur.getMinutes()).padStart(2,'0')}`)
           cur = new Date(cur.getTime() + 30 * 60_000)
         }
       }
-      setBookedSlots(booked)
+      setBookedSet(booked)
 
-      // Auto-selecciona el primer slot disponible
-      const firstFree = ALL_SLOTS.find(t => workSlots.has(t) && !booked.has(t))
-      if (firstFree) setSelectedTime(prev => (workSlots.has(prev) && !booked.has(prev)) ? prev : firstFree)
-      else setSelectedTime('')
+      // Auto-selecciona el primer slot libre no pasado
+      const firstFree = slots.find(t => !booked.has(t) && !isPastSlot(t, selectedDate))
+      setSelectedTime(prev => {
+        const stillOk = slots.includes(prev) && !booked.has(prev) && !isPastSlot(prev, selectedDate)
+        return stillOk ? prev : (firstFree ?? '')
+      })
     } catch {} finally {
       setLoadingSlots(false)
     }
-  }, [selectedDate, doctorId, doctors])
+  }
 
   async function searchPatients() {
     try {
@@ -203,7 +195,6 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
     } catch {}
   }
 
-  // Catálogo según especialidad del doctor seleccionado
   const catalogComplaints = useMemo(() => {
     const doc = doctors.find(d => d.id === doctorId) ?? doctors[0]
     return getComplaints((doc as any)?.specialty)
@@ -229,8 +220,8 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-
     if (!selectedTime) { setError('Selecciona un horario disponible'); return }
+
     const chiefComplaint = showCustom ? customComplaint.trim() : complaint
     let patientId = selectedPatientId
 
@@ -241,14 +232,15 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
       }
       setLoading(true)
       try {
+        // find-or-create por teléfono (idempotente)
         const res = await api.patients.create({
           firstName: newPatient.firstName.trim(),
-          lastName: newPatient.lastName.trim(),
-          phone: newPatient.phone.trim(),
+          lastName:  newPatient.lastName.trim(),
+          phone:     newPatient.phone.trim(),
         }) as { data: Patient }
         patientId = res.data.id
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error al crear el paciente')
+        setError(err instanceof Error ? err.message : 'Error al registrar el paciente')
         setLoading(false)
         return
       }
@@ -258,7 +250,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
     }
 
     const startsAt = new Date(`${selectedDate}T${selectedTime}`).toISOString()
-    const endsAt = new Date(new Date(`${selectedDate}T${selectedTime}`).getTime() + durationMins * 60_000).toISOString()
+    const endsAt   = new Date(new Date(`${selectedDate}T${selectedTime}`).getTime() + durationMins * 60_000).toISOString()
 
     try {
       await api.appointments.create({
@@ -277,14 +269,14 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
     }
   }
 
-  // ── Colores de slot ──────────────────────────────────────────
+  // ── Clase de cada slot ───────────────────────────────────────
   function slotClass(slot: string): string {
-    const inSchedule = scheduleSlots.has(slot)
-    const isBooked = bookedSlots.has(slot)
-    const isSelected = selectedTime === slot
-    if (!inSchedule) return 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100'
-    if (isBooked) return 'bg-gray-100 text-gray-400 cursor-not-allowed line-through border border-gray-200'
-    if (isSelected) return 'bg-blue-600 text-white font-semibold border border-blue-600 shadow-sm'
+    const past   = isPastSlot(slot, selectedDate)
+    const booked = bookedSet.has(slot)
+    const sel    = selectedTime === slot
+    if (sel)    return 'bg-blue-600 text-white font-semibold border border-blue-600 shadow-sm'
+    if (booked) return 'bg-gray-100 text-gray-400 cursor-not-allowed line-through border border-gray-200'
+    if (past)   return 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100'
     return 'bg-white text-gray-700 hover:bg-blue-50 hover:border-blue-400 border border-gray-200 cursor-pointer'
   }
 
@@ -324,11 +316,11 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
               <>
                 <input type="text" placeholder="Buscar por nombre o teléfono..."
                   value={patientSearch}
-                  onChange={(e) => { setPatientSearch(e.target.value); if (!e.target.value) { setSelectedPatientId(''); setSelectedPatientName('') } }}
+                  onChange={e => { setPatientSearch(e.target.value); if (!e.target.value) { setSelectedPatientId(''); setSelectedPatientName('') } }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 {patients.length > 0 && !selectedPatientId && (
                   <div className="mt-1 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                    {patients.map((p) => (
+                    {patients.map(p => (
                       <button key={p.id} type="button"
                         onClick={() => { setSelectedPatientId(p.id); setSelectedPatientName(`${p.firstName} ${p.lastName}`); setPatientSearch(`${p.firstName} ${p.lastName}`); setPatients([]) }}
                         className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center justify-between">
@@ -360,20 +352,20 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">Nombre <span className="text-red-500">*</span></label>
                     <input type="text" placeholder="María" value={newPatient.firstName}
-                      onChange={(e) => setNewPatient(p => ({ ...p, firstName: e.target.value }))}
+                      onChange={e => setNewPatient(p => ({ ...p, firstName: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">Apellido <span className="text-red-500">*</span></label>
                     <input type="text" placeholder="García" value={newPatient.lastName}
-                      onChange={(e) => setNewPatient(p => ({ ...p, lastName: e.target.value }))}
+                      onChange={e => setNewPatient(p => ({ ...p, lastName: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Teléfono WhatsApp <span className="text-red-500">*</span></label>
                   <input type="tel" placeholder="+521234567890" value={newPatient.phone}
-                    onChange={(e) => setNewPatient(p => ({ ...p, phone: e.target.value }))}
+                    onChange={e => setNewPatient(p => ({ ...p, phone: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   <p className="text-xs text-gray-400 mt-0.5">Formato internacional, ej. +5255xxxxxxxx</p>
                 </div>
@@ -385,10 +377,10 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
           {doctors.length > 1 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Doctor <span className="text-red-500">*</span></label>
-              <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)}
+              <select value={doctorId} onChange={e => setDoctorId(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Seleccionar doctor...</option>
-                {doctors.map((d) => (
+                {doctors.map(d => (
                   <option key={d.id} value={d.id}>
                     Dr. {d.firstName} {d.lastName}{(d as any).specialty ? ` — ${(d as any).specialty}` : ''}
                   </option>
@@ -400,38 +392,61 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
           {/* ── FECHA ── */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Fecha</label>
-            <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
+            <input type="date" value={selectedDate}
+              min={todayLocal}
+              onChange={e => setSelectedDate(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
 
           {/* ── HORARIOS ── */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" /> Hora de inicio
               </label>
               {loadingSlots && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
             </div>
-            {/* Leyenda */}
-            <div className="flex gap-3 mb-2 text-xs text-gray-500">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-white border border-gray-200 inline-block" /> Disponible</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 border border-gray-200 inline-block" /> Ocupado</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-50 border border-gray-100 inline-block" /> Fuera de horario</span>
-            </div>
-            <div className="grid grid-cols-6 gap-1">
-              {ALL_SLOTS.map((slot) => (
-                <button key={slot} type="button"
-                  disabled={!scheduleSlots.has(slot) || bookedSlots.has(slot) || loadingSlots}
-                  onClick={() => setSelectedTime(slot)}
-                  className={`py-1.5 rounded-lg text-xs transition-colors ${slotClass(slot)}`}>
-                  {slot}
-                </button>
-              ))}
-            </div>
-            {!loadingSlots && scheduleSlots.size === 0 && (
-              <p className="text-xs text-amber-600 mt-1 bg-amber-50 px-2 py-1 rounded">
-                Sin horario configurado para este día. Todos los slots están habilitados como referencia.
+
+            {loadingSlots ? (
+              <div className="grid grid-cols-6 gap-1">
+                {Array.from({ length: 20 }).map((_, i) => (
+                  <div key={i} className="h-8 rounded-lg bg-gray-100 animate-pulse" />
+                ))}
+              </div>
+            ) : scheduleSlots.length === 0 ? (
+              <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                Sin horario laboral este día.
               </p>
+            ) : (
+              <>
+                {/* Leyenda */}
+                <div className="flex gap-4 mb-2 text-xs text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-white border border-gray-300 inline-block" /> Disponible
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-gray-100 border border-gray-200 inline-block" /> Ocupado
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-gray-50 border border-gray-100 inline-block" /> Pasado
+                  </span>
+                </div>
+                {/* Grid — solo slots del horario laboral */}
+                <div className="grid grid-cols-6 gap-1">
+                  {scheduleSlots.map(slot => {
+                    const past   = isPastSlot(slot, selectedDate)
+                    const booked = bookedSet.has(slot)
+                    return (
+                      <button key={slot} type="button"
+                        disabled={booked || past}
+                        onClick={() => setSelectedTime(slot)}
+                        className={`py-1.5 rounded-lg text-xs transition-colors ${slotClass(slot)}`}>
+                        {slot}
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
             )}
           </div>
 
@@ -439,7 +454,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Duración</label>
             <div className="flex gap-2">
-              {DURATIONS.map((d) => (
+              {DURATIONS.map(d => (
                 <button key={d.value} type="button" onClick={() => setDurationMins(d.value)}
                   className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${
                     durationMins === d.value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-blue-400'
@@ -454,7 +469,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Modalidad</label>
             <div className="flex gap-2">
-              {(['IN_PERSON', 'TELEMEDICINE'] as const).map((m) => (
+              {(['IN_PERSON', 'TELEMEDICINE'] as const).map(m => (
                 <button key={m} type="button" onClick={() => setMode(m)}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
                     mode === m ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-blue-400'
@@ -469,7 +484,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Motivo de consulta</label>
             <div className="flex flex-wrap gap-1.5">
-              {catalogComplaints.map((c) => (
+              {catalogComplaints.map(c => (
                 <button key={c} type="button"
                   onClick={() => { setShowCustom(false); setCustomComplaint(''); setComplaint(c === complaint ? '' : c) }}
                   className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
@@ -490,7 +505,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
             </div>
             {showCustom && (
               <input type="text" autoFocus placeholder="Escribe el motivo..."
-                value={customComplaint} onChange={(e) => setCustomComplaint(e.target.value)}
+                value={customComplaint} onChange={e => setCustomComplaint(e.target.value)}
                 className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             )}
             {!showCustom && complaint && <p className="text-xs text-blue-600 mt-1">✓ {complaint}</p>}
@@ -505,7 +520,9 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
             </button>
             <button type="submit" disabled={loading || !selectedTime}
               className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
-              {loading ? (patientMode === 'new' ? 'Creando paciente...' : 'Creando...') : 'Crear cita'}
+              {loading
+                ? (patientMode === 'new' ? 'Registrando...' : 'Creando...')
+                : selectedTime ? `Crear cita ${selectedTime}` : 'Selecciona un horario'}
             </button>
           </div>
         </form>

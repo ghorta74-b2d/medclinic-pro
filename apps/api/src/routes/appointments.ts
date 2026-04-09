@@ -8,12 +8,12 @@ import { sendWhatsAppMessage } from '../services/whatsapp.js'
 
 // ── Default schedule (Mon-Fri 9-18, Sat 9-14) ───────────────
 export const DEFAULT_SCHEDULE: Record<string, { start: string; end: string }[]> = {
-  mon: [{ start: '09:00', end: '18:00' }],
-  tue: [{ start: '09:00', end: '18:00' }],
-  wed: [{ start: '09:00', end: '18:00' }],
-  thu: [{ start: '09:00', end: '18:00' }],
-  fri: [{ start: '09:00', end: '18:00' }],
-  sat: [{ start: '09:00', end: '14:00' }],
+  mon: [{ start: '09:00', end: '19:00' }],
+  tue: [{ start: '09:00', end: '19:00' }],
+  wed: [{ start: '09:00', end: '19:00' }],
+  thu: [{ start: '09:00', end: '19:00' }],
+  fri: [{ start: '09:00', end: '19:00' }],
+  sat: [{ start: '09:00', end: '15:00' }],
 }
 
 // ── Schemas ─────────────────────────────────────────────────
