@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
 import { formatDate, formatCurrency } from '@/lib/utils'
@@ -39,28 +39,46 @@ const STATUS_CLASSES: Record<string, string> = {
   REFUNDED: 'bg-purple-100 text-purple-700',
 }
 
-// Simple bar chart for revenue
-function RevenueChart({ data }: { data: { date: string; amount: number }[] }) {
-  if (!data || data.length === 0) return null
-  const max = Math.max(...data.map(d => d.amount), 1)
-  const BAR_W = 36, GAP = 6, H = 72
-  const total_w = data.length * (BAR_W + GAP) - GAP
+// Responsive bar chart — uses flexbox so it always fills the container
+interface ChartBar { key: string; amount: number; label: string }
+
+function RevenueChart({ bars }: { bars: ChartBar[] }) {
+  if (!bars || bars.length === 0) {
+    return <div className="flex items-center justify-center h-24 text-xs text-gray-400">Sin datos en este período</div>
+  }
+  const max = Math.max(...bars.map(b => b.amount), 1)
+  // Show labels every N bars so they don't overlap when many bars
+  const labelEvery = bars.length > 20 ? 5 : bars.length > 10 ? 3 : 1
+
   return (
-    <svg width={total_w} height={H + 24} className="block">
-      {data.map((d, i) => {
-        const barH = Math.max((d.amount / max) * H, 3)
-        const x = i * (BAR_W + GAP)
-        const y = H - barH
-        return (
-          <g key={d.date}>
-            <rect x={x} y={y} width={BAR_W} height={barH} rx={4} fill="#3B82F6" fillOpacity={0.8} />
-            <text x={x + BAR_W / 2} y={H + 14} textAnchor="middle" fontSize={9} fill="#9CA3AF">
-              {d.date.split('-')[2]} {new Date(`${d.date}T12:00:00`).toLocaleDateString('es-MX', { month: 'short' })}
-            </text>
-          </g>
-        )
-      })}
-    </svg>
+    <div className="w-full select-none">
+      {/* Bars */}
+      <div className="flex items-end gap-[3px] h-20 w-full">
+        {bars.map((b) => {
+          const pct = b.amount > 0 ? Math.max((b.amount / max) * 100, 6) : 2
+          return (
+            <div
+              key={b.key}
+              className="flex-1 rounded-t transition-all cursor-default"
+              style={{
+                height: `${pct}%`,
+                backgroundColor: b.amount > 0 ? '#3B82F6' : '#DBEAFE',
+                opacity: b.amount > 0 ? 0.85 : 1,
+              }}
+              title={b.amount > 0 ? formatCurrency(b.amount) : undefined}
+            />
+          )
+        })}
+      </div>
+      {/* X-axis labels */}
+      <div className="flex gap-[3px] mt-1.5">
+        {bars.map((b, i) => (
+          <div key={b.key} className="flex-1 text-center overflow-hidden" style={{ fontSize: '8px', color: '#9CA3AF' }}>
+            {i % labelEvery === 0 ? b.label : ''}
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -120,39 +138,94 @@ export default function CobrosPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      // Compute local midnight boundaries as UTC so the server uses client timezone
       const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
-      const chart7Local = new Date(todayLocal); chart7Local.setDate(todayLocal.getDate() - 6)
+      const todayUtc = todayLocal.toISOString()
+
+      // Compute "from" boundary based on selected view mode
+      let fromLocal: Date
+      if (viewMode === 'dia') {
+        fromLocal = new Date(todayLocal) // today midnight
+      } else if (viewMode === 'semana') {
+        fromLocal = new Date(todayLocal); fromLocal.setDate(todayLocal.getDate() - 6)
+      } else {
+        fromLocal = new Date(todayLocal); fromLocal.setDate(1) // start of current month
+      }
 
       const params: Record<string, string> = { limit: '50' }
       if (filter !== 'ALL') params['status'] = filter
       const [ivRes, dashRes] = await Promise.all([
         api.billing.invoices(params) as Promise<InvoicesResponse>,
         api.billing.dashboard({
-          todayUtc: todayLocal.toISOString(),
-          chartFromUtc: chart7Local.toISOString(),
+          from: fromLocal.toISOString(),
+          todayUtc,
+          chartFromUtc: fromLocal.toISOString(),
         }) as Promise<DashboardData>,
       ])
       setInvoices(ivRes.data)
       setStats(dashRes.data)
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
-  }, [filter])
+  }, [filter, viewMode])
 
-  // Build chart in local timezone from raw payment data returned by API
-  const chartData = (() => {
+  // Build chart bars in local timezone — granularity depends on viewMode
+  const chartBars = useMemo((): ChartBar[] => {
     const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
+    const payments = stats?.payments7d ?? []
+    const todayStr = todayLocal.toLocaleDateString('sv-SE')
+
+    if (viewMode === 'dia') {
+      // Hourly slots 6am–9pm
+      const SLOTS = [6, 8, 10, 12, 14, 16, 18, 20] as const
+      const slotMap: Record<number, number> = {}
+      for (const h of SLOTS) slotMap[h] = 0
+      for (const p of payments) {
+        if (new Date(p.paidAt).toLocaleDateString('sv-SE') !== todayStr) continue
+        const hour = new Date(p.paidAt).getHours()
+        const slot = [...SLOTS].reverse().find(s => hour >= s) ?? SLOTS[0]
+        slotMap[slot] = (slotMap[slot] ?? 0) + p.amount
+      }
+      return SLOTS.map(h => ({
+        key: String(h),
+        amount: slotMap[h] ?? 0,
+        label: `${h}h`,
+      }))
+    }
+
+    if (viewMode === 'semana') {
+      const dayMap: Record<string, number> = {}
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(todayLocal); d.setDate(d.getDate() - 6 + i)
+        dayMap[d.toLocaleDateString('sv-SE')] = 0
+      }
+      for (const p of payments) {
+        const key = new Date(p.paidAt).toLocaleDateString('sv-SE')
+        if (key in dayMap) dayMap[key] = (dayMap[key] ?? 0) + p.amount
+      }
+      return Object.entries(dayMap).map(([date, amount]) => ({
+        key: date,
+        amount,
+        label: `${date.split('-')[2]} ${new Date(`${date}T12:00:00`).toLocaleDateString('es-MX', { month: 'short' })}`,
+      }))
+    }
+
+    // mes: all days of current month up to today
+    const daysElapsed = todayLocal.getDate()
+    const monthStart = new Date(todayLocal); monthStart.setDate(1)
     const dayMap: Record<string, number> = {}
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(todayLocal); d.setDate(d.getDate() - 6 + i)
+    for (let i = 0; i < daysElapsed; i++) {
+      const d = new Date(monthStart); d.setDate(i + 1)
       dayMap[d.toLocaleDateString('sv-SE')] = 0
     }
-    for (const p of (stats?.payments7d ?? [])) {
+    for (const p of payments) {
       const key = new Date(p.paidAt).toLocaleDateString('sv-SE')
       if (key in dayMap) dayMap[key] = (dayMap[key] ?? 0) + p.amount
     }
-    return Object.entries(dayMap).map(([date, amount]) => ({ date, amount }))
-  })()
+    return Object.entries(dayMap).map(([date, amount]) => ({
+      key: date,
+      amount,
+      label: date.split('-')[2] ?? '',
+    }))
+  }, [stats, viewMode])
 
   useEffect(() => { load() }, [load])
 
@@ -196,7 +269,7 @@ export default function CobrosPage() {
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Ingresos totales', value: formatCurrency(stats?.totalBilled ?? 0), icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { label: viewMode === 'dia' ? 'Ingresos hoy' : viewMode === 'semana' ? 'Ingresos semana' : 'Ingresos del mes', value: formatCurrency(stats?.totalBilled ?? 0), icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
             { label: 'Cobrado', value: formatCurrency(stats?.totalCollected ?? 0), sub: `${invoices.filter(i => i.status === 'PAID').length} facturas`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
             { label: 'Pendiente', value: formatCurrency(stats?.pendingAmount ?? 0), sub: `${invoices.filter(i => ['SENT','PARTIALLY_PAID'].includes(i.status)).length} facturas`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
             { label: 'Vencido', value: formatCurrency(stats?.overdueAmount ?? 0), sub: `${invoices.filter(i => i.status === 'OVERDUE').length} facturas`, icon: CreditCard, color: 'text-red-600', bg: 'bg-red-50' },
@@ -219,10 +292,10 @@ export default function CobrosPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Revenue chart */}
           <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Ingresos por día</h3>
-            <div className="overflow-x-auto">
-              <RevenueChart data={chartData} />
-            </div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">
+              {viewMode === 'dia' ? 'Ingresos por hora — hoy' : viewMode === 'semana' ? 'Ingresos últimos 7 días' : 'Ingresos por día — este mes'}
+            </h3>
+            <RevenueChart bars={chartBars} />
           </div>
 
           {/* Payment method breakdown */}
