@@ -370,7 +370,7 @@ export async function billingRoutes(server: FastifyInstance) {
     const [invoices, payments, payments7d, paymentsToday] = await Promise.all([
       prisma.invoice.findMany({
         where: { clinicId, issuedAt: { gte: from, lte: to } },
-        select: { total: true, paidAmount: true, status: true, overdueAt: true },
+        select: { total: true, paidAmount: true, status: true },
       }),
       prisma.paymentRecord.findMany({
         where: { invoice: { clinicId }, paidAt: { gte: from, lte: to } },
