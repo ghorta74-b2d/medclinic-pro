@@ -31,7 +31,6 @@ const STAFF_ALLOWED = ['/dashboard', '/agenda', '/pacientes', '/cobros']
 export function Sidebar() {
   const pathname = usePathname()
   const [userRole, setUserRole] = useState<string>('DOCTOR')
-  const [userName, setUserName] = useState<string>('')
 
   useEffect(() => {
     async function getSession() {
@@ -45,9 +44,6 @@ export function Sidebar() {
         if (session?.user?.user_metadata?.role) {
           setUserRole(session.user.user_metadata.role)
         }
-        const firstName = session?.user?.user_metadata?.firstName ?? ''
-        const lastName  = session?.user?.user_metadata?.lastName  ?? ''
-        if (firstName) setUserName(`${firstName} ${lastName}`.trim())
       } catch {
         // ignore — defaults to DOCTOR (full access)
       }
@@ -118,15 +114,11 @@ export function Sidebar() {
 
       {/* Bottom */}
       <div className="px-3 py-4 border-t border-[#3D3075] space-y-0.5">
-        {/* User info */}
-        {(userName || isStaff) && (
+        {isStaff && (
           <div className="px-3 py-2 mb-1">
-            {userName && <p className="text-xs text-[rgba(231,235,239,0.9)] font-medium truncate">{userName}</p>}
-            {isStaff && (
-              <span className="inline-flex items-center gap-1 text-xs bg-orange-900/40 text-orange-300 px-2 py-0.5 rounded-full mt-0.5">
-                <Shield className="w-3 h-3" /> Administrativo
-              </span>
-            )}
+            <span className="inline-flex items-center gap-1 text-xs bg-orange-900/40 text-orange-300 px-2 py-0.5 rounded-full">
+              <Shield className="w-3 h-3" /> Administrativo
+            </span>
           </div>
         )}
 
