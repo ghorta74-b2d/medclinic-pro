@@ -819,7 +819,7 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
     if (selected.size === 0) return
     setDeleting(true)
     try {
-      await Promise.all([...selected].map(id => api.labResults.delete(id)))
+      await Promise.all([...selected].map(id => api.labResults.remove(id)))
       setSelected(new Set())
       onRefresh()
     } catch { /* ignore */ }

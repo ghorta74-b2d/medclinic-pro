@@ -336,6 +336,6 @@ export async function labResultsRoutes(server: FastifyInstance) {
       resourceId: id,
     })
 
-    return reply.status(204).send()
+    return reply.send({ success: true })
   })
 }
