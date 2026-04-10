@@ -131,6 +131,8 @@ export const api = {
       request(`/api/lab-results/${id}/notify`, { method: 'POST' }),
     review: (id: string, notes?: string) =>
       request(`/api/lab-results/${id}/review`, { method: 'PATCH', body: JSON.stringify({ notes }) }),
+    delete: (id: string) =>
+      request(`/api/lab-results/${id}`, { method: 'DELETE' }),
   },
 
   billing: {

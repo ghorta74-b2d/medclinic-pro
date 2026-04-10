@@ -312,4 +312,30 @@ export async function labResultsRoutes(server: FastifyInstance) {
 
     return reply.send({ data: updated })
   })
+
+  // DELETE /api/lab-results/:id
+  server.delete('/:id', { preHandler: requireStaff }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { clinicId, authUserId, role } = request.authUser
+
+    const result = await prisma.labResult.findFirst({ where: { id, clinicId } })
+    if (!result) return Errors.NOT_FOUND(reply, 'Lab result')
+
+    // Delete file from storage if exists
+    if (result.fileUrl) {
+      const path = result.fileUrl.split('/clinical-files/')[1]
+      if (path) await supabase.storage.from('clinical-files').remove([path])
+    }
+
+    await prisma.labResult.delete({ where: { id } })
+
+    await auditLog({
+      user: { authUserId, clinicId, role },
+      action: 'DELETE',
+      resourceType: 'LabResult',
+      resourceId: id,
+    })
+
+    return reply.status(204).send()
+  })
 }

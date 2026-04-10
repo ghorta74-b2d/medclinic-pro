@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
@@ -548,49 +548,43 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: 
 }
 
 // ── MarkdownBlock — renders Claude's markdown with design-system styles ────────
+function renderInline(s: string): ReactNode[] {
+  return s.split(/(\*\*[^*]+\*\*)/).map((p, idx) =>
+    p.startsWith('**') && p.endsWith('**')
+      ? <strong key={idx} className="font-semibold text-gray-900">{p.slice(2, -2)}</strong>
+      : <span key={idx}>{p}</span>
+  )
+}
+
 function MarkdownBlock({ text }: { text: string }) {
   const lines = text.split('\n')
-  const elements: React.ReactNode[] = []
+  const elements: ReactNode[] = []
   let i = 0
-
-  function renderInline(s: string): React.ReactNode {
-    const parts = s.split(/(\*\*[^*]+\*\*)/)
-    return parts.map((p, idx) =>
-      p.startsWith('**') && p.endsWith('**')
-        ? <strong key={idx} className="font-semibold text-gray-900">{p.slice(2, -2)}</strong>
-        : p
-    )
-  }
-
   while (i < lines.length) {
     const line = lines[i]
-    // h1
     if (/^# /.test(line)) {
-      elements.push(<h2 key={i} className="text-sm font-bold text-[#4E2DD2] mt-3 mb-1">{line.slice(2)}</h2>)
-    // h2
-    } else if (/^## /.test(line)) {
-      elements.push(<h3 key={i} className="text-xs font-bold text-gray-700 uppercase tracking-wide mt-3 mb-1.5">{line.slice(3)}</h3>)
-    // hr
-    } else if (/^---/.test(line)) {
+      elements.push(<p key={i} className="text-sm font-bold text-[#4E2DD2] mt-3 mb-1">{line.slice(2)}</p>)
+    } else if (/^#{1,3} /.test(line)) {
+      elements.push(<p key={i} className="text-xs font-bold text-gray-600 uppercase tracking-wide mt-3 mb-1">{line.replace(/^#+\s/, '')}</p>)
+    } else if (/^-{3,}$/.test(line.trim())) {
       elements.push(<hr key={i} className="border-[#4E2DD2]/10 my-2" />)
-    // table header
-    } else if (/^\|/.test(line) && i + 1 < lines.length && /^\|[-|]+\|/.test(lines[i + 1])) {
+    } else if (/^\|/.test(line) && i + 1 < lines.length && /^\|[\s\-|:]+\|/.test(lines[i + 1])) {
       const headers = line.split('|').map(s => s.trim()).filter(Boolean)
-      i += 2 // skip separator
+      i += 2
       const rows: string[][] = []
       while (i < lines.length && /^\|/.test(lines[i])) {
         rows.push(lines[i].split('|').map(s => s.trim()).filter(Boolean))
         i++
       }
       elements.push(
-        <div key={`table-${i}`} className="overflow-x-auto rounded-lg border border-gray-100 mt-2 mb-2">
+        <div key={`t${i}`} className="overflow-x-auto rounded-lg border border-[#4E2DD2]/10 my-2">
           <table className="w-full text-xs">
             <thead className="bg-[#4E2DD2]/5">
               <tr>{headers.map((h, j) => <th key={j} className="px-3 py-2 text-left font-semibold text-[#4E2DD2]">{renderInline(h)}</th>)}</tr>
             </thead>
             <tbody>
               {rows.map((row, ri) => (
-                <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                <tr key={ri} className={ri % 2 === 0 ? '' : 'bg-gray-50/50'}>
                   {row.map((cell, ci) => <td key={ci} className="px-3 py-1.5 text-gray-700 border-t border-gray-100">{renderInline(cell)}</td>)}
                 </tr>
               ))}
@@ -599,13 +593,10 @@ function MarkdownBlock({ text }: { text: string }) {
         </div>
       )
       continue
-    // bullet
-    } else if (/^[-•] /.test(line)) {
-      elements.push(<p key={i} className="text-sm text-gray-700 leading-relaxed pl-3 border-l-2 border-[#4E2DD2]/20 my-1">{renderInline(line.slice(2))}</p>)
-    // blank
+    } else if (/^[-•–]\s/.test(line)) {
+      elements.push(<p key={i} className="text-sm text-gray-700 pl-3 border-l-2 border-[#4E2DD2]/20 my-1">{renderInline(line.replace(/^[-•–]\s/, ''))}</p>)
     } else if (line.trim() === '') {
-      elements.push(<div key={i} className="h-1" />)
-    // paragraph
+      elements.push(<div key={i} className="h-1.5" />)
     } else {
       elements.push(<p key={i} className="text-sm text-gray-700 leading-relaxed">{renderInline(line)}</p>)
     }
@@ -816,7 +807,24 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
   const [title, setTitle] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  function toggleSelect(id: string) {
+    setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+
+  async function handleDeleteSelected() {
+    if (selected.size === 0) return
+    setDeleting(true)
+    try {
+      await Promise.all([...selected].map(id => api.labResults.delete(id)))
+      setSelected(new Set())
+      onRefresh()
+    } catch { /* ignore */ }
+    finally { setDeleting(false) }
+  }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
@@ -921,7 +929,39 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
         </div>
       ) : (
         <div className="space-y-3">
-          {results.map(r => <LabResultCard key={r.id} result={r} onRefresh={onRefresh} />)}
+          {/* Delete toolbar */}
+          {selected.size > 0 && (
+            <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+              <p className="text-sm text-red-700 font-medium">{selected.size} estudio{selected.size > 1 ? 's' : ''} seleccionado{selected.size > 1 ? 's' : ''}</p>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setSelected(new Set())} className="text-xs text-gray-500 hover:text-gray-700">Cancelar</button>
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={deleting}
+                  className="flex items-center gap-1.5 text-xs bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium px-3 py-1.5 rounded-lg"
+                >
+                  {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          )}
+          {results.map(r => (
+            <div key={r.id} className="flex items-start gap-2">
+              <button
+                onClick={() => toggleSelect(r.id)}
+                className={cn(
+                  'mt-3.5 shrink-0 w-4 h-4 rounded border-2 transition-colors',
+                  selected.has(r.id) ? 'bg-red-500 border-red-500' : 'border-gray-300 hover:border-red-400'
+                )}
+              >
+                {selected.has(r.id) && <X className="w-3 h-3 text-white m-auto" />}
+              </button>
+              <div className="flex-1 min-w-0">
+                <LabResultCard result={r} onRefresh={onRefresh} />
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
