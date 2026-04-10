@@ -376,7 +376,7 @@ function ConsultaCard({ note }: { note: ClinicalNote }) {
   return (
     <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
       {/* Audit header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-200 border-b border-gray-300">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-[#4E2DD2]/10 rounded-full flex items-center justify-center shrink-0">
             <UserCheck className="w-3.5 h-3.5 text-[#4E2DD2]" />
@@ -625,7 +625,7 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh, re
         <div className="space-y-3">
           {prescriptions.map((rx) => (
             <div key={rx.id} className="bg-white rounded-2xl border border-gray-300 shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200">
+              <div className="flex items-center justify-between px-4 py-3 bg-gray-200 border-b border-gray-300">
                 <div className="flex items-center gap-2">
                   <UserCheck className="w-3.5 h-3.5 text-[#4E2DD2]" />
                   <p className="text-xs text-gray-700 font-medium">
@@ -862,7 +862,7 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
   return (
     <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-200 border-b border-gray-300">
         <div className="flex items-center gap-3 min-w-0">
           <FlaskConical className="w-4 h-4 text-orange-400 shrink-0" />
           <div className="min-w-0">
@@ -1230,7 +1230,7 @@ export default function PatientDetailPage() {
         <div className="bg-white border-b border-gray-200 px-6 py-5">
           <div className="flex items-start gap-5">
             <div className="flex flex-col items-center gap-2 shrink-0">
-              <div className="w-16 h-16 bg-[#4E2DD2]/10 rounded-2xl flex items-center justify-center text-[#4E2DD2] text-xl font-bold">
+              <div className="w-16 h-16 bg-[#4E2DD2]/20 rounded-2xl flex items-center justify-center text-[#4E2DD2] text-xl font-bold">
                 {getInitials(patient.firstName, patient.lastName)}
               </div>
               <button
