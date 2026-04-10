@@ -488,7 +488,7 @@ function HorariosTab() {
                 {/* Toggle */}
                 <button type="button" onClick={() => toggleDay(key)}
                   className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${day.enabled ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${day.enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${day.enabled ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                 </button>
                 {/* Día */}
                 <span className={`w-24 text-sm font-medium ${day.enabled ? 'text-gray-800' : 'text-gray-400'}`}>{label}</span>

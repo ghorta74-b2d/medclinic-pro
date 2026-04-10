@@ -1,9 +1,102 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { api } from '@/lib/api'
-import { X, UserPlus, Search, Clock, Loader2 } from 'lucide-react'
+import { X, UserPlus, Search, Clock, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Patient, Doctor } from 'medclinic-shared'
+
+// ── Mini date picker en español ──────────────────────────────
+const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+const DIAS_ES  = ['Lu','Ma','Mi','Ju','Vi','Sá','Do']
+
+function SpanishDatePicker({ value, min, onChange }: { value: string; min: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Parse value as local date
+  const [vy, vm, vd] = value.split('-').map(Number)
+  const selected = value ? new Date(vy!, vm! - 1, vd!) : null
+
+  const [viewYear, setViewYear]   = useState(() => selected?.getFullYear() ?? new Date().getFullYear())
+  const [viewMonth, setViewMonth] = useState(() => selected?.getMonth()    ?? new Date().getMonth())
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Build grid: Mon-first
+  const firstDow = new Date(viewYear, viewMonth, 1).getDay() // 0=Sun
+  const offset   = firstDow === 0 ? 6 : firstDow - 1
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
+  const cells: (number | null)[] = [...Array(offset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  const [my, mm, md] = min.split('-').map(Number)
+  const minDate = new Date(my!, mm! - 1, md!)
+
+  function select(day: number) {
+    const m = String(viewMonth + 1).padStart(2, '0')
+    const d = String(day).padStart(2, '0')
+    onChange(`${viewYear}-${m}-${d}`)
+    setOpen(false)
+  }
+
+  function prevMonth() { if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11) } else setViewMonth(m => m - 1) }
+  function nextMonth() { if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0) } else setViewMonth(m => m + 1) }
+
+  const displayValue = selected
+    ? `${selected.getDate()} ${MESES_ES[selected.getMonth()]} ${selected.getFullYear()}`
+    : 'Selecciona una fecha'
+
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-left focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between bg-white">
+        <span className={selected ? 'text-gray-900' : 'text-gray-400'}>{displayValue}</span>
+        <Clock className="w-4 h-4 text-gray-400" />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-3 w-72">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-2">
+            <button type="button" onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded-lg"><ChevronLeft className="w-4 h-4" /></button>
+            <span className="text-sm font-semibold text-gray-800">{MESES_ES[viewMonth]} {viewYear}</span>
+            <button type="button" onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded-lg"><ChevronRight className="w-4 h-4" /></button>
+          </div>
+          {/* Day headers */}
+          <div className="grid grid-cols-7 mb-1">
+            {DIAS_ES.map(d => <p key={d} className="text-center text-xs font-medium text-gray-400 py-1">{d}</p>)}
+          </div>
+          {/* Cells */}
+          <div className="grid grid-cols-7 gap-y-0.5">
+            {cells.map((day, i) => {
+              if (!day) return <div key={i} />
+              const thisDate = new Date(viewYear, viewMonth, day)
+              const isSelected = selected?.getDate() === day && selected?.getMonth() === viewMonth && selected?.getFullYear() === viewYear
+              const isPast = thisDate < minDate
+              return (
+                <button key={i} type="button" disabled={isPast} onClick={() => select(day)}
+                  className={`text-sm rounded-lg py-1 transition-colors ${isSelected ? 'bg-blue-600 text-white font-semibold' : isPast ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-800'}`}>
+                  {day}
+                </button>
+              )
+            })}
+          </div>
+          {/* Today shortcut */}
+          <div className="border-t border-gray-100 mt-2 pt-2 flex justify-end">
+            <button type="button" onClick={() => { const t = new Date(); select(t.getDate()); setViewYear(t.getFullYear()); setViewMonth(t.getMonth()) }}
+              className="text-xs text-blue-600 hover:underline font-medium">Hoy</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ── Horario por defecto (Lun-Vie 9-19, Sab 9-15) ─────────────
 const DEFAULT_SCHEDULE: Record<string, { start: string; end: string }[]> = {
@@ -415,10 +508,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
           {/* ── FECHA ── */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Fecha</label>
-            <input type="date" value={selectedDate}
-              min={todayLocal}
-              onChange={e => setSelectedDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <SpanishDatePicker value={selectedDate} min={todayLocal} onChange={setSelectedDate} />
           </div>
 
           {/* ── HORARIOS ── */}
