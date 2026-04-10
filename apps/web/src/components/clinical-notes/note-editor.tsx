@@ -40,16 +40,7 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
 
   // Clinical fields
   const [chiefComplaint, setChiefComplaint] = useState('')
-  const [physicalExam, setPhysicalExam] = useState({
-    general: '',
-    head: '',
-    neck: '',
-    chest: '',
-    abdomen: '',
-    extremities: '',
-    neuro: '',
-    gynecological: '',
-  })
+  const [physicalExam, setPhysicalExam] = useState('')
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([])
   const [diagSearch, setDiagSearch] = useState('')
   const [diagResults, setDiagResults] = useState<Cie10Entry[]>([])
@@ -89,9 +80,7 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
       patientId,
       appointmentId,
       chiefComplaint: chiefComplaint || undefined,
-      physicalExam: Object.fromEntries(
-        Object.entries(physicalExam).filter(([, v]) => v !== '')
-      ),
+      physicalExam: physicalExam || undefined,
       diagnoses,
       treatmentPlan: treatmentPlan || undefined,
       evolutionNotes: evolutionNotes || undefined,
@@ -202,21 +191,14 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
 
       {/* Physical exam */}
       <div className={sectionClass}>
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">Exploración física</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {Object.keys(physicalExam).map((key) => (
-            <div key={key}>
-              <label className={labelClass}>{key.charAt(0).toUpperCase() + key.slice(1)}</label>
-              <input
-                type="text"
-                placeholder="Hallazgos..."
-                value={physicalExam[key as keyof typeof physicalExam]}
-                onChange={(e) => setPhysicalExam((p) => ({ ...p, [key]: e.target.value }))}
-                className={inputClass}
-              />
-            </div>
-          ))}
-        </div>
+        <label className={labelClass}>Exploración física</label>
+        <textarea
+          rows={4}
+          value={physicalExam}
+          onChange={(e) => setPhysicalExam(e.target.value)}
+          placeholder="Hallazgos de la exploración física..."
+          className={inputClass}
+        />
       </div>
 
       {/* Diagnoses — CIE-10 */}

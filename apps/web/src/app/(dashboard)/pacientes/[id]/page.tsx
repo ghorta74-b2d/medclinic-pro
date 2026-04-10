@@ -297,17 +297,10 @@ function ConsultaCard({ note }: { note: ClinicalNote }) {
       {/* Expanded detail */}
       {expanded && (
         <div className="border-t border-gray-100 px-4 py-4 space-y-4">
-          {note.physicalExam && Object.keys(note.physicalExam).length > 0 && (
+          {note.physicalExam && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Exploración física</p>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(note.physicalExam).map(([key, val]) => val ? (
-                  <div key={key}>
-                    <p className="text-xs font-medium text-gray-500 capitalize">{key}</p>
-                    <p className="text-xs text-gray-800">{val}</p>
-                  </div>
-                ) : null)}
-              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Exploración física</p>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.physicalExam}</p>
             </div>
           )}
           {note.treatmentPlan && (
