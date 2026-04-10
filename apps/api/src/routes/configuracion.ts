@@ -359,35 +359,74 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // ── POST /api/configuracion/users/:id/resend-invite ───────────────────────
-  // Resend invite email for pending users (those without authUserId)
+  // Works for both pending users (no authUserId) and existing users.
+  // authUserId is set at invite-generation time (not at acceptance), so we
+  // cannot use its presence to determine if the user completed onboarding.
+  // Strategy:
+  //   - No authUserId → brand-new invite via inviteUserByEmail
+  //   - authUserId present → recovery link via generateLink (password reset)
+  //     so the user lands on /auth/invite and sets their password.
   fastify.post('/users/:id/resend-invite', async (request, reply) => {
     const { id } = request.params as { id: string }
     const { clinicId } = request.authUser
+    const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`
+    const resendKey  = process.env['RESEND_API_KEY']
 
     const doctor = await prisma.doctor.findUnique({ where: { id } })
     if (!doctor || doctor.clinicId !== clinicId) {
       return Errors.NOT_FOUND(reply, 'Usuario')
     }
 
-    if (doctor.authUserId) {
-      return reply.status(400).send({
-        error: { message: 'El usuario ya aceptó la invitación' },
+    const supabaseAdmin = getSupabaseAdmin()
+    let actionLink: string
+
+    if (!doctor.authUserId) {
+      // User never existed in Supabase Auth — send a fresh invite
+      const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'invite',
+        email: doctor.email,
+        options: {
+          data: { clinic_id: clinicId, role: doctor.role, firstName: doctor.firstName, lastName: doctor.lastName, doctor_id: doctor.id },
+          redirectTo,
+        },
       })
+      if (error) return reply.status(400).send({ error: { message: error.message } })
+      actionLink = data.properties.action_link
+      // Save authUserId now that Supabase has created the user
+      if (data.user?.id) {
+        await prisma.doctor.update({ where: { id }, data: { authUserId: data.user.id } }).catch(() => {})
+      }
+    } else {
+      // User already exists — send a recovery (set-password) link
+      const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: doctor.email,
+        options: { redirectTo },
+      })
+      if (error) return reply.status(400).send({ error: { message: error.message } })
+      actionLink = data.properties.action_link
     }
 
-    const supabaseAdmin = getSupabaseAdmin()
-    const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(doctor.email, {
-      data: {
-        clinic_id: clinicId,
-        role: doctor.role,
-        firstName: doctor.firstName,
-        lastName: doctor.lastName,
-        doctor_id: doctor.id,
-      },
-      redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`,
-    })
-
-    if (error) return reply.status(400).send({ error: { message: error.message } })
+    // Send via Resend
+    if (resendKey) {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: 'MedClinic PRO <medclinic@glasshaus.mx>',
+          to: [doctor.email],
+          subject: 'Acceso a MedClinic PRO',
+          html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+            <h2>Hola ${doctor.firstName},</h2>
+            <p>Tu administrador te reenvió el acceso a MedClinic PRO. Haz clic para establecer tu contraseña.</p>
+            <a href="${actionLink}" style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">
+              Activar acceso
+            </a>
+            <p style="color:#888;font-size:12px">El enlace expira en 24 horas.</p>
+          </div>`,
+        }),
+      }).catch(() => {}) // fire-and-forget — don't fail the response if email fails
+    }
 
     return { data: { sent: true, email: doctor.email } }
   })

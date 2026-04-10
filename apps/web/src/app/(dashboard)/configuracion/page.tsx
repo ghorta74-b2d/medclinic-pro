@@ -131,11 +131,12 @@ function UsuariosTab() {
 
   async function handleResend(user: any) {
     setActionId(user.id + '_resend')
+    setError('')
     try {
       await api.configuracion.resendInvite(user.id)
-      alert(`Invitación reenviada a ${user.email}`)
+      setError(`✓ Acceso reenviado a ${user.email}`)
     } catch (e: any) {
-      alert(e.message ?? 'Error')
+      setError(e.message ?? 'Error al reenviar')
     } finally {
       setActionId(null)
     }
@@ -150,6 +151,16 @@ function UsuariosTab() {
 
   return (
     <div className="space-y-5 max-w-3xl">
+
+      {/* Feedback banner */}
+      {error && (
+        <div className={cn(
+          'px-4 py-2.5 rounded-lg text-sm font-medium',
+          error.startsWith('✓') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+        )}>
+          {error}
+        </div>
+      )}
 
       {/* Plan quota summary */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -238,15 +249,14 @@ function UsuariosTab() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      {isPending && (
-                        <button
-                          onClick={() => handleResend(user)}
-                          disabled={actionId === user.id + '_resend'}
-                          className="text-xs text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1">
-                          {actionId === user.id + '_resend' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                          Reenviar
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleResend(user)}
+                        disabled={actionId === user.id + '_resend'}
+                        title={isPending ? 'Reenviar invitación' : 'Reenviar acceso'}
+                        className="text-xs text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1">
+                        {actionId === user.id + '_resend' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        {isPending ? 'Reenviar' : 'Reenviar acceso'}
+                      </button>
                       {user.role !== 'ADMIN' && (
                         <button
                           onClick={() => handleToggleActive(user)}
