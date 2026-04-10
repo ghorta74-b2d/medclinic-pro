@@ -804,6 +804,7 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
@@ -852,8 +853,9 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
       const formData = new FormData()
       formData.append('file', file)
       await api.labResults.upload(labId, formData)
-      // summarize is best-effort — don't block upload if AI fails
-      api.labResults.summarize(labId).catch(() => {})
+      setUploading(false)
+      setAnalyzing(true)
+      await api.labResults.summarize(labId).catch(() => {})
       setFile(null)
       setTitle('')
       onRefresh()
@@ -861,6 +863,7 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
       setUploadError(err instanceof Error ? err.message : 'Error al subir')
     } finally {
       setUploading(false)
+      setAnalyzing(false)
     }
   }
 
@@ -909,11 +912,13 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
             {uploadError && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{uploadError}</p>}
             <button
               onClick={handleUpload}
-              disabled={uploading}
+              disabled={uploading || analyzing}
               className="w-full flex items-center justify-center gap-2 bg-[#4E2DD2] hover:bg-[#3d22a8] disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
             >
               {uploading
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo y analizando con IA...</>
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo PDF...</>
+                : analyzing
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Analizando con IA...</>
                 : <><Sparkles className="w-4 h-4" /> Subir y analizar con IA</>}
             </button>
           </div>
