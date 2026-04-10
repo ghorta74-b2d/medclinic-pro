@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { api } from '@/lib/api'
 import { searchCie10, type Cie10Entry } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
-import { Plus, X, Search, CheckCircle2 } from 'lucide-react'
+import { Plus, X, Search, CheckCircle2, Loader2 } from 'lucide-react'
 import type { Patient } from 'medclinic-shared'
 
 interface VitalSignsForm {
@@ -116,15 +116,19 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
   }
 
   async function handleSign() {
-    if (!noteId) {
-      await handleSave()
-      return
-    }
     setSigning(true)
     setError('')
     try {
-      await api.clinicalNotes.sign(noteId)
-      onSaved(noteId)
+      let id = noteId
+      if (!id) {
+        const res = await api.clinicalNotes.create(buildPayload()) as { data: { id: string } }
+        id = res.data.id
+        setNoteId(id)
+      } else {
+        await api.clinicalNotes.update(id, buildPayload())
+      }
+      await api.clinicalNotes.sign(id)
+      onSaved(id)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al firmar')
     } finally {
@@ -291,24 +295,35 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
       )}
 
       {/* Actions */}
-      <div className="flex gap-3 pb-6">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-        >
-          {saved ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : null}
-          {saving ? 'Guardando...' : saved ? 'Guardado' : 'Guardar borrador'}
-        </button>
-        <button
-          type="button"
-          onClick={handleSign}
-          disabled={signing || saving}
-          className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
-        >
-          {signing ? 'Firmando...' : 'Guardar y firmar nota (NOM-004)'}
-        </button>
+      <div className="space-y-3 pb-6">
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || signing}
+            className="flex items-center gap-2 px-6 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            {saved
+              ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+              : saving
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : null}
+            {saving ? 'Guardando...' : saved ? 'Borrador guardado' : 'Guardar borrador'}
+          </button>
+          <button
+            type="button"
+            onClick={handleSign}
+            disabled={signing || saving}
+            className="flex-1 py-2.5 bg-[#4E2DD2] hover:bg-[#3d22a8] disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
+          >
+            {signing
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Firmando...</>
+              : <><CheckCircle2 className="w-4 h-4" /> Firmar nota</>}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 text-center">
+          <strong>Guardar borrador</strong> guarda sin finalizar · <strong>Firmar nota</strong> guarda y cierra la consulta (no editable después)
+        </p>
       </div>
     </div>
   )
