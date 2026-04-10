@@ -108,9 +108,9 @@ export default function RecetasPage() {
         ) : (
           <div className="space-y-3 max-w-3xl">
             {prescriptions.map((rx) => (
-              <div key={rx.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:border-gray-300 transition-colors">
+              <div key={rx.id} className="bg-white rounded-2xl border border-gray-300 shadow-sm overflow-hidden hover:border-gray-400 transition-colors">
                 {/* Card header */}
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 bg-gray-50">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-300 bg-gray-200">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                       <User className="w-4 h-4 text-blue-600" />
@@ -173,7 +173,7 @@ export default function RecetasPage() {
                 </div>
 
                 {/* Actions footer */}
-                <div className="flex items-center gap-2 px-5 py-3 border-t border-gray-100 bg-gray-50">
+                <div className="flex items-center gap-2 px-5 py-3 border-t border-gray-300 bg-gray-200">
                   {/* Print / PDF */}
                   <button
                     onClick={() => router.push(`/recetas/${rx.id}`)}

@@ -104,7 +104,7 @@ export default function BillingPage() {
             ].map((s) => {
               const Icon = s.icon
               return (
-                <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
+                <div key={s.label} className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 ${s.bg} rounded-lg flex items-center justify-center`}>
                       <Icon className={`w-5 h-5 ${s.color}`} />
@@ -141,7 +141,7 @@ export default function BillingPage() {
             <p className="text-sm text-gray-400">No hay facturas</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>

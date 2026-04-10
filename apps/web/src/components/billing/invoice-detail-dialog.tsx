@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { X, Loader2, CreditCard, Banknote, ArrowLeftRight, Building2 } from 'lucide-react'
+import { X, Loader2, CreditCard, Banknote, ArrowLeftRight, Building2, UserCheck } from 'lucide-react'
 import { formatDate, formatCurrency, cn } from '@/lib/utils'
 import { INVOICE_STATUS_LABELS } from 'medclinic-shared'
 
@@ -58,6 +58,15 @@ export function InvoiceDetailDialog({ invoiceId, onClose }: InvoiceDetailDialogP
             {invoice && (
               <p className="text-xs text-gray-400 mt-0.5">{formatDate(invoice.issuedAt)}</p>
             )}
+            {invoice && invoice.payments?.[0]?.recordedByName && (
+              <div className="flex items-center gap-1 mt-1.5">
+                <UserCheck className="w-3 h-3 text-gray-400" />
+                <span className="text-xs text-gray-400">
+                  Registrado por <span className="font-medium text-gray-600">{invoice.payments[0].recordedByName}</span>
+                  {' · '}{formatDate(invoice.payments[0].paidAt)}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {invoice && (
@@ -93,7 +102,7 @@ export function InvoiceDetailDialog({ invoiceId, onClose }: InvoiceDetailDialogP
             {/* Line items */}
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Conceptos</p>
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="border border-gray-300 shadow-sm rounded-xl overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
@@ -168,6 +177,11 @@ export function InvoiceDetailDialog({ invoiceId, onClose }: InvoiceDetailDialogP
                           <p className="text-xs text-gray-400 truncate">Ref: {pay.reference}</p>
                         )}
                         <p className="text-xs text-gray-400">{formatDate(pay.paidAt)}</p>
+                        {pay.recordedByName && (
+                          <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                            <UserCheck className="w-3 h-3" />{pay.recordedByName}
+                          </p>
+                        )}
                       </div>
                       <p className="text-sm font-bold text-green-700">{formatCurrency(Number(pay.amount))}</p>
                     </div>

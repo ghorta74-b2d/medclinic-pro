@@ -183,7 +183,7 @@ export default function AppointmentDetailPage() {
           </div>
 
           {/* ── Paciente ── */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <div className="bg-white rounded-2xl border border-gray-300 shadow-sm p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
@@ -212,7 +212,7 @@ export default function AppointmentDetailPage() {
           </div>
 
           {/* ── Detalles de la cita ── */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+          <div className="bg-white rounded-2xl border border-gray-300 shadow-sm p-5 space-y-4">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Información de la cita</h3>
 
             <div className="grid grid-cols-2 gap-4">
@@ -262,7 +262,7 @@ export default function AppointmentDetailPage() {
             <div className="grid grid-cols-2 gap-3">
               {appt.clinicalNote && (
                 <button onClick={() => router.push(`/expediente/${appt.clinicalNote.id}`)}
-                  className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3 hover:border-blue-300 hover:bg-blue-50 transition-colors text-left">
+                  className="bg-white rounded-xl border border-gray-300 shadow-sm p-4 flex items-center gap-3 hover:border-blue-300 hover:bg-blue-50 transition-colors text-left">
                   <FileText className="w-5 h-5 text-blue-500 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">Nota clínica</p>
@@ -272,7 +272,7 @@ export default function AppointmentDetailPage() {
               )}
               {appt.invoice && (
                 <button onClick={() => router.push(`/cobros`)}
-                  className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3 hover:border-green-300 hover:bg-green-50 transition-colors text-left">
+                  className="bg-white rounded-xl border border-gray-300 shadow-sm p-4 flex items-center gap-3 hover:border-green-300 hover:bg-green-50 transition-colors text-left">
                   <ReceiptText className="w-5 h-5 text-green-500 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">Factura</p>
@@ -287,7 +287,7 @@ export default function AppointmentDetailPage() {
 
           {/* ── Acciones ── */}
           {!isFinal && (
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
+            <div className="bg-white rounded-2xl border border-gray-300 shadow-sm p-5 space-y-3">
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Acciones</h3>
 
               {error && (

@@ -229,7 +229,7 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
 
             <div className="space-y-4">
               {items.map((item, idx) => (
-                <div key={idx} className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                <div key={idx} className="border border-gray-300 shadow-sm rounded-xl p-4 bg-gray-50">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold text-gray-500 uppercase">Medicamento {idx + 1}</span>
                     {items.length > 1 && (

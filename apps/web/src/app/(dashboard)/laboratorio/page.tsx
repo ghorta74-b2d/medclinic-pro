@@ -116,7 +116,7 @@ export default function LaboratorioPage() {
               const cfg = STATUS_CONFIG[status]
 
               return (
-                <div key={result.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <div key={result.id} className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
                   <div className="flex items-start gap-4">
                     <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center shrink-0">
                       <FlaskConical className="w-5 h-5 text-orange-500" />

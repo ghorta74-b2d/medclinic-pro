@@ -245,7 +245,7 @@ export default function DashboardPage() {
           {/* Left column: appointments + chart */}
           <div className="xl:col-span-2 space-y-6">
             {/* Upcoming appointments */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-900">Próximas consultas de hoy</h2>
                 <button onClick={() => router.push('/agenda')}
@@ -295,7 +295,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Revenue chart */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-gray-900">Ingresos últimos 7 días</h2>
                 <button onClick={() => router.push('/cobros')}
@@ -310,7 +310,7 @@ export default function DashboardPage() {
           {/* Right column: quick actions + AI feed */}
           <div className="space-y-6">
             {/* Quick actions */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
               <h2 className="text-sm font-semibold text-gray-900 mb-3">Acciones rápidas</h2>
               <div className="grid grid-cols-2 gap-2">
                 {quickActions.map((action) => {
@@ -334,7 +334,7 @@ export default function DashboardPage() {
 
             {/* AI activity feed — hidden for ADMIN role */}
             {!isAdmin && (
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
                   <Bot className="w-4 h-4 text-blue-600" />
                   <h2 className="text-sm font-semibold text-gray-900">Asistente IA · Actividad reciente</h2>

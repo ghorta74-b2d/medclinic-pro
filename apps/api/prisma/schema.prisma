@@ -614,7 +614,8 @@ model PaymentRecord {
   reference       String?       // Check number, transfer reference, etc.
   stripePaymentId String?
   notes           String?
-  recordedBy      String?       // staffId / doctorId
+  recordedBy      String?       // authUserId
+  recordedByName  String?       // denormalized display name
   paidAt          DateTime      @default(now())
   createdAt       DateTime      @default(now())
 

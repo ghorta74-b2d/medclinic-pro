@@ -71,7 +71,7 @@ export default function AsistenteIAPage() {
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {kpis.map(({ label, value, sub, icon: Icon, color, bg }) => (
-            <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <div key={label} className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xl font-bold text-gray-900">{value}</p>
@@ -90,7 +90,7 @@ export default function AsistenteIAPage() {
           {/* Left: agents */}
           <div className="space-y-4">
             {/* WhatsApp Agent */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-green-600" />
@@ -115,7 +115,7 @@ export default function AsistenteIAPage() {
             </div>
 
             {/* Voice Agent */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Phone className="w-4 h-4 text-blue-600" />
@@ -144,7 +144,7 @@ export default function AsistenteIAPage() {
           </div>
 
           {/* Center: activity log */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden flex flex-col">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
               <Bot className="w-4 h-4 text-blue-600" />
               <h3 className="text-sm font-semibold text-gray-900">Conversaciones recientes</h3>
@@ -160,7 +160,7 @@ export default function AsistenteIAPage() {
           {/* Right: intents + flows */}
           <div className="space-y-4">
             {/* Intent analytics */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Intenciones de pacientes (mes)</h3>
               <div className="flex flex-col items-center justify-center py-6 text-center">
                 <TrendingUp className="w-8 h-8 mb-2 text-gray-200" />
@@ -169,7 +169,7 @@ export default function AsistenteIAPage() {
             </div>
 
             {/* Automation flows */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <Zap className="w-4 h-4 text-yellow-500" /> Flujos de automatización
               </h3>

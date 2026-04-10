@@ -163,7 +163,7 @@ function UsuariosTab() {
       )}
 
       {/* Plan quota summary */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-900">Usuarios de tu plan</h3>
           <span className={cn('text-xs font-semibold px-2.5 py-0.5 rounded-full', PLAN_COLORS[plan] ?? 'bg-gray-100 text-gray-700')}>
@@ -195,7 +195,7 @@ function UsuariosTab() {
       </div>
 
       {/* Users table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-900">Equipo</h3>
           <button onClick={() => { setShowInvite(true); setError('') }}
@@ -355,7 +355,7 @@ function UsuariosTab() {
       )}
 
       {/* Plan info */}
-      <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+      <div className="bg-gray-50 rounded-xl border border-gray-300 shadow-sm p-4">
         <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Límites por plan</p>
         <div className="grid grid-cols-3 gap-3 text-center">
           {[
@@ -485,8 +485,8 @@ function HorariosTab() {
 
   return (
     <div className="max-w-lg space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+      <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 bg-gray-200 border-b border-gray-300">
           <p className="text-sm font-semibold text-gray-800">Horario de atención semanal</p>
           <p className="text-xs text-gray-500 mt-0.5">Define los días y horas en que se pueden agendar citas</p>
         </div>
@@ -525,7 +525,7 @@ function HorariosTab() {
       </div>
 
       {/* Duración de consulta */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
         <p className="text-sm font-semibold text-gray-800 mb-1">Duración de consulta por defecto</p>
         <p className="text-xs text-gray-500 mb-3">Tiempo que se bloquea en agenda por cada cita</p>
         <div className="flex gap-2 flex-wrap">
@@ -562,7 +562,7 @@ function AppointmentTypesTab() {
   return (
     <div className="max-w-2xl space-y-3">
       {types.map((t, i) => (
-        <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4">
+        <div key={i} className="bg-white rounded-xl border border-gray-300 shadow-sm p-4 flex items-center gap-4">
           <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
           <div className="flex-1">
             <p className="text-sm font-medium text-gray-900">{t.name}</p>
@@ -719,7 +719,7 @@ function CatalogoTab() {
       )}
 
       {/* Services table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -899,7 +899,7 @@ function PlantillasTab() {
   return (
     <div className="max-w-2xl space-y-3">
       {templates.map((t) => (
-        <div key={t.id} className="bg-white rounded-xl border border-gray-200 p-4">
+        <div key={t.id} className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-semibold text-gray-900">{t.name}</p>
             <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Activa</span>
@@ -919,7 +919,7 @@ function PlantillasTab() {
 function PrivacidadTab() {
   return (
     <div className="max-w-lg space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+      <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4 space-y-4">
         <h3 className="text-sm font-semibold text-gray-900">LFPDPPP — Ley Federal de Protección de Datos</h3>
         <div className="space-y-3">
           {[
@@ -939,7 +939,7 @@ function PrivacidadTab() {
           ))}
         </div>
       </div>
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-2">URL del aviso de privacidad</h3>
         <input type="url" placeholder="https://tuclinica.mx/privacidad"
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />

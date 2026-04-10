@@ -242,6 +242,12 @@ export async function billingRoutes(server: FastifyInstance) {
 
     // If payment info was provided, record it and mark invoice as PAID
     if (data.payment) {
+      const { authUserId, clinicId: cId } = request.authUser
+      const editorDoc = await prisma.doctor.findFirst({
+        where: { authUserId, clinicId: cId },
+        select: { firstName: true, lastName: true },
+      })
+      const recorderName = editorDoc ? `${editorDoc.firstName} ${editorDoc.lastName}` : authUserId
       await prisma.paymentRecord.create({
         data: {
           invoiceId: invoice.id,
@@ -249,7 +255,8 @@ export async function billingRoutes(server: FastifyInstance) {
           currency: 'MXN',
           method: data.payment.method,
           reference: data.payment.reference,
-          recordedBy: request.authUser.authUserId,
+          recordedBy: authUserId,
+          recordedByName: recorderName,
         },
       })
       await prisma.invoice.update({
@@ -328,6 +335,12 @@ export async function billingRoutes(server: FastifyInstance) {
 
     const data = parsed.data
 
+    const editorDoc = await prisma.doctor.findFirst({
+      where: { authUserId, clinicId },
+      select: { firstName: true, lastName: true },
+    })
+    const recorderName = editorDoc ? `${editorDoc.firstName} ${editorDoc.lastName}` : authUserId
+
     const payment = await prisma.paymentRecord.create({
       data: {
         invoiceId: id,
@@ -336,6 +349,7 @@ export async function billingRoutes(server: FastifyInstance) {
         reference: data.reference,
         notes: data.notes,
         recordedBy: authUserId,
+        recordedByName: recorderName,
       },
     })
 

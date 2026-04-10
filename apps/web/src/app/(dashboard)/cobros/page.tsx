@@ -274,7 +274,7 @@ export default function CobrosPage() {
             { label: 'Pendiente', value: formatCurrency(stats?.pendingAmount ?? 0), sub: `${invoices.filter(i => ['SENT','PARTIALLY_PAID'].includes(i.status)).length} facturas`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
             { label: 'Vencido', value: formatCurrency(stats?.overdueAmount ?? 0), sub: `${invoices.filter(i => i.status === 'OVERDUE').length} facturas`, icon: CreditCard, color: 'text-red-600', bg: 'bg-red-50' },
           ].map(({ label, value, sub, icon: Icon, color, bg }) => (
-            <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <div key={label} className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xl font-bold text-gray-900">{value}</p>
@@ -291,7 +291,7 @@ export default function CobrosPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Revenue chart */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-300 shadow-sm p-4">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">
               {viewMode === 'dia' ? 'Ingresos por hora — hoy' : viewMode === 'semana' ? 'Ingresos últimos 7 días' : 'Ingresos por día — este mes'}
             </h3>
@@ -299,7 +299,7 @@ export default function CobrosPage() {
           </div>
 
           {/* Payment method breakdown */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+          <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Desglose por método de pago</h3>
             <PaymentMethodBar methods={paymentMethods} />
           </div>
@@ -325,7 +325,7 @@ export default function CobrosPage() {
             <p className="text-sm text-gray-400">No hay facturas</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
