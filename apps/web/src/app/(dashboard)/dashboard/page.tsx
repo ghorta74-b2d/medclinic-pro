@@ -6,7 +6,7 @@ import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
 import { formatTime, formatCurrency, formatDate } from '@/lib/utils'
 import {
-  Users, TrendingUp, Clock, AlertCircle, Plus, UserPlus,
+  Users, TrendingUp, Clock, Plus, UserPlus,
   FileText, Link2, Video, MessageSquare, Bot, Loader2,
   ChevronRight
 } from 'lucide-react'
@@ -22,8 +22,7 @@ interface DashboardStats {
   revenueToday: number
   revenueTodayDelta: number
   unconfirmedCount: number
-  pendingBalance: number
-  pendingBalanceCount: number
+  totalCollected: number
   payments7d?: { paidAt: string; amount: number }[]
 }
 
@@ -162,13 +161,13 @@ export default function DashboardPage() {
       border: 'border-orange-100',
     },
     {
-      label: 'Saldos pendientes',
-      value: loading ? '—' : formatCurrency(stats?.pendingBalance ?? 0),
-      sub: stats?.pendingBalanceCount != null ? `${stats.pendingBalanceCount} pacientes` : 'Por cobrar',
-      icon: AlertCircle,
-      color: 'text-red-600',
-      bg: 'bg-red-50',
-      border: 'border-red-100',
+      label: 'Ingresos del mes',
+      value: loading ? '—' : formatCurrency(stats?.totalCollected ?? 0),
+      sub: 'Acumulado del mes',
+      icon: TrendingUp,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+      border: 'border-purple-100',
     },
   ]
 
