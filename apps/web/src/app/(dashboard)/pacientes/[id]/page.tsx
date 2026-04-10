@@ -1074,12 +1074,10 @@ export default function PatientDetailPage() {
         subtitle={patient.dateOfBirth ? `${calculateAge(patient.dateOfBirth)} años${patient.gender ? ` · ${GENDER_LABELS[patient.gender]}` : ''}` : ''}
         actions={
           <div className="flex items-center gap-2">
-            {!isReadOnly && (
-              <button onClick={() => setShowEdit(true)}
-                className="flex items-center gap-1.5 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-                <Pencil className="w-3.5 h-3.5" /> Editar
-              </button>
-            )}
+            <button onClick={() => setShowEdit(true)}
+              className="flex items-center gap-1.5 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+              <Pencil className="w-3.5 h-3.5" /> Editar
+            </button>
             <button onClick={() => router.push('/pacientes')}
               className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 text-sm">
               <ArrowLeft className="w-4 h-4" /> Volver
@@ -1107,6 +1105,14 @@ export default function PatientDetailPage() {
                   <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
                   <span className="text-xs text-red-700 font-medium">Alergias: {patient.allergies.join(', ')}</span>
                 </div>
+              )}
+              {(patient as any).lastModifiedByName && (
+                <p className="text-xs text-gray-400 mt-1.5">
+                  Modificado por <span className="font-medium text-gray-500">{(patient as any).lastModifiedByName}</span>
+                  {(patient as any).lastModifiedAt && (
+                    <> · {formatDateTime((patient as any).lastModifiedAt)}</>
+                  )}
+                </p>
               )}
             </div>
             <div className="flex gap-4 shrink-0">

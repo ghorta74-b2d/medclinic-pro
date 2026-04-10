@@ -225,6 +225,15 @@ export async function patientsRoutes(server: FastifyInstance) {
     const existing = await prisma.patient.findFirst({ where: { id, clinicId } })
     if (!existing) return Errors.NOT_FOUND(reply, 'Patient')
 
+    // Resolve editor name from Doctor table (covers DOCTOR, ADMIN, STAFF)
+    const editor = await prisma.doctor.findFirst({
+      where: { authUserId, clinicId },
+      select: { firstName: true, lastName: true },
+    })
+    const editorName = editor
+      ? `${editor.firstName} ${editor.lastName}`
+      : authUserId
+
     const data = parsed.data
     const updated = await prisma.patient.update({
       where: { id },
@@ -233,6 +242,8 @@ export async function patientsRoutes(server: FastifyInstance) {
         ...(data.dateOfBirth ? { dateOfBirth: new Date(data.dateOfBirth) } : {}),
         ...(data.privacyConsentAt ? { privacyConsentAt: new Date(data.privacyConsentAt) } : {}),
         ...(data.dataConsentAt ? { dataConsentAt: new Date(data.dataConsentAt) } : {}),
+        lastModifiedByName: editorName,
+        lastModifiedAt: new Date(),
       },
     })
 
