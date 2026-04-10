@@ -839,7 +839,7 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
 }
 
 // ── LabTab ─────────────────────────────────────────────────────────────────────
-function LabTab({ patientId, results, onRefresh }: { patientId: string; results: LabResult[]; onRefresh: () => void }) {
+function LabTab({ patientId, results, onRefresh, editMode, onExitEdit }: { patientId: string; results: LabResult[]; onRefresh: () => void; editMode: boolean; onExitEdit: () => void }) {
   const [dragOver, setDragOver] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
@@ -860,6 +860,7 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
     try {
       await Promise.all([...selected].map(id => api.labResults.remove(id)))
       setSelected(new Set())
+      onExitEdit()
       onRefresh()
     } catch { /* ignore */ }
     finally { setDeleting(false) }
@@ -969,34 +970,33 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
         </div>
       ) : (
         <div className="space-y-3">
-          {/* Delete toolbar */}
-          {selected.size > 0 && (
+          {/* Delete toolbar — only in edit mode */}
+          {editMode && selected.size > 0 && (
             <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
               <p className="text-sm text-red-700 font-medium">{selected.size} estudio{selected.size > 1 ? 's' : ''} seleccionado{selected.size > 1 ? 's' : ''}</p>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setSelected(new Set())} className="text-xs text-gray-500 hover:text-gray-700">Cancelar</button>
-                <button
-                  onClick={handleDeleteSelected}
-                  disabled={deleting}
-                  className="flex items-center gap-1.5 text-xs bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium px-3 py-1.5 rounded-lg"
-                >
-                  {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
-                  Eliminar
-                </button>
-              </div>
+              <button
+                onClick={handleDeleteSelected}
+                disabled={deleting}
+                className="flex items-center gap-1.5 text-xs bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium px-3 py-1.5 rounded-lg"
+              >
+                {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                Eliminar
+              </button>
             </div>
           )}
           {results.map(r => (
             <div key={r.id} className="flex items-start gap-2">
-              <button
-                onClick={() => toggleSelect(r.id)}
-                className={cn(
-                  'mt-3.5 shrink-0 w-4 h-4 rounded border-2 transition-colors',
-                  selected.has(r.id) ? 'bg-red-500 border-red-500' : 'border-gray-300 hover:border-red-400'
-                )}
-              >
-                {selected.has(r.id) && <X className="w-3 h-3 text-white m-auto" />}
-              </button>
+              {editMode && (
+                <button
+                  onClick={() => toggleSelect(r.id)}
+                  className={cn(
+                    'mt-3.5 shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors',
+                    selected.has(r.id) ? 'bg-red-500 border-red-500' : 'border-gray-300 hover:border-red-400'
+                  )}
+                >
+                  {selected.has(r.id) && <X className="w-3 h-3 text-white" />}
+                </button>
+              )}
               <div className="flex-1 min-w-0">
                 <LabResultCard result={r} onRefresh={onRefresh} />
               </div>
@@ -1017,6 +1017,7 @@ export default function PatientDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>('consultas')
   const [loading, setLoading] = useState(true)
   const [showEdit, setShowEdit] = useState(false)
+  const [labEditMode, setLabEditMode] = useState(false)
 
   useEffect(() => {
     loadPatient()
@@ -1107,30 +1108,45 @@ export default function PatientDetailPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 mt-5 border-b border-gray-100 -mb-px">
-            {TABS.map((tab) => (
+          <div className="flex items-center mt-5 border-b border-gray-100 -mb-px">
+            <div className="flex gap-1 flex-1">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => { setActiveTab(tab.key); setLabEditMode(false) }}
+                  className={cn(
+                    'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+                    activeTab === tab.key
+                      ? 'border-[#4E2DD2] text-[#4E2DD2]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  )}
+                >
+                  {tab.icon}
+                  {tab.label}
+                  {tab.count !== undefined && tab.count > 0 && (
+                    <span className={cn(
+                      'text-xs rounded-full px-1.5 py-0.5 font-semibold min-w-[1.25rem] text-center',
+                      activeTab === tab.key ? 'bg-[#4E2DD2]/10 text-[#4E2DD2]' : 'bg-gray-100 text-gray-500'
+                    )}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+            {activeTab === 'lab' && (timeline?.labResults ?? []).length > 0 && (
               <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => setLabEditMode(m => !m)}
                 className={cn(
-                  'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-                  activeTab === tab.key
-                    ? 'border-[#4E2DD2] text-[#4E2DD2]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                  'flex items-center gap-1.5 px-3 py-1.5 mb-1 rounded-lg text-xs font-medium transition-colors',
+                  labEditMode
+                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
                 )}
               >
-                {tab.icon}
-                {tab.label}
-                {tab.count !== undefined && tab.count > 0 && (
-                  <span className={cn(
-                    'text-xs rounded-full px-1.5 py-0.5 font-semibold min-w-[1.25rem] text-center',
-                    activeTab === tab.key ? 'bg-[#4E2DD2]/10 text-[#4E2DD2]' : 'bg-gray-100 text-gray-500'
-                  )}>
-                    {tab.count}
-                  </span>
-                )}
+                {labEditMode ? <><X className="w-3.5 h-3.5" /> Cancelar</> : <><Pencil className="w-3.5 h-3.5" /> Editar</>}
               </button>
-            ))}
+            )}
           </div>
         </div>
 
@@ -1152,7 +1168,7 @@ export default function PatientDetailPage() {
             />
           )}
           {activeTab === 'lab' && (
-            <LabTab patientId={id} results={timeline?.labResults ?? []} onRefresh={loadTimeline} />
+            <LabTab patientId={id} results={timeline?.labResults ?? []} onRefresh={loadTimeline} editMode={labEditMode} onExitEdit={() => setLabEditMode(false)} />
           )}
         </div>
       </div>
