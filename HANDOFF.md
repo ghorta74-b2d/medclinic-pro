@@ -1,443 +1,275 @@
 # MedClinic Pro — Handoff Completo
-> Actualizado: 2026-04-09 | Rama: `main` | Último commit: `98229f3`
+> Actualizado: 2026-04-10 | Rama: `main` | Último commit: `b13acca`
 
 ---
 
-## 1. Contexto del Proyecto
+## 1. Repositorio y acceso rápido
 
-SaaS clínico multi-tenant para LATAM. Compite con Doctoralia PRO + DrChrono.  
-Diferenciador: WhatsApp + voz IA nativos, CFDI/NOM-004, México-first.
+```
+Monorepo: /Users/gerardohorta/Library/Mobile Documents/com~apple~CloudDocs/B2D Automation/CLAUDE/CLINIC/medclinic-pro
+GitHub:   https://github.com/ghorta74-b2d/medclinic-pro
+Web prod: https://medclinic-web.vercel.app
+API prod: https://medclinic-api.vercel.app
+DB:       Supabase project gzojhcjymqtjswxqgkgk (sa-east-1)
+```
 
-**Monorepo:** `/Users/gerardohorta/Library/Mobile Documents/com~apple~CloudDocs/B2D Automation/CLAUDE/CLINIC/medclinic-pro`  
-**GitHub:** `https://github.com/ghorta74-b2d/medclinic-pro`  
-**Git push → Vercel auto-deploya ambos proyectos.**
+**Deploy:** `git push origin main` → auto-deploy en Vercel (ambos apps).
 
 ---
 
-## 2. Stack Completo
+## 2. Stack
 
 | Capa | Tech |
 |------|------|
-| Frontend | Next.js 14 App Router + Tailwind + shadcn (dark) |
-| Backend | Fastify + TypeScript → Vercel serverless |
-| ORM | Prisma + PostgreSQL (Supabase) |
-| Auth | Supabase Auth (JWT con `user_metadata.role`) |
-| Email | Resend (dominio `glasshaus.mx` verificado) |
-| Paquetes | pnpm monorepo workspace |
-
-**Paths del monorepo:**
-- `apps/web/` → Next.js
-- `apps/api/` → Fastify
-- `packages/shared/` → tipos compartidos
-- `apps/api/prisma/schema.prisma` → schema
+| Frontend | Next.js 14 App Router, Tailwind, `apps/web` |
+| Backend | Fastify + Prisma, `apps/api`, serverless en Vercel |
+| DB | Supabase Postgres (`gzojhcjymqtjswxqgkgk`) |
+| Auth | Supabase Auth — roles en `user_metadata.role` |
+| Email | Resend, dominio `glasshaus.mx`, sender `medclinic@glasshaus.mx` |
+| Shared types | `packages/medclinic-shared` |
 
 ---
 
-## 3. Infraestructura Vercel
+## 3. Credenciales
 
-| Proyecto | ID | URL Producción |
-|----------|-----|----------------|
-| medclinic-web | `prj_Sg1JAPtfDrtTxAlmBcxle48x5u7W` | `https://medclinic-web.vercel.app` |
-| medclinic-api | `prj_n6FzzeQYAsdUyEt12UNSC9kYQbqa` | `https://medclinic-api.vercel.app` |
-| **Team ID** | `team_5b8HfRA7B0605D5MRa2BQ6qA` | `ghorta74-6617s-projects` |
+| Cuenta | Email | Pass | Rol |
+|--------|-------|------|-----|
+| SuperAdmin | `ghorta74@gmail.com` | `21@Homero!` | `SUPER_ADMIN` |
 
-**Para deployar:** `git push origin main` (desde el monorepo root).  
-No hay Node.js en la máquina; usar `git push` desde terminal del usuario.
-
----
-
-## 4. Variables de Entorno (ya configuradas en Vercel)
-
-### medclinic-api
-```
-SUPABASE_URL=https://gzojhcjymqtjswxqgkgk.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...  (ver Vercel dashboard)
-DATABASE_URL=postgresql://postgres.gzojhcjymqtjswxqgkgk:hyQxCpXt26SH99Kb@aws-1-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true
-DIRECT_URL=postgresql://postgres.gzojhcjymqtjswxqgkgk:hyQxCpXt26SH99Kb@aws-1-sa-east-1.pooler.supabase.com:5432/postgres
-NODE_ENV=production
-NEXT_PUBLIC_APP_URL=https://medclinic-web.vercel.app
-RESEND_API_KEY=re_CPy8biA5_...  (ver Vercel dashboard)
-```
-
-### medclinic-web
-```
-NEXT_PUBLIC_SUPABASE_URL=https://gzojhcjymqtjswxqgkgk.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
-NEXT_PUBLIC_API_URL=https://medclinic-api.vercel.app
-```
+**Vercel Team:** `team_5b8HfRA7B0605D5MRa2BQ6qA`  
+**Web project:** `prj_Sg1JAPtfDrtTxAlmBcxle48x5u7W`  
+**API project:** `prj_n6FzzeQYAsdUyEt12UNSC9kYQbqa`  
+**DB password:** `hyQxCpXt26SH99Kb`  
+**Supabase MCP project_id:** `gzojhcjymqtjswxqgkgk`
 
 ---
 
-## 5. Credenciales de Acceso
-
-| Servicio | Usuario | Contraseña/Token |
-|----------|---------|-----------------|
-| **SuperAdmin app** | `ghorta74@gmail.com` | `21@Homero!` |
-| Supabase proyecto | `gzojhcjymqtjswxqgkgk` | via dashboard |
-| Resend | cuenta B2D | dominio `glasshaus.mx` verificado |
-
-**SuperAdmin URL:** `https://medclinic-web.vercel.app/superadmin`
-
----
-
-## 6. Arquitectura de Auth
+## 4. Roles y permisos
 
 ```
-Login → supabase.signInWithPassword()
-      → user.user_metadata.role === 'SUPER_ADMIN' → /superadmin
-      → else → /agenda
-
-Invite flow:
-  POST /api/superadmin/clinics → generateInviteLink() (GoTrue REST directo)
-                               → sendInviteEmail() (Resend REST directo)
-  Doctor click email → /auth/invite#access_token=...
-                     → setSession(access_token, refresh_token)
-                     → form set-password → updateUser({password})
-                     → /agenda
+SUPER_ADMIN → /superadmin        (panel de todas las clínicas)
+ADMIN       → /dashboard          (dueño/médico principal — acceso COMPLETO)
+DOCTOR      → /agenda             (médico — acceso COMPLETO)
+STAFF       → /dashboard          (administrativo — acceso RESTRINGIDO)
 ```
 
-**Roles:** `SUPER_ADMIN | ADMIN | DOCTOR | STAFF`  
-**En Supabase:** `user_metadata.role`
+### STAFF — restricciones específicas
+- **Sidebar:** solo Dashboard, Agenda, Pacientes, Cobros, Configuración
+- **Pacientes/[id]:** solo tab Recetas (puede ver/imprimir, NO crear ni editar recetas)
+- **Pacientes/[id]:** SÍ puede editar datos personales del paciente
+- **Configuración:** solo tabs Horarios y Catálogo (no Perfil, Usuarios, Pagos, etc.)
+- **Asistente IA:** oculto en dashboard
 
-### Fix crítico de auth (sesión 2026-04-09)
-En `apps/api/src/middleware/auth.ts` el `doctorId` ahora se popula tanto para `DOCTOR` como para `ADMIN`:
+### ADMIN — igual que DOCTOR (acceso completo)
+- Tabs completos en expediente: Consultas, Recetas, Laboratorio
+- Crear notas clínicas, recetas, ver laboratorios
+
+### Patrón correcto de checks
 ```typescript
-// ADMIN users también tienen registro en tabla Doctor (mismo modelo)
-if (meta.role === 'DOCTOR' || meta.role === 'ADMIN') {
-  const doctor = await prisma.doctor.findFirst({
-    where: { authUserId: supabaseUser.id, clinicId: meta.clinic_id },
-    select: { id: true },
-  })
-  doctorId = doctor?.id
-}
-```
-**Sin esto:** ADMIN recibe 403 en todos los endpoints con `requireDoctor` (prescripciones, notas clínicas).
+// Expediente paciente — restringir solo STAFF
+const isReadOnly = userRole === 'STAFF'
 
----
-
-## 7. Archivos Críticos
-
-```
-apps/web/src/
-  app/(auth)/login/page.tsx                     — Login email+password, redirige por rol
-  app/auth/invite/page.tsx                      — Activar cuenta (set password) post-invite
-  app/superadmin/layout.tsx                     — Nav superadmin + LogoutButton
-  app/superadmin/logout-button.tsx              — Client component para cerrar sesión
-  app/superadmin/page.tsx                       — Dashboard superadmin
-  app/superadmin/clinicas/page.tsx              — Lista de clínicas
-  app/superadmin/clinicas/[id]/page.tsx         — Detalle clínica
-  app/superadmin/clinicas/nueva/page.tsx        — Crear clínica
-  app/superadmin/configuracion/page.tsx         — Gestión usuarios
-  app/(dashboard)/agenda/page.tsx               — Agenda médica con slots
-  app/(dashboard)/agenda/[id]/page.tsx          — Detalle de cita + cambio de estado
-  app/(dashboard)/pacientes/page.tsx            — Lista de pacientes
-  app/(dashboard)/pacientes/[id]/page.tsx       — Expediente completo (edit + tabs)
-  app/(dashboard)/recetas/page.tsx              — Lista de recetas (cards 3-zonas)
-  app/(dashboard)/recetas/[id]/page.tsx         — Vista impresión/PDF receta (NEW)
-  app/(dashboard)/cobros/page.tsx               — Facturación
-  app/(dashboard)/asistente-ia/page.tsx         — IA agents
-  app/(dashboard)/dashboard/page.tsx            — Dashboard clínica
-  components/agenda/new-appointment-dialog.tsx  — Dialog nueva cita (quick patient reg)
-  components/patients/new-patient-dialog.tsx    — Dialog nuevo paciente (+52)
-  components/prescriptions/prescription-builder.tsx — Builder recetas (create+edit)
-  lib/api.ts                                    — Cliente HTTP (ver patrón crítico)
-
-apps/api/src/
-  routes/superadmin.ts          — Endpoints /api/superadmin/*
-  routes/configuracion.ts       — Endpoints /api/configuracion/*
-  routes/patients.ts            — CRUD pacientes
-  routes/appointments.ts        — CRUD citas
-  routes/prescriptions.ts       — CRUD recetas + PATCH + PDF + WhatsApp
-  services/pdf.ts               — Generador PDF (usa licenseNumber, no cedula)
-  middleware/auth.ts            — Guard JWT (doctorId para DOCTOR y ADMIN)
-  lib/prisma.ts                 — Prisma client singleton
-  lib/errors.ts                 — Helpers sendError / Errors.UNAUTHORIZED
-  server.ts                     — Fastify setup + CORS
-  api/index.ts                  — Handler serverless Vercel
-
-apps/api/prisma/schema.prisma   — Modelos: Clinic, Doctor, Patient, Prescription, etc.
+// Dashboard/layout — ambos roles van al panel admin
+const isAdmin = userRole === 'ADMIN' || userRole === 'STAFF'
 ```
 
 ---
 
-## 8. Patrón API Client (CRÍTICO — no romper)
+## 5. Archivos críticos
 
-En `apps/web/src/lib/api.ts`:
+### Frontend `apps/web/src/`
+
+| Archivo | Qué hace |
+|---------|----------|
+| `lib/api.ts` | Cliente API + `getUserRole()` + singleton Supabase + token cache TTL |
+| `app/(auth)/login/page.tsx` | Login — redirect por rol, supabase singleton a nivel módulo |
+| `app/auth/invite/page.tsx` | Activación cuenta — supabase singleton a nivel módulo (crítico) |
+| `app/(dashboard)/dashboard/page.tsx` | KPIs + quick actions diferenciados por rol |
+| `app/(dashboard)/pacientes/[id]/page.tsx` | Expediente — roles, tabs, audit trail, PatientProfileModal |
+| `app/(dashboard)/cobros/page.tsx` | Facturación Día/Semana/Mes — counts del período correcto |
+| `app/(dashboard)/configuracion/page.tsx` | Config — tabs filtradas por rol |
+| `app/(dashboard)/recetas/[id]/page.tsx` | Impresión de receta — botón "Ver perfil completo" |
+| `components/layout/sidebar.tsx` | `h-screen sticky` — Cerrar sesión siempre visible |
+| `components/billing/invoice-detail-dialog.tsx` | Modal factura — badge "Registrado por" |
+| `components/billing/new-invoice-dialog.tsx` | Nueva factura — 16 aseguradoras mexicanas |
+
+### Backend `apps/api/src/`
+
+| Archivo | Qué hace |
+|---------|----------|
+| `routes/billing.ts` | insurerName, recordedByName, paidInvoiceCount por período |
+| `routes/prescriptions.ts` | GET / y /:id usan `requireStaff` (STAFF puede ver/imprimir) |
+| `routes/patients.ts` | PATCH guarda lastModifiedByName + lastModifiedAt |
+| `routes/configuracion.ts` | Invite: type:'invite' nuevos / type:'recovery' existentes |
+| `middleware/auth.ts` | requireDoctor=DOCTOR+ADMIN+SUPER_ADMIN / requireStaff=+STAFF |
+| `prisma/schema.prisma` | Schema fuente de verdad |
+
+---
+
+## 6. Patrones críticos — NO romper
+
+### A. Supabase client singleton
 ```typescript
-// Content-Type se setea SOLO cuando hay body — no enviar en POST sin body
-...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {})
+// SIEMPRE a nivel módulo, NUNCA dentro de un componente/función
+const supabase = createBrowserClient(URL, KEY)
+// Si está adentro del componente → nueva instancia cada render → pierde sesión
 ```
-**Por qué:** Fastify lanza 400 si recibe `Content-Type: application/json` con body vacío.
 
-**Formato de errores del API:**
-```json
-{ "error": { "message": "descripción del error" } }
-```
-El cliente los convierte a `new Error(error?.error?.message ?? 'HTTP ${status}')`.
-
-**Métodos disponibles en `api.ts`:**
+### B. getUserRole() — JWT cacheado
 ```typescript
-api.patients.list(clinicId)
-api.patients.get(id)
-api.patients.create(data)
-api.patients.update(id, data)
-api.appointments.list(clinicId, filters)
-api.appointments.create(data)
-api.appointments.update(id, data)
-api.prescriptions.list(clinicId, filters)
-api.prescriptions.get(id)
-api.prescriptions.create(data)
-api.prescriptions.update(id, data)          // PATCH — edit mode
-api.prescriptions.generatePdf(id)
-api.prescriptions.sendWhatsApp(id, phone)
-api.prescriptions.searchMedications(q)
+// En api.ts — decodifica role del JWT sin llamar getSession() extra
+export async function getUserRole(): Promise<string | null>
+
+// En componentes:
+const [userRole, setUserRole] = useState<string | null>(null)
+useEffect(() => { getUserRole().then(r => setUserRole(r)) }, [])
 ```
 
----
-
-## 9. Modelo de Datos Clave
-
-```
-Clinic (1) → (N) Doctor   [clinicId]
-Clinic (1) → (N) Patient  [clinicId]
-Doctor — authUserId: String?     (null = invite pendiente)
-Doctor — role: SUPER_ADMIN | ADMIN | DOCTOR | STAFF
-Doctor — licenseNumber: String?  // Cédula profesional (NO "cedula" — ese campo NO existe)
-
-Prescription (1) → (N) PrescriptionItem
-Prescription — status: ACTIVE | CANCELLED | EXPIRED
-Prescription — pdfUrl: String?   (se invalida a null cuando se editan items)
-```
-
-**Invite pendiente** = `authUserId === null`  
-**Activo** = `authUserId !== null && isActive === true`
-
----
-
-## 10. Sistema de Recetas — Arquitectura Completa
-
-### Endpoints API (`/api/prescriptions`)
-```
-GET    /             — lista con filtros (clinicId, patientId, status, search)
-GET    /:id          — detalle con patient, doctor, items
-POST   /             — crear (requireDoctor)
-PATCH  /:id          — editar items/instructions/followUpDate (requireDoctor)
-POST   /:id/pdf      — genera PDF (usa @react-pdf/renderer — puede fallar en Vercel cold start)
-POST   /:id/whatsapp — envía PDF por WhatsApp
-GET    /medications/search?q= — búsqueda de medicamentos
-```
-
-### PDF — Problema conocido con Vercel
-`@react-pdf/renderer` usa `yoga-layout` (binario nativo) que crashea en Vercel serverless cold start.  
-**Workaround actual:** página de impresión client-side en `/recetas/[id]`.  
-El botón "Ver / Imprimir" navega a esa página. El usuario usa Ctrl+P / Cmd+P → "Guardar como PDF".  
-El endpoint `POST /:id/pdf` todavía existe pero no se usa en la UI principal.
-
-### WhatsApp + PDF
-El feature de WhatsApp llama a `POST /:id/whatsapp` que requiere un `pdfUrl` almacenado.  
-Cuando se edita una receta con items nuevos, `pdfUrl` se invalida a `null`.  
-**Estado actual:** Si se edita una receta, hay que regenerar el PDF antes de enviar por WhatsApp.  
-Este flujo no está 100% pulido en la UI — pendiente de mejora.
-
-### Vista de impresión (`/recetas/[id]/page.tsx`)
-- Toolbar con "Volver" e "Imprimir / Guardar PDF" (oculto en print)
-- Documento estilo receta real: encabezado clínica, datos doctor con `licenseNumber`, datos paciente, símbolo ℞, medicamentos con raya lateral azul, instrucciones, área de firma
-- CSS `@media print { @page { size: Letter; margin: 0; } body { print-color-adjust: exact } }`
-
-### PrescriptionBuilder (`prescription-builder.tsx`)
-Acepta prop `existing?: ExistingPrescription` para modo edición:
+### C. Token cache
 ```typescript
-interface ExistingPrescription {
-  id: string
-  patientId: string
-  patientName: string
-  items: RxItem[]
-  instructions: string
-  followUpDate: string
-}
+let _tokenCache: { token: string; expiresAt: number } | null = null
+// Invalida en 401 responses automáticamente
+// TTL = JWT expiry - 60s (nunca envía token expirado)
 ```
-- Cuando `existing` está presente: paciente bloqueado (no editable), title "Editar receta", llama PATCH
-- Cuando `existing` es undefined: modo creación normal, llama POST
 
----
-
-## 11. Sistema de Pacientes — Registro con Teléfono
-
-### Validación de teléfono (implementada en 2026-04-09)
-Todos los forms de registro de paciente usan prefijo fijo `+52`:
-- Solo se capturan 10 dígitos
-- Validación: `phoneDigits.length !== 10` → error en submit
-- Se guarda como `+52XXXXXXXXXX` en la BD
-- Al editar: `extractPhone()` quita el `+52` para mostrar solo los 10 dígitos
-
+### D. Reenviar invitación (configuracion.ts)
 ```typescript
-// Patrón de extracción (en EditPatientModal):
-function extractPhone(phone: string): string {
-  if (phone?.startsWith('+52')) return phone.slice(3)
-  return phone ?? ''
-}
+// Sin authUserId → usuario NUEVO → type:'invite' + guardar authUserId
+// Con authUserId → usuario EXISTENTE → type:'recovery' (password reset)
+// Ambos redirigen a /auth/invite
 ```
 
-Archivos con esta lógica:
-- `new-patient-dialog.tsx` — registro standalone
-- `new-appointment-dialog.tsx` — quick registration en la agenda
-- `pacientes/[id]/page.tsx` → `EditPatientModal` — edición desde expediente
+### E. PDF en Vercel
+```
+NO: @react-pdf/renderer → crashea yoga-layout en serverless
+SÍ: página /recetas/[id] con CSS print + window.print()
+```
 
-### EditPatientModal (en `pacientes/[id]/page.tsx`)
-Formulario completo de edición. Cubre:
-- Datos básicos: nombre, teléfono (+52), email, fecha de nacimiento, género, tipo de sangre, CURP
-- Dirección: calle/num, ciudad, estado
-- Antecedentes médicos: alergias, condiciones crónicas, medicamentos actuales (comma-separated → array), notas
-- Contacto de emergencia: nombre, teléfono
-- Llama `api.patients.update(patient.id, {...})`
-
----
-
-## 12. Prisma — Gotchas Importantes
-
-### Campo `licenseNumber` vs `cedula`
-El schema Prisma tiene `licenseNumber` con comentario `// Cédula profesional`.  
-El código histórico usaba `cedula` — **esto causaba HTTP 500** en producción.  
-Todos los selects de Doctor en `prescriptions.ts` y `services/pdf.ts` ya usan `licenseNumber`.  
-Si agregas nuevas queries a Doctor, usar `licenseNumber` (nunca `cedula`).
-
-### Migrations
-La DB fue creada con SQL directo. `_prisma_migrations` está vacía.  
-`prisma migrate deploy` fallaría (no hay historial de migrations).  
-Usar `prisma db push` para cambios de schema si es necesario.
-
-### Binary targets (no cambiar)
-```prisma
-binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
+### F. Teléfono
+```
+Formato DB: +52XXXXXXXXXX (prefijo fijo México, 10 dígitos)
 ```
 
 ---
 
-## 13. Problemas Resueltos (sesión 2026-04-09)
+## 7. DB — columnas agregadas con SQL directo
 
-| Problema | Causa raíz | Fix |
-|----------|-----------|-----|
-| 403 Forbidden al crear receta (ADMIN) | `doctorId` solo se poblaba para rol `DOCTOR` en `auth.ts` | Cambiar a `DOCTOR \|\| ADMIN` con `findFirst` + `clinicId` |
-| HTTP 500 al crear receta | `cedula: true` en select Prisma pero el campo es `licenseNumber` | `replace_all` en `prescriptions.ts` y `pdf.ts` |
-| HTTP 500 al generar PDF | `yoga-layout` (binario) crashea en Vercel serverless | Reemplazar con página de impresión client-side `/recetas/[id]` |
-| No se podía editar paciente creado en agenda | No había botón ni modal en `/pacientes/[id]` | `EditPatientModal` completo + botón "Editar" en header |
-| Teléfono sin validación de 10 dígitos | Forms no tenían prefijo fijo ni validación | `+52` fijo + `maxLength={10}` + validate on submit |
-| No se podía editar receta desde paciente | Sin botón y sin soporte edit en `PrescriptionBuilder` | Botón "Editar" + `existing` prop en builder |
-| No había botón imprimir en /pacientes recetas | Tab `PrescriptionsTab` sin acciones | Botones "Ver / Imprimir" + "Editar" en cada card |
-| UI de recetas en paciente muy plana | Sin jerarquía visual | Cards 3-zonas: header (doctor/fecha/status) + body (medicamentos numerados) + footer (acciones) |
-| No se podía crear receta desde expediente | Sin botón en `PrescriptionsTab` | Botón "Nueva receta" con `patientId` pre-cargado |
+No hay `_prisma_migrations`. Los cambios de schema se hacen con:
+1. Editar `apps/api/prisma/schema.prisma`
+2. Ejecutar SQL en Supabase MCP
 
----
+```sql
+-- Audit trail en pacientes
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS "lastModifiedByName" TEXT;
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS "lastModifiedAt" TIMESTAMPTZ;
 
-## 14. Commits de Esta Sesión
-
-```
-98229f3  feat: rediseño recetas + editar receta desde paciente + vista imprimir
-b43e6b3  feat(recetas): editar receta, PATCH endpoint y nueva receta desde paciente
-cc8beb7  fix(prescriptions): renombrar campo cedula→licenseNumber
-9b54a93  fix(auth): poblar doctorId en authUser para rol ADMIN
-d43e438  feat(pacientes): editar paciente desde expediente y teléfono +52
+-- Registro de quién cobró y con qué aseguradora
+ALTER TABLE payment_records ADD COLUMN IF NOT EXISTS "recordedByName" TEXT;
+ALTER TABLE payment_records ADD COLUMN IF NOT EXISTS "insurerName" TEXT;
 ```
 
 ---
 
-## 15. Estado de Deploy
+## 8. Funcionalidades completas ✅
 
-| Commits | Estado |
-|---------|--------|
-| `main` local | ✅ Al día |
-| `origin/main` | ✅ Pusheado |
-| Vercel | ✅ Desplegado (2026-04-09) |
+### Autenticación y roles
+- Login → redirige por rol: SUPER_ADMIN→/superadmin, ADMIN/STAFF→/dashboard, DOCTOR→/agenda
+- Invitación vía email Resend con link de activación `/auth/invite`
+- Reenviar invitación: funciona para nuevos (invite) y existentes (recovery)
+- Detección de rol via JWT — sin extra llamadas a Supabase
 
----
+### Expediente de paciente
+- Tabs por rol: ADMIN/DOCTOR ven Consultas+Recetas+Lab, STAFF solo Recetas
+- Modal "Ver perfil completo" debajo del avatar — todos los campos readonly + botón Editar
+- Audit trail: "Modificado por [Nombre] · timestamp" en hero y en modal perfil
+- Signos vitales: solo muestra valores capturados (oculta nulls)
+- Notas clínicas con firma digital, edición de examen físico como texto libre
 
-## 16. Pendientes / Next Steps
+### Facturación (Cobros)
+- Vista Día / Semana / Mes con gráfica de ingresos
+- KPI "X facturas" muestra count del período seleccionado (no de toda la BD)
+- Badge "Registrado por [Nombre] · fecha" en el modal de detalle de factura
+- 16 aseguradoras mexicanas de gastos médicos en el selector de método de pago
+- Columna Aseguradora en tabla (muestra insurerName del pago)
+- Columna Concepto muestra descripción real del primer ítem
 
-### Alta prioridad
-- [x] **Push a producción:** desplegado en Vercel el 2026-04-09
-- [ ] **Test flujo completo de recetas:** crear → ver en /recetas → abrir /recetas/[id] → imprimir → editar → ver cambios
-- [ ] **WhatsApp + PDF:** El `pdfUrl` se invalida al editar una receta. Hay que decidir: (a) regenerar PDF automáticamente en el PATCH, o (b) deshabilitar WhatsApp si no hay `pdfUrl`
+### Recetas
+- STAFF puede ver e imprimir recetas (GET usa requireStaff)
+- Botón "Ver perfil completo" en página de impresión
+- Print page con CSS media query + window.print()
 
-### Media prioridad
-- [ ] **Dashboard clínica** — `clinicName` hardcodeado vacío, fetching desde `/api/configuracion/clinic`
-- [ ] **Asistente IA** — KPIs reales desde API
-- [ ] **Facturación** — chart de ingresos con datos reales
-- [ ] **Prisma migrations** — sincronizar `_prisma_migrations` con el estado actual del DB
+### Sidebar
+- `h-screen sticky top-0` — Configuración y Cerrar sesión siempre visibles sin importar el scroll
+- STAFF ve menú reducido (4 items + Config)
 
-### Baja prioridad
-- [ ] Limpiar `console.log` debug en `superadmin.ts` y `api/index.ts`
-- [ ] Paginación en `/api/superadmin/all-users` (actualmente `take: 200`)
-- [ ] Test invite flow completo con email real
+### Configuración
+- STAFF: solo tabs Horarios y Catálogo
+- Todos los demás roles: todos los tabs
 
----
+### Cards / UI
+- `border border-gray-300 shadow-sm` en todos los cards del sitio
+- Headers de cards `bg-gray-200 border-b border-gray-300`
+- Avatar iniciales `bg-[#4E2DD2]/20`
 
-## 17. Endpoints Disponibles
-
-### Superadmin
-```
-GET    /api/superadmin/stats
-GET    /api/superadmin/clinics?q=
-POST   /api/superadmin/clinics
-GET    /api/superadmin/clinics/:id
-PATCH  /api/superadmin/clinics/:id
-POST   /api/superadmin/clinics/:id/doctors
-POST   /api/superadmin/clinics/:id/doctors/:doctorId/resend-invite
-PATCH  /api/superadmin/doctors/:doctorId
-GET    /api/superadmin/admins
-POST   /api/superadmin/admins
-PATCH  /api/superadmin/admins/:userId
-GET    /api/superadmin/all-users?q=&clinicId=
-```
-
-### Clinic API
-```
-GET/POST/PATCH   /api/patients
-GET/POST/PATCH   /api/appointments
-GET/POST/PATCH   /api/prescriptions
-POST             /api/prescriptions/:id/pdf
-POST             /api/prescriptions/:id/whatsapp
-GET              /api/prescriptions/medications/search?q=
-GET/PATCH        /api/configuracion/clinic
-GET/POST/PATCH   /api/configuracion/doctors
-GET/POST/PATCH   /api/configuracion/schedules
-```
+### Laboratorio
+- Upload PDF, análisis con IA (Claude claude-sonnet-4-5), notas médico
+- Edit mode toggle — checkboxes solo visibles al activar modo edición
+- Delete múltiple de estudios
 
 ---
 
-## 18. Supabase — Configuración Actual
+## 9. Pendientes / bugs conocidos ⚠️
 
-- **Proyecto:** `gzojhcjymqtjswxqgkgk`
-- **Site URL:** `https://medclinic-web.vercel.app`
-- **Redirect URLs:** `https://medclinic-web.vercel.app/**`
-- **SMTP:** Resend, sender `medclinic@glasshaus.mx`, nombre `MedClinic PRO`
+| # | Descripción | Prioridad |
+|---|-------------|-----------|
+| 1 | **RecordPaymentDialog** no tiene campo insurerName (solo NewInvoiceDialog) | Media |
+| 2 | **Warm-up ping** — cold start Vercel 2-4s. Sugerido: llamar endpoint barato al login | Baja |
+| 3 | **WhatsApp PDF** — pdfUrl se invalida al editar receta | Baja |
+| 4 | **Ruta /resultados** en sidebar — verificar si existe o eliminar | Media |
+| 5 | **Dashboard clínica** — nombre de clínica no se muestra en header | Baja |
+| 6 | **Asistente IA KPIs** — datos de ejemplo, no conectados a BD real | Baja |
+| 7 | **Prisma migrations** — BD sin historial de migrations | Técnica |
 
 ---
 
-## 19. Comandos de Debug Rápido
+## 10. Catálogos incluidos
 
-```typescript
-// Ver logs del API en Vercel MCP:
-mcp.vercel.get_runtime_logs({ projectId: 'prj_n6FzzeQYAsdUyEt12UNSC9kYQbqa', teamId: 'team_5b8HfRA7B0605D5MRa2BQ6qA' })
+### Aseguradoras México (gastos médicos)
+```
+AXA Seguros, GNP Seguros, Mapfre, MetLife, BBVA Seguros,
+Seguros Monterrey NY Life, Allianz, Zurich, Cigna, Bupa,
+SURA, HDI Seguros, Banorte Seguros, Inbursa Seguros,
+Seguros Atlas, Otro
+```
+Ubicación: `apps/web/src/components/billing/new-invoice-dialog.tsx`
 
-// Ver deployments:
-mcp.vercel.list_deployments({ projectId: 'prj_n6FzzeQYAsdUyEt12UNSC9kYQbqa', teamId: 'team_5b8HfRA7B0605D5MRa2BQ6qA' })
+---
 
-// Ver tablas DB / queries:
-mcp.supabase.execute_sql({ query: 'SELECT * FROM "Prescription" LIMIT 5' })
-mcp.supabase.execute_sql({ query: 'SELECT id, "authUserId", role, "licenseNumber" FROM "Doctor" LIMIT 10' })
+## 11. Comandos útiles
+
+```bash
+# Dev local
+cd "apps/web" && pnpm dev     # localhost:3000
+cd "apps/api" && pnpm dev     # localhost:3001
+
+# Deploy
+git push origin main          # auto-deploy ambos en Vercel
+
+# Regenerar Prisma client
+cd apps/api && npx prisma generate
+
+# TypeScript check
+npx tsc --noEmit -p apps/web/tsconfig.json
+npx tsc --noEmit -p apps/api/tsconfig.json
 ```
 
 ---
 
-## 20. Convenciones de Código
+## 12. Contexto de negocio
 
-- **Error format API:** siempre `{ error: { message: string } }` — nunca Fastify default
-- **Auth guard:** `reply.status(401)` para no autenticado, `reply.status(403)` para no autorizado
-- **requireDoctor:** endpoint solo para DOCTOR y ADMIN (ambos tienen registro en tabla Doctor)
-- **Invites:** GoTrue REST directo (`/auth/v1/admin/generate_link`) + Resend REST directo — NO usar JS SDK
-- **Redirect post-invite:** Siempre a `/auth/invite` (no `/dashboard`)
-- **Prisma en Vercel:** `binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]`
-- **CORS:** `apps/api/src/server.ts` permite `medclinic-web*.vercel.app` con función origin
-- **Campo Doctor cédula:** `licenseNumber` en Prisma — nunca `cedula`
-- **Teléfono paciente:** guardado como `+52XXXXXXXXXX` (10 dígitos después del prefijo)
-- **PDF:** No usar `@react-pdf/renderer` en endpoints Vercel — usar página de impresión client-side
+- **Mercado:** LATAM, enfoque México (CURP, SPEI, aseguradoras locales, WhatsApp)
+- **Modelo:** SaaS — un SuperAdmin gestiona múltiples clínicas independientes
+- **Usuarios tipo clínica:** ADMIN (dueño médico) + DOCTORs + STAFF (recepcionista/admin)
+- **Canal pacientes:** WhatsApp (principal), email
+- **Flujo típico:** STAFF agenda cita + registra cobro → DOCTOR atiende + firma nota → STAFF imprime receta
+- **Proyecto separado NO tocar:** `doctor-calendar` (github.com/ghorta74-b2d/doctor-calendar)
