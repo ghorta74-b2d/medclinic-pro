@@ -8,7 +8,7 @@ import { formatTime, formatCurrency, formatDate } from '@/lib/utils'
 import {
   Users, TrendingUp, Clock, Plus, UserPlus,
   FileText, Link2, Video, MessageSquare, Bot, Loader2,
-  ChevronRight
+  ChevronRight, CreditCard
 } from 'lucide-react'
 import { NewAppointmentDialog } from '@/components/agenda/new-appointment-dialog'
 import { NewPatientDialog } from '@/components/patients/new-patient-dialog'
@@ -88,6 +88,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [showNewApt, setShowNewApt] = useState(false)
   const [showNewPat, setShowNewPat] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
 
   const today = new Date()
 
@@ -121,6 +122,19 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // Load user role once
+  useEffect(() => {
+    import('@supabase/ssr').then(({ createBrowserClient }) => {
+      const sb = createBrowserClient(
+        process.env['NEXT_PUBLIC_SUPABASE_URL']!,
+        process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
+      )
+      sb.auth.getSession().then(({ data: { session } }) => {
+        setUserRole(session?.user?.user_metadata?.role ?? null)
+      })
+    })
+  }, [])
 
   const todayStr = formatDate(today, "EEEE, d 'de' MMMM yyyy")
   const upcomingApts = appointments
@@ -171,14 +185,24 @@ export default function DashboardPage() {
     },
   ]
 
-  const quickActions = [
-    { label: 'Nueva cita', icon: Plus, color: 'bg-blue-600 hover:bg-blue-700 text-white', onClick: () => setShowNewApt(true) },
-    { label: 'Nuevo paciente', icon: UserPlus, color: 'bg-green-600 hover:bg-green-700 text-white', onClick: () => setShowNewPat(true) },
-    { label: 'Nota clínica', icon: FileText, color: 'bg-purple-600 hover:bg-purple-700 text-white', onClick: () => router.push('/expediente') },
-    { label: 'Liga de pago', icon: Link2, color: 'bg-orange-500 hover:bg-orange-600 text-white', onClick: () => router.push('/cobros') },
-    { label: 'Telemedicina', icon: Video, color: 'bg-teal-600 hover:bg-teal-700 text-white', onClick: () => router.push('/telemedicina') },
-    { label: 'Enviar WhatsApp', icon: MessageSquare, color: 'bg-emerald-600 hover:bg-emerald-700 text-white', onClick: () => {} },
-  ]
+  const isAdmin = userRole === 'ADMIN'
+
+  const quickActions = isAdmin
+    ? [
+        { label: 'Nueva cita',      icon: Plus,        color: 'bg-blue-600 hover:bg-blue-700 text-white',    onClick: () => setShowNewApt(true) },
+        { label: 'Nuevo paciente',  icon: UserPlus,    color: 'bg-green-600 hover:bg-green-700 text-white',  onClick: () => setShowNewPat(true) },
+        { label: 'Registrar pago',  icon: CreditCard,  color: 'bg-purple-600 hover:bg-purple-700 text-white', onClick: () => router.push('/cobros') },
+        { label: 'Link de pago',    icon: Link2,       color: 'bg-orange-500 hover:bg-orange-600 text-white', onClick: () => router.push('/cobros') },
+        { label: 'Enviar WhatsApp', icon: MessageSquare, color: 'bg-emerald-600 hover:bg-emerald-700 text-white', onClick: () => {} },
+      ]
+    : [
+        { label: 'Nueva cita',      icon: Plus,        color: 'bg-blue-600 hover:bg-blue-700 text-white',    onClick: () => setShowNewApt(true) },
+        { label: 'Nuevo paciente',  icon: UserPlus,    color: 'bg-green-600 hover:bg-green-700 text-white',  onClick: () => setShowNewPat(true) },
+        { label: 'Nota clínica',    icon: FileText,    color: 'bg-purple-600 hover:bg-purple-700 text-white', onClick: () => router.push('/expediente') },
+        { label: 'Liga de pago',    icon: Link2,       color: 'bg-orange-500 hover:bg-orange-600 text-white', onClick: () => router.push('/cobros') },
+        { label: 'Telemedicina',    icon: Video,       color: 'bg-teal-600 hover:bg-teal-700 text-white',    onClick: () => router.push('/telemedicina') },
+        { label: 'Enviar WhatsApp', icon: MessageSquare, color: 'bg-emerald-600 hover:bg-emerald-700 text-white', onClick: () => {} },
+      ]
 
   // Build chart in local timezone from raw API payments (avoids UTC vs local day mismatch)
   const chartData = (() => {
@@ -315,23 +339,25 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* AI activity feed */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <Bot className="w-4 h-4 text-blue-600" />
-                <h2 className="text-sm font-semibold text-gray-900">Asistente IA · Actividad reciente</h2>
+            {/* AI activity feed — hidden for ADMIN role */}
+            {!isAdmin && (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                  <Bot className="w-4 h-4 text-blue-600" />
+                  <h2 className="text-sm font-semibold text-gray-900">Asistente IA · Actividad reciente</h2>
+                </div>
+                <div className="px-4 py-8 text-center">
+                  <Bot className="w-8 h-8 mx-auto mb-2 text-gray-200" />
+                  <p className="text-xs text-gray-400">Sin actividad reciente</p>
+                </div>
+                <div className="px-4 py-2 border-t border-gray-100">
+                  <button onClick={() => router.push('/asistente-ia')}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                    Ver todos los eventos <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
-              <div className="px-4 py-8 text-center">
-                <Bot className="w-8 h-8 mx-auto mb-2 text-gray-200" />
-                <p className="text-xs text-gray-400">Sin actividad reciente</p>
-              </div>
-              <div className="px-4 py-2 border-t border-gray-100">
-                <button onClick={() => router.push('/asistente-ia')}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-                  Ver todos los eventos <ChevronRight className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

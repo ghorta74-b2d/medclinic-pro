@@ -4,17 +4,18 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 
+// Singleton — must NOT be inside the component to avoid re-creation on render
+const supabase = createBrowserClient(
+  process.env['NEXT_PUBLIC_SUPABASE_URL']!,
+  process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
+)
+
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  const supabase = createBrowserClient(
-    process.env['NEXT_PUBLIC_SUPABASE_URL']!,
-    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
-  )
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -32,6 +33,8 @@ export default function LoginPage() {
     const role = data.user?.user_metadata?.role
     if (role === 'SUPER_ADMIN') {
       router.push('/superadmin')
+    } else if (role === 'ADMIN') {
+      router.push('/dashboard')
     } else {
       router.push('/agenda')
     }
