@@ -78,16 +78,16 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 min-h-screen bg-gray-900 text-white flex flex-col">
+    <aside className="w-64 min-h-screen bg-[#2B225F] text-white flex flex-col">
       {/* Brand */}
-      <div className="px-6 py-5 border-b border-gray-800">
+      <div className="px-6 py-5 border-b border-[#3D3075]">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 bg-[#4E2DD2] rounded-xl flex items-center justify-center shrink-0">
             <Stethoscope className="w-5 h-5 text-white" />
           </div>
           <div>
             <p className="text-sm font-bold leading-none text-white">MedClinic Pro</p>
-            <p className="text-xs text-gray-400 mt-0.5">Gestión Clínica</p>
+            <p className="text-xs text-[rgba(231,235,239,0.6)] mt-0.5">Gestión Clínica</p>
           </div>
         </div>
       </div>
@@ -105,8 +105,8 @@ export function Sidebar() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  ? 'bg-[#E7EBEF] text-[#2B225F]'
+                  : 'text-[rgba(231,235,239,0.7)] hover:bg-[#3D3075] hover:text-white'
               )}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -117,11 +117,11 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom */}
-      <div className="px-3 py-4 border-t border-gray-800 space-y-0.5">
+      <div className="px-3 py-4 border-t border-[#3D3075] space-y-0.5">
         {/* User info */}
         {(userName || isStaff) && (
           <div className="px-3 py-2 mb-1">
-            {userName && <p className="text-xs text-gray-300 font-medium truncate">{userName}</p>}
+            {userName && <p className="text-xs text-[rgba(231,235,239,0.9)] font-medium truncate">{userName}</p>}
             {isStaff && (
               <span className="inline-flex items-center gap-1 text-xs bg-orange-900/40 text-orange-300 px-2 py-0.5 rounded-full mt-0.5">
                 <Shield className="w-3 h-3" /> Administrativo
@@ -140,8 +140,8 @@ export function Sidebar() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  ? 'bg-[#E7EBEF] text-[#2B225F]'
+                  : 'text-[rgba(231,235,239,0.7)] hover:bg-[#3D3075] hover:text-white'
               )}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -152,7 +152,7 @@ export function Sidebar() {
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-red-400 transition-colors w-full text-left">
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[rgba(231,235,239,0.7)] hover:bg-[#3D3075] hover:text-red-300 transition-colors w-full text-left">
           <LogOut className="w-4 h-4 shrink-0" />
           Cerrar sesión
         </button>

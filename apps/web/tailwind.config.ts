@@ -39,6 +39,20 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        sidebar: {
+          DEFAULT: '#2B225F',
+          active: '#E7EBEF',
+          border: '#3D3075',
+          text: 'rgba(231,235,239,0.7)',
+        },
+        success: {
+          DEFAULT: '#389475',
+          foreground: '#ffffff',
+        },
+        warning: {
+          DEFAULT: '#F59F0A',
+          foreground: '#ffffff',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',
