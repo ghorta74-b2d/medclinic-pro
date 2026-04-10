@@ -391,6 +391,12 @@ const DURATION_OPTIONS = [15, 20, 30, 45, 60, 90]
 type DayConfig = { enabled: boolean; start: string; end: string }
 type WeekConfig = Record<string, DayConfig>
 
+// Map short key → long key for old DB format
+const SHORT_TO_LONG: Record<string, string> = {
+  mon: 'monday', tue: 'tuesday', wed: 'wednesday',
+  thu: 'thursday', fri: 'friday', sat: 'saturday', sun: 'sunday',
+}
+
 function scheduleToWeek(cfg: any): WeekConfig {
   const defaults: Record<string, DayConfig> = {
     mon: { enabled: true,  start: '09:00', end: '19:00' },
@@ -404,12 +410,16 @@ function scheduleToWeek(cfg: any): WeekConfig {
   if (!cfg || typeof cfg !== 'object') return defaults
   const result: WeekConfig = { ...defaults }
   for (const day of DAYS.map(d => d.key)) {
-    const val = cfg[day]
+    // Support both short ('mon') and long ('monday') key formats
+    const val = cfg[day] ?? cfg[SHORT_TO_LONG[day] ?? '']
     if (Array.isArray(val) && val.length > 0) {
+      // New format: { mon: [{ start, end }] }
       result[day] = { enabled: true, start: val[0].start ?? '09:00', end: val[0].end ?? '18:00' }
-    } else if (val === undefined || val === null) {
-      result[day] = { ...defaults[day]!, enabled: false }
+    } else if (val && typeof val === 'object' && !Array.isArray(val)) {
+      // Old format: { monday: { start, end, enabled } }
+      result[day] = { enabled: val.enabled !== false, start: val.start ?? '09:00', end: val.end ?? '18:00' }
     }
+    // else: keep default
   }
   return result
 }
