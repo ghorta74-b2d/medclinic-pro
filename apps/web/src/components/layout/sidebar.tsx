@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   Calendar, Users, Pill, FlaskConical, CreditCard,
-  Settings, Video, LayoutDashboard, LogOut, Stethoscope, Bot, Shield,
+  Settings, Video, LayoutDashboard, LogOut, Stethoscope, Bot,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -56,7 +56,8 @@ export function Sidebar() {
     ? NAV_ITEMS.filter(item => STAFF_ALLOWED.includes(item.href))
     : NAV_ITEMS
 
-  const visibleBottom = isStaff ? [] : BOTTOM_ITEMS
+  // Configuración is always visible (STAFF sees it too)
+  const visibleBottom = BOTTOM_ITEMS
 
   async function handleLogout() {
     try {
@@ -73,7 +74,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 min-h-screen bg-[#2B225F] text-white flex flex-col">
+    <aside className="w-64 h-screen sticky top-0 bg-[#2B225F] text-white flex flex-col">
       {/* Brand */}
       <div className="px-6 py-5 border-b border-[#3D3075]">
         <div className="flex items-center gap-3">
@@ -111,16 +112,8 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom */}
-      <div className="px-3 py-4 border-t border-[#3D3075] space-y-0.5">
-        {isStaff && (
-          <div className="px-3 py-2 mb-1">
-            <span className="inline-flex items-center gap-1 text-xs bg-orange-900/40 text-orange-300 px-2 py-0.5 rounded-full">
-              <Shield className="w-3 h-3" /> Administrativo
-            </span>
-          </div>
-        )}
-
+      {/* Bottom — always visible, never pushed out of viewport */}
+      <div className="px-3 py-4 border-t border-[#3D3075] space-y-0.5 shrink-0">
         {visibleBottom.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
