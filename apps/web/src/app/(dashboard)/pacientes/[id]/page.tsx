@@ -554,14 +554,17 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
   const [notes, setNotes] = useState(result.notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [summarizing, setSummarizing] = useState(false)
+  const [summarizeError, setSummarizeError] = useState('')
 
   async function handleSummarize() {
     setSummarizing(true)
+    setSummarizeError('')
     try {
       await api.labResults.summarize(result.id)
       onRefresh()
-    } catch { /* ignore */ }
-    finally { setSummarizing(false) }
+    } catch (err) {
+      setSummarizeError(err instanceof Error ? err.message : 'Error al analizar')
+    } finally { setSummarizing(false) }
   }
 
   async function handleSaveNotes() {
@@ -658,15 +661,20 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
               <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{result.llmSummary}</p>
             </div>
           ) : result.fileUrl ? (
-            <button
-              onClick={handleSummarize}
-              disabled={summarizing}
-              className="w-full flex items-center justify-center gap-2 border border-dashed border-[#4E2DD2]/30 text-[#4E2DD2] hover:bg-[#4E2DD2]/5 rounded-xl py-3 text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              {summarizing
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Analizando con IA...</>
-                : <><Sparkles className="w-4 h-4" /> Analizar con IA</>}
-            </button>
+            <>
+              <button
+                onClick={handleSummarize}
+                disabled={summarizing}
+                className="w-full flex items-center justify-center gap-2 border border-dashed border-[#4E2DD2]/30 text-[#4E2DD2] hover:bg-[#4E2DD2]/5 rounded-xl py-3 text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {summarizing
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Analizando con IA...</>
+                  : <><Sparkles className="w-4 h-4" /> Analizar con IA</>}
+              </button>
+              {summarizeError && (
+                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{summarizeError}</p>
+              )}
+            </>
           ) : null}
 
           {/* Doctor notes */}
