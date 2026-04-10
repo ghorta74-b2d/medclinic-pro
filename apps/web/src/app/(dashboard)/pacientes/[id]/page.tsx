@@ -547,6 +547,108 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: 
   )
 }
 
+// ── MarkdownBlock — renders Claude's markdown with design-system styles ────────
+function MarkdownBlock({ text }: { text: string }) {
+  const lines = text.split('\n')
+  const elements: React.ReactNode[] = []
+  let i = 0
+
+  function renderInline(s: string): React.ReactNode {
+    const parts = s.split(/(\*\*[^*]+\*\*)/)
+    return parts.map((p, idx) =>
+      p.startsWith('**') && p.endsWith('**')
+        ? <strong key={idx} className="font-semibold text-gray-900">{p.slice(2, -2)}</strong>
+        : p
+    )
+  }
+
+  while (i < lines.length) {
+    const line = lines[i]
+    // h1
+    if (/^# /.test(line)) {
+      elements.push(<h2 key={i} className="text-sm font-bold text-[#4E2DD2] mt-3 mb-1">{line.slice(2)}</h2>)
+    // h2
+    } else if (/^## /.test(line)) {
+      elements.push(<h3 key={i} className="text-xs font-bold text-gray-700 uppercase tracking-wide mt-3 mb-1.5">{line.slice(3)}</h3>)
+    // hr
+    } else if (/^---/.test(line)) {
+      elements.push(<hr key={i} className="border-[#4E2DD2]/10 my-2" />)
+    // table header
+    } else if (/^\|/.test(line) && i + 1 < lines.length && /^\|[-|]+\|/.test(lines[i + 1])) {
+      const headers = line.split('|').map(s => s.trim()).filter(Boolean)
+      i += 2 // skip separator
+      const rows: string[][] = []
+      while (i < lines.length && /^\|/.test(lines[i])) {
+        rows.push(lines[i].split('|').map(s => s.trim()).filter(Boolean))
+        i++
+      }
+      elements.push(
+        <div key={`table-${i}`} className="overflow-x-auto rounded-lg border border-gray-100 mt-2 mb-2">
+          <table className="w-full text-xs">
+            <thead className="bg-[#4E2DD2]/5">
+              <tr>{headers.map((h, j) => <th key={j} className="px-3 py-2 text-left font-semibold text-[#4E2DD2]">{renderInline(h)}</th>)}</tr>
+            </thead>
+            <tbody>
+              {rows.map((row, ri) => (
+                <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                  {row.map((cell, ci) => <td key={ci} className="px-3 py-1.5 text-gray-700 border-t border-gray-100">{renderInline(cell)}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+      continue
+    // bullet
+    } else if (/^[-•] /.test(line)) {
+      elements.push(<p key={i} className="text-sm text-gray-700 leading-relaxed pl-3 border-l-2 border-[#4E2DD2]/20 my-1">{renderInline(line.slice(2))}</p>)
+    // blank
+    } else if (line.trim() === '') {
+      elements.push(<div key={i} className="h-1" />)
+    // paragraph
+    } else {
+      elements.push(<p key={i} className="text-sm text-gray-700 leading-relaxed">{renderInline(line)}</p>)
+    }
+    i++
+  }
+  return <div className="space-y-0.5">{elements}</div>
+}
+
+// ── AISummarizeProgress ────────────────────────────────────────────────────────
+function AISummarizeProgress() {
+  const [progress, setProgress] = useState(0)
+  const [stageIdx, setStageIdx] = useState(0)
+  const stages = ['Leyendo el PDF…', 'Identificando valores fuera de rango…', 'Interpretando hallazgos clínicos…', 'Generando resumen final…']
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress(p => {
+        const next = p + (100 / 25) // ~25s total
+        if (next >= 95) { clearInterval(interval); return 95 }
+        setStageIdx(Math.min(Math.floor(next / 25), stages.length - 1))
+        return next
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <div className="bg-[#4E2DD2]/5 border border-[#4E2DD2]/15 rounded-xl p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Sparkles className="w-4 h-4 text-[#4E2DD2] animate-pulse" />
+        <p className="text-xs font-semibold text-[#4E2DD2]">Analizando con IA</p>
+      </div>
+      <div className="w-full bg-[#4E2DD2]/10 rounded-full h-1.5 overflow-hidden">
+        <div
+          className="h-full bg-[#4E2DD2] rounded-full transition-all duration-1000 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <p className="text-xs text-[#4E2DD2]/70">{stages[stageIdx]}</p>
+    </div>
+  )
+}
+
 // ── LabResultCard ──────────────────────────────────────────────────────────────
 function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: () => void }) {
   const [expanded, setExpanded] = useState(false)
@@ -642,10 +744,13 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
         </div>
       )}
 
-      {/* Preview: LLM summary snippet */}
+      {/* Preview: LLM summary snippet (strip markdown symbols) */}
       {!expanded && result.llmSummary && (
-        <div className="px-4 py-2.5 border-b border-gray-100">
-          <p className="text-xs text-gray-500 line-clamp-2">{result.llmSummary}</p>
+        <div className="px-4 py-2.5 border-b border-gray-100 flex items-center gap-2">
+          <Sparkles className="w-3 h-3 text-[#4E2DD2] shrink-0" />
+          <p className="text-xs text-gray-500 line-clamp-1">
+            {result.llmSummary.replace(/[#*|`\-]{1,3}/g, '').replace(/\n/g, ' ').trim()}
+          </p>
         </div>
       )}
 
@@ -654,22 +759,21 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
           {/* AI Summary */}
           {result.llmSummary ? (
             <div className="bg-[#4E2DD2]/5 border border-[#4E2DD2]/15 rounded-xl p-4">
-              <div className="flex items-center gap-1.5 mb-2">
+              <div className="flex items-center gap-1.5 mb-3">
                 <Sparkles className="w-3.5 h-3.5 text-[#4E2DD2]" />
-                <p className="text-xs font-semibold text-[#4E2DD2]">Análisis IA</p>
+                <p className="text-xs font-bold text-[#4E2DD2] uppercase tracking-wide">Análisis IA</p>
               </div>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{result.llmSummary}</p>
+              <MarkdownBlock text={result.llmSummary} />
             </div>
+          ) : summarizing ? (
+            <AISummarizeProgress />
           ) : result.fileUrl ? (
             <>
               <button
                 onClick={handleSummarize}
-                disabled={summarizing}
-                className="w-full flex items-center justify-center gap-2 border border-dashed border-[#4E2DD2]/30 text-[#4E2DD2] hover:bg-[#4E2DD2]/5 rounded-xl py-3 text-sm font-medium transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 border border-dashed border-[#4E2DD2]/30 text-[#4E2DD2] hover:bg-[#4E2DD2]/5 rounded-xl py-3 text-sm font-medium transition-colors"
               >
-                {summarizing
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Analizando con IA...</>
-                  : <><Sparkles className="w-4 h-4" /> Analizar con IA</>}
+                <Sparkles className="w-4 h-4" /> Analizar con IA
               </button>
               {summarizeError && (
                 <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{summarizeError}</p>
