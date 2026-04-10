@@ -271,7 +271,7 @@ function UserAvatar() {
         const lastName: string  = meta['lastName']  ?? ''
         setProfile({
           initials: getInitials(firstName, lastName) || (session.user.email?.[0]?.toUpperCase() ?? '?'),
-          fullName: `${firstName} ${lastName}`.trim() || session.user.email ?? '',
+          fullName: `${firstName} ${lastName}`.trim() || (session.user.email ?? ''),
           email: session.user.email ?? '',
           phone: (meta['phone'] as string) ?? '',
         })
