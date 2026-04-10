@@ -561,19 +561,19 @@ function MarkdownBlock({ text }: { text: string }) {
   const elements: ReactNode[] = []
   let i = 0
   while (i < lines.length) {
-    const line = lines[i]
+    const line = lines[i] ?? ''
     if (/^# /.test(line)) {
       elements.push(<p key={i} className="text-sm font-bold text-[#4E2DD2] mt-3 mb-1">{line.slice(2)}</p>)
     } else if (/^#{1,3} /.test(line)) {
       elements.push(<p key={i} className="text-xs font-bold text-gray-600 uppercase tracking-wide mt-3 mb-1">{line.replace(/^#+\s/, '')}</p>)
     } else if (/^-{3,}$/.test(line.trim())) {
       elements.push(<hr key={i} className="border-[#4E2DD2]/10 my-2" />)
-    } else if (/^\|/.test(line) && i + 1 < lines.length && /^\|[\s\-|:]+\|/.test(lines[i + 1])) {
+    } else if (/^\|/.test(line) && i + 1 < lines.length && /^\|[\s\-|:]+\|/.test(lines[i + 1] ?? '')) {
       const headers = line.split('|').map(s => s.trim()).filter(Boolean)
       i += 2
       const rows: string[][] = []
-      while (i < lines.length && /^\|/.test(lines[i])) {
-        rows.push(lines[i].split('|').map(s => s.trim()).filter(Boolean))
+      while (i < lines.length && /^\|/.test(lines[i] ?? '')) {
+        rows.push((lines[i] ?? '').split('|').map(s => s.trim()).filter(Boolean))
         i++
       }
       elements.push(
@@ -634,7 +634,7 @@ function AISummarizeProgress() {
           style={{ width: `${progress}%` }}
         />
       </div>
-      <p className="text-xs text-[#4E2DD2]/70">{stages[stageIdx]}</p>
+      <p className="text-xs text-[#4E2DD2]/70">{stages[stageIdx] ?? ''}</p>
     </div>
   )
 }
