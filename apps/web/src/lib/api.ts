@@ -2,16 +2,45 @@
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
-async function getToken(): Promise<string | null> {
-  // In a real app, get from Supabase session
+// Singleton Supabase client — import and instantiate only once per page load
+type BrowserClient = Awaited<ReturnType<typeof import('@supabase/ssr')['createBrowserClient']>>
+let _clientPromise: Promise<BrowserClient> | null = null
+
+function getSupabaseClient(): Promise<BrowserClient> | null {
   if (typeof window === 'undefined') return null
-  const { createBrowserClient } = await import('@supabase/ssr')
-  const supabase = createBrowserClient(
-    process.env['NEXT_PUBLIC_SUPABASE_URL']!,
-    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
-  )
+  if (!_clientPromise) {
+    _clientPromise = import('@supabase/ssr').then(({ createBrowserClient }) =>
+      createBrowserClient(
+        process.env['NEXT_PUBLIC_SUPABASE_URL']!,
+        process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
+      )
+    )
+  }
+  return _clientPromise
+}
+
+// Token cache — avoid calling getSession() on every request (it's slow)
+let _tokenCache: { token: string; expiresAt: number } | null = null
+
+async function getToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null
+
+  const now = Date.now()
+  if (_tokenCache && _tokenCache.expiresAt > now) return _tokenCache.token
+
+  const clientPromise = getSupabaseClient()
+  if (!clientPromise) return null
+  const supabase = await clientPromise
+
   const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token ?? null
+  if (!session?.access_token) { _tokenCache = null; return null }
+
+  // Cache until 60s before JWT expiry so we never send an expired token
+  const expiresAt = session.expires_at
+    ? session.expires_at * 1000 - 60_000
+    : now + 55_000
+  _tokenCache = { token: session.access_token, expiresAt }
+  return session.access_token
 }
 
 async function request<T>(
@@ -30,6 +59,8 @@ async function request<T>(
   })
 
   if (!response.ok) {
+    // 401 → clear token cache so next request re-fetches a fresh session
+    if (response.status === 401) _tokenCache = null
     const error = await response.json().catch(() => ({ error: { message: response.statusText } }))
     throw new Error(error?.error?.message ?? `HTTP ${response.status}`)
   }
