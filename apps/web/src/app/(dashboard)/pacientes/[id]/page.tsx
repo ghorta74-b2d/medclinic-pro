@@ -734,13 +734,11 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
         </div>
       )}
 
-      {/* Preview: LLM summary snippet (strip markdown symbols) */}
+      {/* Preview: AI analysis badge */}
       {!expanded && result.llmSummary && (
         <div className="px-4 py-2.5 border-b border-gray-100 flex items-center gap-2">
           <Sparkles className="w-3 h-3 text-[#4E2DD2] shrink-0" />
-          <p className="text-xs text-gray-500 line-clamp-1">
-            {result.llmSummary.replace(/[#*|`\-]{1,3}/g, '').replace(/\n/g, ' ').trim()}
-          </p>
+          <p className="text-xs text-[#4E2DD2] font-medium">Análisis IA disponible · Expandir para ver</p>
         </div>
       )}
 
