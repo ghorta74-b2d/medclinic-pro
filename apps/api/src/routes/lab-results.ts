@@ -239,22 +239,32 @@ export async function labResultsRoutes(server: FastifyInstance) {
             } as any,
             {
               type: 'text',
-              text: `Eres un asistente médico experto. Analiza estos resultados de laboratorio y proporciona un resumen clínico en español.
+              text: `Eres un asistente médico experto. Analiza estos resultados de laboratorio y proporciona un resumen clínico estructurado en español.
 
-FORMATO OBLIGATORIO — usa EXACTAMENTE esta estructura, sin tablas, sin encabezados con #:
+FORMATO OBLIGATORIO — usa EXACTAMENTE esta estructura:
 
-**Valores fuera de rango**
-- Parámetro: valor (referencia normal) — significado clínico breve
-- (lista todos los valores alterados)
+# Resumen Clínico de Resultados de Laboratorio
 
-**Hallazgos relevantes**
-- Hallazgo 1
-- Hallazgo 2
+**Paciente:** [sexo, edad si disponible] | **Fecha:** [fecha del reporte]
 
-**Interpretación general**
-Párrafo breve con la interpretación clínica global. Máximo 3 oraciones.
+---
 
-REGLAS: Solo usa negritas (**texto**) y guiones (-) para listas. NO uses tablas, NO uses #, NO uses otros símbolos. Máximo 300 palabras.`,
+## 1. Valores Fuera de Rango
+
+| Parámetro | Resultado | Referencia | Desviación |
+|-----------|-----------|------------|------------|
+| [nombre] | [valor] | [rango normal] | [↑/↓ descripción] |
+
+## 2. Hallazgos Relevantes
+
+- **Hallazgo principal:** descripción clínica detallada
+- (lista todos los hallazgos significativos)
+
+## 3. Interpretación General
+
+Párrafo con la interpretación clínica global, implicaciones y recomendaciones de seguimiento. Máximo 4 oraciones.
+
+REGLAS: Usa exactamente los encabezados ##, tablas markdown con |, negritas **texto**, y listas -. Máximo 400 palabras. Lenguaje médico apropiado en español.`,
             },
           ],
         }],
