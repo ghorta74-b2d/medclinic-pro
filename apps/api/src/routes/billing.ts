@@ -363,38 +363,69 @@ export async function billingRoutes(server: FastifyInstance) {
     })()
     const to = query.to ? new Date(query.to) : new Date()
 
-    const [invoices, payments] = await Promise.all([
+    // 7-day window for chart (always last 7 days regardless of filter)
+    const chart7Start = new Date(); chart7Start.setDate(chart7Start.getDate() - 6); chart7Start.setHours(0, 0, 0, 0)
+    const todayStart  = new Date(); todayStart.setHours(0, 0, 0, 0)
+
+    const [invoices, payments, payments7d, paymentsToday] = await Promise.all([
       prisma.invoice.findMany({
         where: { clinicId, issuedAt: { gte: from, lte: to } },
-        select: { total: true, paidAmount: true, status: true },
+        select: { total: true, paidAmount: true, status: true, overdueAt: true },
       }),
       prisma.paymentRecord.findMany({
-        where: {
-          invoice: { clinicId },
-          paidAt: { gte: from, lte: to },
-        },
+        where: { invoice: { clinicId }, paidAt: { gte: from, lte: to } },
         select: { amount: true, method: true },
+      }),
+      prisma.paymentRecord.findMany({
+        where: { invoice: { clinicId }, paidAt: { gte: chart7Start } },
+        select: { amount: true, paidAt: true },
+      }),
+      prisma.paymentRecord.findMany({
+        where: { invoice: { clinicId }, paidAt: { gte: todayStart } },
+        select: { amount: true },
       }),
     ])
 
-    const totalBilled = invoices.reduce((sum, i) => sum + Number(i.total), 0)
-    const totalCollected = payments.reduce((sum, p) => sum + Number(p.amount), 0)
-    const pendingAmount = invoices
-      .filter((i) => i.status !== 'PAID' && i.status !== 'CANCELLED')
-      .reduce((sum, i) => sum + (Number(i.total) - Number(i.paidAmount)), 0)
+    const totalBilled    = invoices.reduce((s, i) => s + Number(i.total), 0)
+    const totalCollected = payments.reduce((s, p) => s + Number(p.amount), 0)
+    const pendingAmount  = invoices
+      .filter(i => i.status !== 'PAID' && i.status !== 'CANCELLED')
+      .reduce((s, i) => s + (Number(i.total) - Number(i.paidAmount)), 0)
+    const overdueAmount  = invoices
+      .filter(i => i.status === 'OVERDUE')
+      .reduce((s, i) => s + (Number(i.total) - Number(i.paidAmount)), 0)
+    const revenueToday   = paymentsToday.reduce((s, p) => s + Number(p.amount), 0)
 
-    const byMethod = payments.reduce<Record<string, number>>((acc, p) => {
+    // byPaymentMethod as array
+    const methodMap = payments.reduce<Record<string, number>>((acc, p) => {
       acc[p.method] = (acc[p.method] ?? 0) + Number(p.amount)
       return acc
     }, {})
+    const byPaymentMethod = Object.entries(methodMap).map(([method, amount]) => ({ method, amount }))
+
+    // Daily revenue for last 7 days
+    const dayMap: Record<string, number> = {}
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(chart7Start); d.setDate(d.getDate() + i)
+      const key = d.toISOString().split('T')[0]!
+      dayMap[key] = 0
+    }
+    for (const p of payments7d) {
+      const key = new Date(p.paidAt).toISOString().split('T')[0]!
+      if (key in dayMap) dayMap[key] = (dayMap[key] ?? 0) + Number(p.amount)
+    }
+    const revenueChart = Object.entries(dayMap).map(([date, amount]) => ({ date, amount }))
 
     return reply.send({
       data: {
         totalBilled,
         totalCollected,
         pendingAmount,
+        overdueAmount,
+        revenueToday,
         invoiceCount: invoices.length,
-        byMethod,
+        byPaymentMethod,
+        revenueChart,
         period: { from, to },
       },
     })

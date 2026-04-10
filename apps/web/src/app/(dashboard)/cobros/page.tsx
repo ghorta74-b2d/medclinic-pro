@@ -19,8 +19,10 @@ interface DashboardData {
     totalCollected: number
     pendingAmount: number
     overdueAmount: number
+    revenueToday: number
     invoiceCount: number
     byPaymentMethod?: { method: string; amount: number }[]
+    revenueChart?: { date: string; amount: number }[]
     currency?: string
   }
 }
@@ -53,7 +55,7 @@ function RevenueChart({ data }: { data: { date: string; amount: number }[] }) {
           <g key={d.date}>
             <rect x={x} y={y} width={BAR_W} height={barH} rx={4} fill="#3B82F6" fillOpacity={0.8} />
             <text x={x + BAR_W / 2} y={H + 14} textAnchor="middle" fontSize={9} fill="#9CA3AF">
-              {new Date(d.date).getDate()} {new Date(d.date).toLocaleDateString('es', { month: 'short' })}
+              {(() => { const [,, day] = d.date.split('-'); return day })()} {new Date(`${d.date}T12:00:00`).toLocaleDateString('es', { month: 'short' })}
             </text>
           </g>
         )
@@ -114,13 +116,12 @@ export default function CobrosPage() {
   const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null)
   const [detailInvoiceId, setDetailInvoiceId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({})
-  const [chartData] = useState(() =>
-    Array.from({ length: 7 }, (_, i) => {
-      const d = new Date()
-      d.setDate(d.getDate() - 6 + i)
-      return { date: d.toLocaleDateString('sv-SE'), amount: 0 }
-    })
-  )
+
+  const chartData = stats?.revenueChart ?? Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - 6 + i)
+    return { date: d.toLocaleDateString('sv-SE'), amount: 0 }
+  })
 
   const load = useCallback(async () => {
     setLoading(true)
