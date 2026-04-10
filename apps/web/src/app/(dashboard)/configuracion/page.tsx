@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { getUserRole } from '@/lib/api'
 import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
 import { Save, Plus, Loader2, Mail, UserCheck, UserX, RefreshCw, Shield, Stethoscope, Pencil, Trash2, Check, X } from 'lucide-react'
@@ -961,15 +962,39 @@ const TAB_COMPONENTS: Record<TabId, React.ComponentType> = {
   privacidad:  PrivacidadTab,
 }
 
+const STAFF_TABS: TabId[] = ['horarios', 'catalogo']
+
 export default function ConfiguracionPage() {
-  const [activeTab, setActiveTab] = useState<TabId>('clinica')
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const isStaff = userRole === 'STAFF'
+
+  useEffect(() => {
+    getUserRole().then(r => setUserRole(r))
+  }, [])
+
+  const visibleTabs = useMemo(
+    () => isStaff ? TABS.filter(t => STAFF_TABS.includes(t.id)) : TABS,
+    [isStaff]
+  )
+
+  const defaultTab: TabId = isStaff ? 'horarios' : 'clinica'
+  const [activeTab, setActiveTab] = useState<TabId>(defaultTab)
+
+  // Reset to a valid tab when role loads
+  useEffect(() => {
+    if (isStaff && !STAFF_TABS.includes(activeTab)) {
+      setActiveTab('horarios')
+    }
+  }, [isStaff])
+
   const TabComponent = TAB_COMPONENTS[activeTab]
+
   return (
     <>
       <Header title="Configuración" subtitle="Administra los ajustes de tu clínica" />
       <div className="flex-1 p-6 overflow-auto">
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 flex-wrap">
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-colors',
                 activeTab === tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
