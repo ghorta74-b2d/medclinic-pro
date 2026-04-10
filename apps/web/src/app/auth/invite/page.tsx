@@ -4,6 +4,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 
+// Singleton — must NOT be inside the component. Re-creating the client on each
+// render loses the in-memory session that setSession() stored, causing
+// updateUser() to fail with "Auth session missing!".
+const supabase = createBrowserClient(
+  process.env['NEXT_PUBLIC_SUPABASE_URL']!,
+  process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
+)
+
 export default function InvitePage() {
   const router = useRouter()
   const [password, setPassword] = useState('')
@@ -12,11 +20,6 @@ export default function InvitePage() {
   const [error, setError] = useState('')
   const [tokenError, setTokenError] = useState('')
   const [ready, setReady] = useState(false)
-
-  const supabase = createBrowserClient(
-    process.env['NEXT_PUBLIC_SUPABASE_URL']!,
-    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
-  )
 
   useEffect(() => {
     // @supabase/ssr does NOT auto-process the hash fragment — do it manually.
