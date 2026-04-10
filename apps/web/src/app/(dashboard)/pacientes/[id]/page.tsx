@@ -550,6 +550,7 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: 
 // ── LabResultCard ──────────────────────────────────────────────────────────────
 function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: () => void }) {
   const [expanded, setExpanded] = useState(false)
+  const [showPdf, setShowPdf] = useState(false)
   const [notes, setNotes] = useState(result.notes ?? '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [summarizing, setSummarizing] = useState(false)
@@ -600,16 +601,43 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
             {STATUS_LABEL[result.status] ?? result.status}
           </span>
           {(result.fileUrl ?? result.externalUrl) && (
-            <a href={result.fileUrl ?? result.externalUrl ?? '#'} target="_blank" rel="noopener noreferrer"
-               className="p-1 hover:bg-gray-200 rounded text-gray-500">
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+            <button
+              onClick={() => setShowPdf(true)}
+              className="flex items-center gap-1 px-2 py-0.5 text-xs text-[#4E2DD2] hover:bg-[#4E2DD2]/10 rounded-lg font-medium transition-colors"
+            >
+              <FileText className="w-3.5 h-3.5" /> Ver PDF
+            </button>
           )}
           <button onClick={() => setExpanded(e => !e)} className="p-1 hover:bg-gray-200 rounded">
             {expanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
           </button>
         </div>
       </div>
+
+      {/* PDF viewer modal */}
+      {showPdf && (result.fileUrl ?? result.externalUrl) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl flex flex-col w-full max-w-4xl h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+              <p className="text-sm font-semibold text-gray-900 truncate">{result.title}</p>
+              <div className="flex items-center gap-2">
+                <a href={result.fileUrl ?? result.externalUrl ?? '#'} target="_blank" rel="noopener noreferrer"
+                   className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100">
+                  <ExternalLink className="w-3.5 h-3.5" /> Abrir en nueva pestaña
+                </a>
+                <button onClick={() => setShowPdf(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <iframe
+              src={result.fileUrl ?? result.externalUrl ?? ''}
+              className="flex-1 w-full"
+              title={result.title}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Preview: LLM summary snippet */}
       {!expanded && result.llmSummary && (
@@ -707,7 +735,8 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
       const formData = new FormData()
       formData.append('file', file)
       await api.labResults.upload(labId, formData)
-      await api.labResults.summarize(labId)
+      // summarize is best-effort — don't block upload if AI fails
+      api.labResults.summarize(labId).catch(() => {})
       setFile(null)
       setTitle('')
       onRefresh()
