@@ -27,7 +27,7 @@ const CreateNoteSchema = z.object({
   patientId: z.string(),
   appointmentId: z.string().optional(),
   chiefComplaint: z.string().optional(),
-  physicalExam: z.string().optional(),
+  physicalExam: z.record(z.string()).optional(),
   diagnoses: z.array(DiagnosisSchema).optional(),
   treatmentPlan: z.string().optional(),
   evolutionNotes: z.string().optional(),

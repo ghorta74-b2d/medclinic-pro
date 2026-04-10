@@ -153,7 +153,7 @@ export interface ClinicalNote {
   doctorId: string
   appointmentId?: string
   chiefComplaint?: string
-  physicalExam?: string
+  physicalExam?: Record<string, string>
   diagnoses: Diagnosis[]
   treatmentPlan?: string
   evolutionNotes?: string
