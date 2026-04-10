@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
-import { requireDoctor } from '../middleware/auth.js'
+import { requireDoctor, requireStaff } from '../middleware/auth.js'
 import { auditLog } from '../middleware/audit.js'
 import { Errors } from '../lib/errors.js'
 // Lazy-loaded to avoid @react-pdf/renderer initializing at module load time
@@ -31,7 +31,7 @@ const CreatePrescriptionSchema = z.object({
 
 export async function prescriptionsRoutes(server: FastifyInstance) {
   // GET /api/prescriptions
-  server.get('/', { preHandler: requireDoctor }, async (request, reply) => {
+  server.get('/', { preHandler: requireStaff }, async (request, reply) => {
     const { clinicId } = request.authUser
     const query = request.query as { patientId?: string; status?: string }
 
@@ -52,8 +52,8 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
     return reply.send({ data: prescriptions })
   })
 
-  // GET /api/prescriptions/:id
-  server.get('/:id', { preHandler: requireDoctor }, async (request, reply) => {
+  // GET /api/prescriptions/:id — STAFF can view/print but not create
+  server.get('/:id', { preHandler: requireStaff }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const { clinicId, authUserId, role } = request.authUser
 
