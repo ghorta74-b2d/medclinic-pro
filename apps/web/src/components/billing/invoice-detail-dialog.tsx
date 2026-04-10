@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { X, Loader2, CreditCard, Banknote, ArrowLeftRight, Building2 } from 'lucide-react'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatDate, formatCurrency, cn } from '@/lib/utils'
 import { INVOICE_STATUS_LABELS } from 'medclinic-shared'
-import { cn } from '@/lib/utils'
 
 interface InvoiceDetailDialogProps {
   invoiceId: string
@@ -23,19 +22,19 @@ const STATUS_CLASSES: Record<string, string> = {
 }
 
 const METHOD_LABELS: Record<string, string> = {
-  CASH:         'Efectivo',
-  CARD:         'Tarjeta',
-  TRANSFER:     'SPEI / Transferencia',
-  INSURANCE:    'Seguro',
-  STRIPE_ONLINE:'Pago en línea',
+  CASH:          'Efectivo',
+  CARD:          'Tarjeta',
+  TRANSFER:      'SPEI / Transferencia',
+  INSURANCE:     'Seguro',
+  STRIPE_ONLINE: 'Pago en línea',
 }
 
-const METHOD_ICONS: Record<string, React.ElementType> = {
-  CASH:         Banknote,
-  CARD:         CreditCard,
-  TRANSFER:     ArrowLeftRight,
-  INSURANCE:    Building2,
-  STRIPE_ONLINE: CreditCard,
+function MethodIcon({ method }: { method: string }) {
+  const cls = 'w-4 h-4 text-green-600'
+  if (method === 'CASH')     return <Banknote className={cls} />
+  if (method === 'TRANSFER') return <ArrowLeftRight className={cls} />
+  if (method === 'INSURANCE') return <Building2 className={cls} />
+  return <CreditCard className={cls} />
 }
 
 export function InvoiceDetailDialog({ invoiceId, onClose }: InvoiceDetailDialogProps) {
@@ -62,8 +61,8 @@ export function InvoiceDetailDialog({ invoiceId, onClose }: InvoiceDetailDialogP
           </div>
           <div className="flex items-center gap-2">
             {invoice && (
-              <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', STATUS_CLASSES[invoice.status])}>
-                {INVOICE_STATUS_LABELS[invoice.status]}
+              <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', STATUS_CLASSES[invoice.status] ?? '')}>
+                {INVOICE_STATUS_LABELS[invoice.status as keyof typeof INVOICE_STATUS_LABELS] ?? invoice.status}
               </span>
             )}
             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -105,12 +104,14 @@ export function InvoiceDetailDialog({ invoiceId, onClose }: InvoiceDetailDialogP
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {invoice.items?.map((item: any, i: number) => (
+                    {(invoice.items ?? []).map((item: any, i: number) => (
                       <tr key={i}>
                         <td className="px-3 py-2.5">
                           <p className="text-sm text-gray-900">{item.description}</p>
                           {Number(item.taxRate) > 0 && (
-                            <p className="text-[10px] text-blue-500">IVA {(Number(item.taxRate) * 100).toFixed(0)}%</p>
+                            <p className="text-[10px] text-blue-500">
+                              IVA {(Number(item.taxRate) * 100).toFixed(0)}%
+                            </p>
                           )}
                         </td>
                         <td className="px-3 py-2.5 text-right text-sm text-gray-600">{Number(item.quantity)}</td>
@@ -150,28 +151,27 @@ export function InvoiceDetailDialog({ invoiceId, onClose }: InvoiceDetailDialogP
             </div>
 
             {/* Payment records */}
-            {invoice.payments?.length > 0 && (
+            {(invoice.payments ?? []).length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Pagos registrados</p>
                 <div className="space-y-2">
-                  {invoice.payments.map((pay: any, i: number) => {
-                    const Icon = METHOD_ICONS[pay.method] ?? CreditCard
-                    return (
-                      <div key={i} className="flex items-center gap-3 bg-green-50 border border-green-100 rounded-xl p-3">
-                        <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
-                          <Icon className="w-4 h-4 text-green-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">{METHOD_LABELS[pay.method] ?? pay.method}</p>
-                          {pay.reference && (
-                            <p className="text-xs text-gray-400 truncate">Ref: {pay.reference}</p>
-                          )}
-                          <p className="text-xs text-gray-400">{formatDate(pay.paidAt)}</p>
-                        </div>
-                        <p className="text-sm font-bold text-green-700">{formatCurrency(Number(pay.amount))}</p>
+                  {(invoice.payments ?? []).map((pay: any, i: number) => (
+                    <div key={i} className="flex items-center gap-3 bg-green-50 border border-green-100 rounded-xl p-3">
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
+                        <MethodIcon method={pay.method} />
                       </div>
-                    )
-                  })}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">
+                          {METHOD_LABELS[pay.method as string] ?? pay.method}
+                        </p>
+                        {pay.reference && (
+                          <p className="text-xs text-gray-400 truncate">Ref: {pay.reference}</p>
+                        )}
+                        <p className="text-xs text-gray-400">{formatDate(pay.paidAt)}</p>
+                      </div>
+                      <p className="text-sm font-bold text-green-700">{formatCurrency(Number(pay.amount))}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
