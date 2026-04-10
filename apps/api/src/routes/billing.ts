@@ -430,6 +430,10 @@ export async function billingRoutes(server: FastifyInstance) {
     }, {})
     const byPaymentMethod = Object.entries(methodMap).map(([method, amount]) => ({ method, amount }))
 
+    const paidInvoiceCount    = invoices.filter(i => i.status === 'PAID').length
+    const pendingInvoiceCount = invoices.filter(i => ['SENT', 'PARTIALLY_PAID'].includes(i.status)).length
+    const overdueInvoiceCount = invoices.filter(i => i.status === 'OVERDUE').length
+
     return reply.send({
       data: {
         totalBilled,
@@ -438,6 +442,9 @@ export async function billingRoutes(server: FastifyInstance) {
         overdueAmount,
         revenueToday,
         invoiceCount: invoices.length,
+        paidInvoiceCount,
+        pendingInvoiceCount,
+        overdueInvoiceCount,
         byPaymentMethod,
         // Raw payments for chart — frontend groups by local date to avoid UTC vs local mismatch
         payments7d: payments7d.map(p => ({ paidAt: p.paidAt.toISOString(), amount: Number(p.amount) })),

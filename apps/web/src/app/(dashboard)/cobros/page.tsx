@@ -21,6 +21,9 @@ interface DashboardData {
     overdueAmount: number
     revenueToday: number
     invoiceCount: number
+    paidInvoiceCount: number
+    pendingInvoiceCount: number
+    overdueInvoiceCount: number
     byPaymentMethod?: { method: string; amount: number }[]
     payments7d?: { paidAt: string; amount: number }[]
     currency?: string
@@ -270,9 +273,9 @@ export default function CobrosPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: viewMode === 'dia' ? 'Ingresos hoy' : viewMode === 'semana' ? 'Ingresos semana' : 'Ingresos del mes', value: formatCurrency(stats?.totalBilled ?? 0), icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: 'Cobrado', value: formatCurrency(stats?.totalCollected ?? 0), sub: `${invoices.filter(i => i.status === 'PAID').length} facturas`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
-            { label: 'Pendiente', value: formatCurrency(stats?.pendingAmount ?? 0), sub: `${invoices.filter(i => ['SENT','PARTIALLY_PAID'].includes(i.status)).length} facturas`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-            { label: 'Vencido', value: formatCurrency(stats?.overdueAmount ?? 0), sub: `${invoices.filter(i => i.status === 'OVERDUE').length} facturas`, icon: CreditCard, color: 'text-red-600', bg: 'bg-red-50' },
+            { label: 'Cobrado', value: formatCurrency(stats?.totalCollected ?? 0), sub: `${stats?.paidInvoiceCount ?? 0} facturas`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
+            { label: 'Pendiente', value: formatCurrency(stats?.pendingAmount ?? 0), sub: `${stats?.pendingInvoiceCount ?? 0} facturas`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+            { label: 'Vencido', value: formatCurrency(stats?.overdueAmount ?? 0), sub: `${stats?.overdueInvoiceCount ?? 0} facturas`, icon: CreditCard, color: 'text-red-600', bg: 'bg-red-50' },
           ].map(({ label, value, sub, icon: Icon, color, bg }) => (
             <div key={label} className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
               <div className="flex items-start justify-between">
