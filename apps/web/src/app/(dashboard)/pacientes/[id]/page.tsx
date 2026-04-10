@@ -193,6 +193,144 @@ function EditPatientModal({
   )
 }
 
+// ── PatientProfileModal ────────────────────────────────────────────────────────
+function PatientProfileModal({
+  patient,
+  onClose,
+  onEdit,
+}: {
+  patient: PatientWithCount
+  onClose: () => void
+  onEdit: () => void
+}) {
+  const field = (label: string, value: string | null | undefined) =>
+    value ? (
+      <div>
+        <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+        <p className="text-sm text-gray-800 font-medium">{value}</p>
+      </div>
+    ) : null
+
+  const listField = (label: string, values: string[]) =>
+    values.length > 0 ? (
+      <div>
+        <p className="text-xs text-gray-400 mb-1">{label}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {values.map((v) => (
+            <span key={v} className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full">{v}</span>
+          ))}
+        </div>
+      </div>
+    ) : null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#4E2DD2]/10 rounded-xl flex items-center justify-center text-[#4E2DD2] text-sm font-bold">
+              {getInitials(patient.firstName, patient.lastName)}
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">{patient.firstName} {patient.lastName}</p>
+              {patient.dateOfBirth && (
+                <p className="text-xs text-gray-500">{calculateAge(patient.dateOfBirth)} años · {BLOOD_TYPE_LABELS[patient.bloodType]}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { onClose(); onEdit() }}
+              className="flex items-center gap-1.5 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <Pencil className="w-3.5 h-3.5" /> Editar
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <X className="w-4 h-4 text-gray-500" />
+            </button>
+          </div>
+        </div>
+
+        {/* Body — scrollable */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+
+          {/* Datos personales */}
+          <section>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Datos personales</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {field('Nombre', `${patient.firstName} ${patient.lastName}`)}
+              {field('Fecha de nacimiento', patient.dateOfBirth ? formatDate(patient.dateOfBirth) : null)}
+              {field('Género', patient.gender ? GENDER_LABELS[patient.gender] : null)}
+              {field('Tipo de sangre', BLOOD_TYPE_LABELS[patient.bloodType])}
+              {field('CURP', patient.curp)}
+              {field('RFC', (patient as any).rfc)}
+            </div>
+          </section>
+
+          {/* Contacto */}
+          <section>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Contacto</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {field('Teléfono', patient.phone)}
+              {field('Correo electrónico', patient.email)}
+              {field('Dirección', (patient as any).address)}
+              {field('Ciudad', (patient as any).city)}
+              {field('Estado', (patient as any).state)}
+              {field('Código postal', (patient as any).zipCode)}
+            </div>
+          </section>
+
+          {/* Historial médico */}
+          <section>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Historial médico</h3>
+            <div className="space-y-3">
+              {listField('Alergias', patient.allergies)}
+              {listField('Condiciones crónicas', patient.chronicConditions)}
+              {listField('Medicamentos actuales', patient.currentMedications)}
+              {listField('Antecedentes quirúrgicos', (patient as any).surgicalHistory ?? [])}
+              {patient.allergies.length === 0 && patient.chronicConditions.length === 0 &&
+               patient.currentMedications.length === 0 && ((patient as any).surgicalHistory ?? []).length === 0 && (
+                <p className="text-sm text-gray-400 italic">Sin antecedentes registrados</p>
+              )}
+            </div>
+          </section>
+
+          {/* Contacto de emergencia */}
+          {((patient as any).emergencyName || (patient as any).emergencyPhone) && (
+            <section>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Contacto de emergencia</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {field('Nombre', (patient as any).emergencyName)}
+                {field('Teléfono', (patient as any).emergencyPhone)}
+                {field('Relación', (patient as any).emergencyRelation)}
+              </div>
+            </section>
+          )}
+
+          {/* Notas */}
+          {(patient as any).notes && (
+            <section>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Notas</h3>
+              <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3">
+                {(patient as any).notes}
+              </p>
+            </section>
+          )}
+
+          {/* Audit */}
+          {(patient as any).lastModifiedByName && (
+            <p className="text-xs text-gray-400 pb-2">
+              Modificado por <span className="font-medium text-gray-500">{(patient as any).lastModifiedByName}</span>
+              {(patient as any).lastModifiedAt && <> · {formatDateTime((patient as any).lastModifiedAt)}</>}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface PatientWithCount extends Patient {
   insurances: unknown[]
@@ -236,9 +374,9 @@ function ConsultaCard({ note }: { note: ClinicalNote }) {
   const isSigned = note.status === 'SIGNED'
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
       {/* Audit header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-[#4E2DD2]/10 rounded-full flex items-center justify-center shrink-0">
             <UserCheck className="w-3.5 h-3.5 text-[#4E2DD2]" />
@@ -486,8 +624,8 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh, re
       ) : (
         <div className="space-y-3">
           {prescriptions.map((rx) => (
-            <div key={rx.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+            <div key={rx.id} className="bg-white rounded-2xl border border-gray-300 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200">
                 <div className="flex items-center gap-2">
                   <UserCheck className="w-3.5 h-3.5 text-[#4E2DD2]" />
                   <p className="text-xs text-gray-700 font-medium">
@@ -722,9 +860,9 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200">
         <div className="flex items-center gap-3 min-w-0">
           <FlaskConical className="w-4 h-4 text-orange-400 shrink-0" />
           <div className="min-w-0">
@@ -1020,6 +1158,7 @@ export default function PatientDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>('consultas')
   const [loading, setLoading] = useState(true)
   const [showEdit, setShowEdit] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   const [labEditMode, setLabEditMode] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
 
@@ -1090,8 +1229,16 @@ export default function PatientDetailPage() {
         {/* Patient hero */}
         <div className="bg-white border-b border-gray-200 px-6 py-5">
           <div className="flex items-start gap-5">
-            <div className="w-16 h-16 bg-[#4E2DD2]/10 rounded-2xl flex items-center justify-center text-[#4E2DD2] text-xl font-bold shrink-0">
-              {getInitials(patient.firstName, patient.lastName)}
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <div className="w-16 h-16 bg-[#4E2DD2]/10 rounded-2xl flex items-center justify-center text-[#4E2DD2] text-xl font-bold">
+                {getInitials(patient.firstName, patient.lastName)}
+              </div>
+              <button
+                onClick={() => setShowProfile(true)}
+                className="text-xs text-[#4E2DD2] hover:text-[#3d22a8] font-medium whitespace-nowrap transition-colors"
+              >
+                Ver perfil
+              </button>
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap gap-4 text-sm text-gray-600 mt-1">
@@ -1195,6 +1342,14 @@ export default function PatientDetailPage() {
           )}
         </div>
       </div>
+
+      {showProfile && patient && (
+        <PatientProfileModal
+          patient={patient}
+          onClose={() => setShowProfile(false)}
+          onEdit={() => setShowEdit(true)}
+        />
+      )}
 
       {showEdit && patient && (
         <EditPatientModal

@@ -45,6 +45,14 @@ export default function PrescriptionPrintPage() {
         <span className="text-sm font-medium text-gray-700">
           Receta — {patient?.firstName} {patient?.lastName}
         </span>
+        {patient?.id && (
+          <button
+            onClick={() => router.push(`/pacientes/${patient.id}`)}
+            className="flex items-center gap-1.5 text-sm text-[#4E2DD2] hover:text-[#3d22a8] font-medium transition-colors"
+          >
+            Ver perfil completo
+          </button>
+        )}
         <div className="ml-auto">
           <button
             onClick={() => window.print()}
