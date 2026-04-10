@@ -6,6 +6,7 @@ import { auditLog } from '../middleware/audit.js'
 import { Errors } from '../lib/errors.js'
 import { supabase } from '../lib/supabase.js'
 import { sendWhatsAppMessage } from '../services/whatsapp.js'
+import Anthropic from '@anthropic-ai/sdk'
 
 const CreateLabResultSchema = z.object({
   patientId: z.string(),
@@ -205,6 +206,80 @@ export async function labResultsRoutes(server: FastifyInstance) {
     })
 
     return reply.send({ success: true })
+  })
+
+  // POST /api/lab-results/:id/summarize — AI summary using Claude
+  server.post('/:id/summarize', { preHandler: requireStaff }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { clinicId, authUserId, role } = request.authUser
+
+    const result = await prisma.labResult.findFirst({ where: { id, clinicId } })
+    if (!result) return Errors.NOT_FOUND(reply, 'Lab result')
+    if (!result.fileUrl) return Errors.VALIDATION(reply, { message: 'No hay archivo adjunto para analizar' })
+
+    const apiKey = process.env['ANTHROPIC_API_KEY']
+    if (!apiKey) return Errors.INTERNAL(reply, 'ANTHROPIC_API_KEY not configured')
+
+    try {
+      const pdfResponse = await fetch(result.fileUrl)
+      if (!pdfResponse.ok) return Errors.INTERNAL(reply, 'Could not download PDF')
+      const arrayBuffer = await pdfResponse.arrayBuffer()
+      const base64 = Buffer.from(arrayBuffer).toString('base64')
+
+      const anthropic = new Anthropic({ apiKey })
+      const message = await anthropic.messages.create({
+        model: 'claude-opus-4-6',
+        max_tokens: 1500,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: { type: 'base64', media_type: 'application/pdf', data: base64 },
+            } as any,
+            {
+              type: 'text',
+              text: 'Eres un asistente médico experto. Analiza estos resultados de laboratorio y proporciona un resumen clínico estructurado en español. Incluye: (1) Valores fuera de rango con su significado clínico, (2) Hallazgos relevantes, (3) Interpretación general. Sé conciso y usa lenguaje médico apropiado. Máximo 350 palabras.',
+            },
+          ],
+        }],
+      })
+
+      const summary = message.content[0]?.type === 'text' ? message.content[0].text : ''
+
+      const updated = await prisma.labResult.update({
+        where: { id },
+        data: { llmSummary: summary, status: 'REVIEWED', reviewedAt: new Date() },
+      })
+
+      await auditLog({
+        user: { authUserId, clinicId, role },
+        action: 'UPDATE',
+        resourceType: 'LabResult',
+        resourceId: id,
+        metadata: { action: 'ai_summarized' },
+      })
+
+      return reply.send({ data: updated })
+    } catch (err) {
+      return Errors.INTERNAL(reply, err instanceof Error ? err.message : 'AI analysis failed')
+    }
+  })
+
+  // PATCH /api/lab-results/:id/notes — update doctor notes only
+  server.patch('/:id/notes', { preHandler: requireStaff }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { clinicId } = request.authUser
+    const body = request.body as { notes: string }
+
+    const result = await prisma.labResult.findFirst({ where: { id, clinicId } })
+    if (!result) return Errors.NOT_FOUND(reply, 'Lab result')
+
+    const updated = await prisma.labResult.update({
+      where: { id },
+      data: { notes: body.notes },
+    })
+    return reply.send({ data: updated })
   })
 
   // PATCH /api/lab-results/:id/review — doctor marks as reviewed with notes

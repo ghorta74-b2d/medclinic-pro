@@ -478,6 +478,7 @@ model LabResult {
   reviewedBy      String?           // doctorId
   notifiedAt      DateTime?
   notes           String?           // Doctor's notes on the results
+  llmSummary      String?           // AI-generated summary of the PDF
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 

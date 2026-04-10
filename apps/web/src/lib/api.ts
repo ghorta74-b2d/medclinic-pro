@@ -110,6 +110,23 @@ export const api = {
     get: (id: string) => request(`/api/lab-results/${id}`),
     create: (data: unknown) =>
       request('/api/lab-results', { method: 'POST', body: JSON.stringify(data) }),
+    upload: async (id: string, formData: FormData) => {
+      const token = await getToken()
+      const response = await fetch(`${API_URL}/api/lab-results/${id}/upload`, {
+        method: 'POST',
+        body: formData,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: { message: response.statusText } }))
+        throw new Error(error?.error?.message ?? `HTTP ${response.status}`)
+      }
+      return response.json()
+    },
+    summarize: (id: string) =>
+      request(`/api/lab-results/${id}/summarize`, { method: 'POST' }),
+    updateNotes: (id: string, notes: string) =>
+      request(`/api/lab-results/${id}/notes`, { method: 'PATCH', body: JSON.stringify({ notes }) }),
     notify: (id: string) =>
       request(`/api/lab-results/${id}/notify`, { method: 'POST' }),
     review: (id: string, notes?: string) =>

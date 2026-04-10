@@ -19,6 +19,7 @@
     "@fastify/rate-limit": "^9.1.0",
     "@prisma/client": "^5.14.0",
     "@react-pdf/renderer": "^3.4.4",
+    "@anthropic-ai/sdk": "^0.27.0",
     "@supabase/supabase-js": "^2.43.5",
     "fastify": "^4.27.0",
     "medclinic-shared": "workspace:*",

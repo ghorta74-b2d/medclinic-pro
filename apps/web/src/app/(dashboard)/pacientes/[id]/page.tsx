@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
@@ -9,6 +9,7 @@ import {
   ArrowLeft, Phone, Mail, Calendar, Droplets, AlertTriangle,
   FileText, Pill, FlaskConical, ChevronDown, ChevronUp, Clock,
   Pencil, X, Check, Loader2, Printer, Plus, Stethoscope, UserCheck,
+  Upload, Sparkles, ExternalLink,
 } from 'lucide-react'
 import type { Patient, ClinicalNote, Appointment, Prescription, LabResult, VitalSigns } from 'medclinic-shared'
 import { GENDER_LABELS, BLOOD_TYPE_LABELS, STATUS_LABELS } from 'medclinic-shared'
@@ -546,39 +547,241 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: 
   )
 }
 
-// ── LabTab ─────────────────────────────────────────────────────────────────────
-function LabTab({ results }: { results: LabResult[] }) {
+// ── LabResultCard ──────────────────────────────────────────────────────────────
+function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: () => void }) {
+  const [expanded, setExpanded] = useState(false)
+  const [notes, setNotes] = useState(result.notes ?? '')
+  const [savingNotes, setSavingNotes] = useState(false)
+  const [summarizing, setSummarizing] = useState(false)
+
+  async function handleSummarize() {
+    setSummarizing(true)
+    try {
+      await api.labResults.summarize(result.id)
+      onRefresh()
+    } catch { /* ignore */ }
+    finally { setSummarizing(false) }
+  }
+
+  async function handleSaveNotes() {
+    setSavingNotes(true)
+    try {
+      await api.labResults.updateNotes(result.id, notes)
+      onRefresh()
+    } catch { /* ignore */ }
+    finally { setSavingNotes(false) }
+  }
+
+  const STATUS_STYLE: Record<string, string> = {
+    PENDING:  'bg-gray-100 text-gray-600',
+    RECEIVED: 'bg-yellow-100 text-yellow-700',
+    REVIEWED: 'bg-green-100 text-green-700',
+    NOTIFIED: 'bg-blue-100 text-blue-700',
+  }
+  const STATUS_LABEL: Record<string, string> = {
+    PENDING: 'Pendiente', RECEIVED: 'Recibido', REVIEWED: 'Revisado', NOTIFIED: 'Notificado',
+  }
+
   return (
-    <div>
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+        <div className="flex items-center gap-3 min-w-0">
+          <FlaskConical className="w-4 h-4 text-orange-400 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">{result.title}</p>
+            <p className="text-xs text-gray-400">
+              {result.laboratoryName && `${result.laboratoryName} · `}{formatDate(result.createdAt)}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', STATUS_STYLE[result.status] ?? 'bg-gray-100 text-gray-600')}>
+            {STATUS_LABEL[result.status] ?? result.status}
+          </span>
+          {(result.fileUrl ?? result.externalUrl) && (
+            <a href={result.fileUrl ?? result.externalUrl ?? '#'} target="_blank" rel="noopener noreferrer"
+               className="p-1 hover:bg-gray-200 rounded text-gray-500">
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+          <button onClick={() => setExpanded(e => !e)} className="p-1 hover:bg-gray-200 rounded">
+            {expanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Preview: LLM summary snippet */}
+      {!expanded && result.llmSummary && (
+        <div className="px-4 py-2.5 border-b border-gray-100">
+          <p className="text-xs text-gray-500 line-clamp-2">{result.llmSummary}</p>
+        </div>
+      )}
+
+      {expanded && (
+        <div className="p-4 space-y-4">
+          {/* AI Summary */}
+          {result.llmSummary ? (
+            <div className="bg-[#4E2DD2]/5 border border-[#4E2DD2]/15 rounded-xl p-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-[#4E2DD2]" />
+                <p className="text-xs font-semibold text-[#4E2DD2]">Análisis IA</p>
+              </div>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{result.llmSummary}</p>
+            </div>
+          ) : result.fileUrl ? (
+            <button
+              onClick={handleSummarize}
+              disabled={summarizing}
+              className="w-full flex items-center justify-center gap-2 border border-dashed border-[#4E2DD2]/30 text-[#4E2DD2] hover:bg-[#4E2DD2]/5 rounded-xl py-3 text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {summarizing
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Analizando con IA...</>
+                : <><Sparkles className="w-4 h-4" /> Analizar con IA</>}
+            </button>
+          ) : null}
+
+          {/* Doctor notes */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Notas del médico
+            </label>
+            <textarea
+              rows={3}
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Observaciones, interpretación clínica, indicaciones..."
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4E2DD2]/30 focus:border-[#4E2DD2] resize-none"
+            />
+            {notes !== (result.notes ?? '') && (
+              <button
+                onClick={handleSaveNotes}
+                disabled={savingNotes}
+                className="mt-2 flex items-center gap-1.5 px-3 py-1.5 bg-[#4E2DD2] text-white text-xs font-medium rounded-lg disabled:opacity-50"
+              >
+                {savingNotes ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                Guardar notas
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── LabTab ─────────────────────────────────────────────────────────────────────
+function LabTab({ patientId, results, onRefresh }: { patientId: string; results: LabResult[]; onRefresh: () => void }) {
+  const [dragOver, setDragOver] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
+  const [title, setTitle] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const dropped = e.dataTransfer.files[0]
+    if (dropped?.type === 'application/pdf') {
+      setFile(dropped)
+      if (!title) setTitle(dropped.name.replace(/\.pdf$/i, ''))
+    }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = e.target.files?.[0]
+    if (selected) {
+      setFile(selected)
+      if (!title) setTitle(selected.name.replace(/\.pdf$/i, ''))
+    }
+  }
+
+  async function handleUpload() {
+    if (!file) return
+    setUploading(true)
+    setUploadError('')
+    try {
+      const res = await api.labResults.create({ patientId, title: title || file.name }) as { data: { id: string } }
+      const labId = res.data.id
+      const formData = new FormData()
+      formData.append('file', file)
+      await api.labResults.upload(labId, formData)
+      await api.labResults.summarize(labId)
+      setFile(null)
+      setTitle('')
+      onRefresh()
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Error al subir')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Upload zone */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <p className="text-sm font-semibold text-gray-800 mb-3">Subir resultado de laboratorio</p>
+
+        {!file ? (
+          <div
+            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+            className={cn(
+              'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors',
+              dragOver
+                ? 'border-[#4E2DD2] bg-[#4E2DD2]/5'
+                : 'border-gray-200 hover:border-[#4E2DD2]/40 hover:bg-gray-50'
+            )}
+          >
+            <Upload className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+            <p className="text-sm font-medium text-gray-600">Arrastra el PDF aquí o haz clic para seleccionar</p>
+            <p className="text-xs text-gray-400 mt-1">Solo archivos PDF</p>
+            <input ref={inputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileChange} />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+              <FlaskConical className="w-5 h-5 text-orange-400 shrink-0" />
+              <p className="text-sm text-gray-800 flex-1 truncate">{file.name}</p>
+              <button onClick={() => setFile(null)} className="p-1 hover:bg-gray-200 rounded">
+                <X className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Título del estudio</label>
+              <input
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="ej. Biometría Hemática Completa"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4E2DD2]/30 focus:border-[#4E2DD2]"
+              />
+            </div>
+            {uploadError && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{uploadError}</p>}
+            <button
+              onClick={handleUpload}
+              disabled={uploading}
+              className="w-full flex items-center justify-center gap-2 bg-[#4E2DD2] hover:bg-[#3d22a8] disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+            >
+              {uploading
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo y analizando con IA...</>
+                : <><Sparkles className="w-4 h-4" /> Subir y analizar con IA</>}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Results list */}
       {results.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-10 text-gray-400 text-sm bg-white rounded-xl border border-dashed border-gray-200">
           No hay resultados de laboratorio
         </div>
       ) : (
         <div className="space-y-3">
-          {results.map((r) => (
-            <div key={r.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4">
-              <FlaskConical className="w-8 h-8 text-orange-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">{r.title}</p>
-                <p className="text-xs text-gray-500">{r.laboratoryName} · {formatDate(r.createdAt)}</p>
-              </div>
-              <div className="flex gap-2 shrink-0">
-                <span className={cn(
-                  'text-xs px-2 py-0.5 rounded-full font-medium',
-                  r.status === 'NOTIFIED' ? 'bg-green-100 text-green-700' :
-                  r.status === 'REVIEWED' ? 'bg-blue-100 text-blue-700' :
-                  r.status === 'RECEIVED' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-gray-100 text-gray-600'
-                )}>
-                  {r.status === 'NOTIFIED' ? 'Notificado' : r.status === 'REVIEWED' ? 'Revisado' : r.status === 'RECEIVED' ? 'Recibido' : 'Pendiente'}
-                </span>
-                {(r.fileUrl || r.externalUrl) && (
-                  <a href={r.fileUrl ?? r.externalUrl ?? '#'} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Ver</a>
-                )}
-              </div>
-            </div>
-          ))}
+          {results.map(r => <LabResultCard key={r.id} result={r} onRefresh={onRefresh} />)}
         </div>
       )}
     </div>
@@ -729,7 +932,7 @@ export default function PatientDetailPage() {
             />
           )}
           {activeTab === 'lab' && (
-            <LabTab results={timeline?.labResults ?? []} />
+            <LabTab patientId={id} results={timeline?.labResults ?? []} onRefresh={loadTimeline} />
           )}
         </div>
       </div>

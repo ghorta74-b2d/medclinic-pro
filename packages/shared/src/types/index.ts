@@ -220,6 +220,7 @@ export interface LabResult {
   status: LabResultStatus
   reviewedAt?: string
   notes?: string
+  llmSummary?: string
   patient?: Pick<Patient, 'id' | 'firstName' | 'lastName'>
   createdAt: string
 }
