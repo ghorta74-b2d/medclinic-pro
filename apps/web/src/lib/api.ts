@@ -43,6 +43,18 @@ async function getToken(): Promise<string | null> {
   return session.access_token
 }
 
+// Decode role from cached JWT — no extra Supabase call needed
+export async function getUserRole(): Promise<string | null> {
+  const token = await getToken()
+  if (!token) return null
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]!))
+    return (payload?.user_metadata?.role as string) ?? null
+  } catch {
+    return null
+  }
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}

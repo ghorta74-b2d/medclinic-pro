@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
-import { api } from '@/lib/api'
+import { api, getUserRole } from '@/lib/api'
 import { formatTime, formatCurrency, formatDate } from '@/lib/utils'
 import {
   Users, TrendingUp, Clock, Plus, UserPlus,
@@ -123,17 +123,9 @@ export default function DashboardPage() {
 
   useEffect(() => { load() }, [load])
 
-  // Load user role once
+  // Load user role from cached JWT — no extra Supabase client needed
   useEffect(() => {
-    import('@supabase/ssr').then(({ createBrowserClient }) => {
-      const sb = createBrowserClient(
-        process.env['NEXT_PUBLIC_SUPABASE_URL']!,
-        process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
-      )
-      sb.auth.getSession().then(({ data: { session } }) => {
-        setUserRole(session?.user?.user_metadata?.role ?? null)
-      })
-    })
+    getUserRole().then(role => setUserRole(role))
   }, [])
 
   const todayStr = formatDate(today, "EEEE, d 'de' MMMM yyyy")
@@ -185,7 +177,8 @@ export default function DashboardPage() {
     },
   ]
 
-  const isAdmin = userRole === 'ADMIN'
+  // ADMIN = clinic administrator, STAFF = Administrativo in UI — both get admin layout
+  const isAdmin = userRole === 'ADMIN' || userRole === 'STAFF'
 
   const quickActions = isAdmin
     ? [

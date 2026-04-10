@@ -33,7 +33,7 @@ export default function LoginPage() {
     const role = data.user?.user_metadata?.role
     if (role === 'SUPER_ADMIN') {
       router.push('/superadmin')
-    } else if (role === 'ADMIN') {
+    } else if (role === 'ADMIN' || role === 'STAFF') {
       router.push('/dashboard')
     } else {
       router.push('/agenda')
