@@ -605,36 +605,76 @@ function MarkdownBlock({ text }: { text: string }) {
   return <div className="space-y-0.5">{elements}</div>
 }
 
-// ── AISummarizeProgress ────────────────────────────────────────────────────────
-function AISummarizeProgress() {
+// ── ProgressBar — generic animated progress bar ───────────────────────────────
+function ProgressBar({ durationSecs, color = '#4E2DD2' }: { durationSecs: number; color?: string }) {
   const [progress, setProgress] = useState(0)
-  const stages = ['Leyendo el PDF…', 'Identificando valores fuera de rango…', 'Interpretando hallazgos clínicos…', 'Generando resumen final…']
-  const stageIdx = Math.min(Math.floor(progress / 25), stages.length - 1)
-
   useEffect(() => {
+    const tick = 200
+    const step = 100 / (durationSecs * (1000 / tick))
     const interval = setInterval(() => {
       setProgress(p => {
-        const next = p + 100 / 18 // ~18s total (sonnet is faster)
+        const next = p + step
         if (next >= 95) { clearInterval(interval); return 95 }
         return next
       })
-    }, 1000)
+    }, tick)
     return () => clearInterval(interval)
-  }, [])
+  }, [durationSecs])
+  return (
+    <div className="w-full rounded-full h-2 overflow-hidden" style={{ background: `${color}1a` }}>
+      <div
+        className="h-full rounded-full transition-all duration-200 ease-out"
+        style={{ width: `${progress}%`, background: color }}
+      />
+    </div>
+  )
+}
 
+// ── AISummarizeProgress ────────────────────────────────────────────────────────
+function AISummarizeProgress() {
+  const stages = ['Leyendo el PDF…', 'Identificando valores fuera de rango…', 'Interpretando hallazgos clínicos…', 'Generando resumen final…']
+  const [stageIdx, setStageIdx] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => setStageIdx(i => Math.min(i + 1, stages.length - 1)), 4500)
+    return () => clearInterval(interval)
+  }, [stages.length])
   return (
     <div className="bg-[#4E2DD2]/5 border border-[#4E2DD2]/15 rounded-xl p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-[#4E2DD2] animate-pulse" />
-        <p className="text-xs font-semibold text-[#4E2DD2]">Analizando con IA</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#4E2DD2] animate-pulse" />
+          <p className="text-xs font-semibold text-[#4E2DD2]">Analizando con IA</p>
+        </div>
+        <p className="text-xs text-[#4E2DD2]/50">~18s</p>
       </div>
-      <div className="w-full bg-[#4E2DD2]/10 rounded-full h-1.5 overflow-hidden">
-        <div
-          className="h-full bg-[#4E2DD2] rounded-full transition-all duration-1000 ease-out"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      <ProgressBar durationSecs={18} />
       <p className="text-xs text-[#4E2DD2]/70">{stages[stageIdx] ?? ''}</p>
+    </div>
+  )
+}
+
+// ── UploadProgress ─────────────────────────────────────────────────────────────
+function UploadProgress({ stage, fileName }: { stage: 'uploading' | 'analyzing'; fileName: string }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+        <FlaskConical className="w-5 h-5 text-orange-400 shrink-0" />
+        <p className="text-sm text-gray-600 flex-1 truncate">{fileName}</p>
+      </div>
+      {stage === 'uploading' ? (
+        <div className="space-y-2 px-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Upload className="w-3.5 h-3.5 text-gray-500" />
+              <p className="text-xs font-semibold text-gray-600">Subiendo PDF</p>
+            </div>
+            <p className="text-xs text-gray-400">~4s</p>
+          </div>
+          <ProgressBar durationSecs={4} color="#6b7280" />
+        </div>
+      ) : (
+        <AISummarizeProgress />
+      )}
     </div>
   )
 }
@@ -891,6 +931,8 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
             <p className="text-xs text-gray-400 mt-1">Solo archivos PDF</p>
             <input ref={inputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileChange} />
           </div>
+        ) : uploading || analyzing ? (
+          <UploadProgress stage={uploading ? 'uploading' : 'analyzing'} fileName={file.name} />
         ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
@@ -912,14 +954,9 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
             {uploadError && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{uploadError}</p>}
             <button
               onClick={handleUpload}
-              disabled={uploading || analyzing}
-              className="w-full flex items-center justify-center gap-2 bg-[#4E2DD2] hover:bg-[#3d22a8] disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
             >
-              {uploading
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo PDF...</>
-                : analyzing
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Analizando con IA...</>
-                : <><Sparkles className="w-4 h-4" /> Subir y analizar con IA</>}
+              <Sparkles className="w-4 h-4" /> Subir y analizar con IA
             </button>
           </div>
         )}
