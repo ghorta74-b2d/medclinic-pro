@@ -228,8 +228,8 @@ export async function labResultsRoutes(server: FastifyInstance) {
 
       const anthropic = new Anthropic({ apiKey })
       const message = await anthropic.messages.create({
-        model: 'claude-opus-4-6',
-        max_tokens: 1500,
+        model: 'claude-sonnet-4-6',
+        max_tokens: 900,
         messages: [{
           role: 'user',
           content: [

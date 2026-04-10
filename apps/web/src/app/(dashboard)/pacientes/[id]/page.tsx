@@ -617,15 +617,14 @@ function MarkdownBlock({ text }: { text: string }) {
 // ── AISummarizeProgress ────────────────────────────────────────────────────────
 function AISummarizeProgress() {
   const [progress, setProgress] = useState(0)
-  const [stageIdx, setStageIdx] = useState(0)
   const stages = ['Leyendo el PDF…', 'Identificando valores fuera de rango…', 'Interpretando hallazgos clínicos…', 'Generando resumen final…']
+  const stageIdx = Math.min(Math.floor(progress / 25), stages.length - 1)
 
   useEffect(() => {
     const interval = setInterval(() => {
       setProgress(p => {
-        const next = p + (100 / 25) // ~25s total
+        const next = p + 100 / 18 // ~18s total (sonnet is faster)
         if (next >= 95) { clearInterval(interval); return 95 }
-        setStageIdx(Math.min(Math.floor(next / 25), stages.length - 1))
         return next
       })
     }, 1000)
@@ -757,7 +756,9 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
       {expanded && (
         <div className="p-4 space-y-4">
           {/* AI Summary */}
-          {result.llmSummary ? (
+          {summarizing ? (
+            <AISummarizeProgress />
+          ) : result.llmSummary ? (
             <div className="bg-[#4E2DD2]/5 border border-[#4E2DD2]/15 rounded-xl p-4">
               <div className="flex items-center gap-1.5 mb-3">
                 <Sparkles className="w-3.5 h-3.5 text-[#4E2DD2]" />
@@ -765,8 +766,6 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
               </div>
               <MarkdownBlock text={result.llmSummary} />
             </div>
-          ) : summarizing ? (
-            <AISummarizeProgress />
           ) : result.fileUrl ? (
             <>
               <button
