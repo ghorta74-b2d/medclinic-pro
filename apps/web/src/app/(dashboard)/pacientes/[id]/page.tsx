@@ -348,14 +348,15 @@ type Tab = 'consultas' | 'recetas' | 'lab'
 
 // ── Vitals compact strip ───────────────────────────────────────────────────────
 function VitalsStrip({ v }: { v: VitalSigns }) {
+  const ok = (val: unknown) => val !== undefined && val !== null
   const items = [
-    v.weightKg    !== undefined ? `${v.weightKg} kg`                               : null,
-    v.heightCm    !== undefined ? `${v.heightCm} cm`                               : null,
-    (v.systolicBp !== undefined && v.diastolicBp !== undefined) ? `${v.systolicBp}/${v.diastolicBp} mmHg` : null,
-    v.heartRateBpm !== undefined ? `${v.heartRateBpm} lpm`                         : null,
-    v.temperatureC !== undefined ? `${v.temperatureC} °C`                          : null,
-    v.spo2Percent  !== undefined ? `${v.spo2Percent}% SpO₂`                        : null,
-    v.glucoseMgDl  !== undefined ? `${v.glucoseMgDl} mg/dL`                        : null,
+    ok(v.weightKg)    ? `${v.weightKg} kg`                                : null,
+    ok(v.heightCm)    ? `${v.heightCm} cm`                                : null,
+    (ok(v.systolicBp) && ok(v.diastolicBp)) ? `${v.systolicBp}/${v.diastolicBp} mmHg` : null,
+    ok(v.heartRateBpm) ? `${v.heartRateBpm} lpm`                          : null,
+    ok(v.temperatureC) ? `${v.temperatureC} °C`                           : null,
+    ok(v.spo2Percent)  ? `${v.spo2Percent}% SpO₂`                         : null,
+    ok(v.glucoseMgDl)  ? `${v.glucoseMgDl} mg/dL`                         : null,
   ].filter(Boolean) as string[]
 
   if (items.length === 0) return null
