@@ -21,7 +21,8 @@ export const Errors = {
   VALIDATION: (reply: FastifyReply, details: unknown) =>
     sendError(reply, 422, 'Validation error', details),
   INTERNAL: (reply: FastifyReply, err?: unknown) => {
-    console.error('[INTERNAL ERROR]', err)
-    return sendError(reply, 500, 'Internal server error')
+    const msg = err instanceof Error ? err.message : String(err ?? 'Internal server error')
+    console.error('[INTERNAL ERROR]', msg)
+    return sendError(reply, 500, msg)
   },
 }
