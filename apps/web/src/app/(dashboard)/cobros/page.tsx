@@ -118,7 +118,7 @@ export default function CobrosPage() {
     Array.from({ length: 7 }, (_, i) => {
       const d = new Date()
       d.setDate(d.getDate() - 6 + i)
-      return { date: d.toISOString().split('T')[0]!, amount: 0 }
+      return { date: d.toLocaleDateString('sv-SE'), amount: 0 }
     })
   )
 

@@ -75,7 +75,7 @@ function EditPatientModal({
         lastName:           form.lastName.trim(),
         phone:              `+52${phoneDigits}`,
         email:              form.email || undefined,
-        dateOfBirth:        form.dateOfBirth ? new Date(form.dateOfBirth).toISOString() : undefined,
+        dateOfBirth:        form.dateOfBirth ? (() => { const [y,m,d] = form.dateOfBirth.split('-').map(Number); return new Date(y!, m!-1, d!, 12).toISOString() })() : undefined,
         gender:             form.gender || undefined,
         bloodType:          form.bloodType || 'UNKNOWN',
         curp:               form.curp || undefined,

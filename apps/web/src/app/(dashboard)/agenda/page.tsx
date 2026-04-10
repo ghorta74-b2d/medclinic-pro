@@ -48,7 +48,7 @@ export default function AgendaPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null)
 
-  const dateStr = selectedDate.toISOString().split('T')[0]!
+  const dateStr = selectedDate.toLocaleDateString('sv-SE')
 
   // Load doctors for filter
   useEffect(() => {

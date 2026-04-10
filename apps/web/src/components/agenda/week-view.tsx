@@ -40,15 +40,15 @@ function getWeekDays(ref: Date): Date[] {
 
 export function WeekView({ appointments, loading, referenceDate, onDayClick }: WeekViewProps) {
   const days = getWeekDays(referenceDate)
-  const todayStr = new Date().toISOString().split('T')[0]!
+  const todayStr = new Date().toLocaleDateString('sv-SE')
 
   const apptsByDay: Record<string, Appointment[]> = {}
   for (const day of days) {
-    const key = day.toISOString().split('T')[0]!
+    const key = day.toLocaleDateString('sv-SE')
     apptsByDay[key] = []
   }
   for (const apt of appointments) {
-    const key = new Date(apt.startsAt).toISOString().split('T')[0]!
+    const key = new Date(apt.startsAt).toLocaleDateString('sv-SE')
     if (apptsByDay[key]) apptsByDay[key]!.push(apt)
   }
 
@@ -65,7 +65,7 @@ export function WeekView({ appointments, loading, referenceDate, onDayClick }: W
       {/* Day headers */}
       <div className="grid grid-cols-7 border-b border-gray-200">
         {days.map((day, i) => {
-          const key = day.toISOString().split('T')[0]!
+          const key = day.toLocaleDateString('sv-SE')
           const isToday = key === todayStr
           const dayApts = apptsByDay[key] ?? []
           return (
@@ -95,7 +95,7 @@ export function WeekView({ appointments, loading, referenceDate, onDayClick }: W
       {/* Appointment rows */}
       <div className="grid grid-cols-7 min-h-[400px]">
         {days.map((day) => {
-          const key = day.toISOString().split('T')[0]!
+          const key = day.toLocaleDateString('sv-SE')
           const dayApts = (apptsByDay[key] ?? []).sort(
             (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
           ).filter(a => a.status !== 'CANCELLED' && a.status !== 'NO_SHOW')

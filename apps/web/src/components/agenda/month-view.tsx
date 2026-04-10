@@ -39,11 +39,11 @@ const STATUS_COLOR: Record<string, string> = {
 
 export function MonthView({ appointments, loading, referenceDate, onDayClick }: MonthViewProps) {
   const grid = getMonthGrid(referenceDate)
-  const todayStr = new Date().toISOString().split('T')[0]!
+  const todayStr = new Date().toLocaleDateString('sv-SE')
 
   const apptsByDay: Record<string, Appointment[]> = {}
   for (const apt of appointments) {
-    const key = new Date(apt.startsAt).toISOString().split('T')[0]!
+    const key = new Date(apt.startsAt).toLocaleDateString('sv-SE')
     if (!apptsByDay[key]) apptsByDay[key] = []
     apptsByDay[key]!.push(apt)
   }

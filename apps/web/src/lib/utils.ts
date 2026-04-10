@@ -48,12 +48,18 @@ export function fullName(first: string, last: string): string {
 }
 
 export function calculateAge(dateOfBirth: string | Date): number {
+  // Use UTC methods so the stored UTC timestamp is compared consistently
   const birth = new Date(dateOfBirth)
   const today = new Date()
-  let age = today.getFullYear() - birth.getFullYear()
-  const m = today.getMonth() - birth.getMonth()
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+  let age = today.getUTCFullYear() - birth.getUTCFullYear()
+  const m = today.getUTCMonth() - birth.getUTCMonth()
+  if (m < 0 || (m === 0 && today.getUTCDate() < birth.getUTCDate())) {
     age--
   }
   return age
+}
+
+/** Returns YYYY-MM-DD in the local timezone — safe replacement for toISOString().split('T')[0] */
+export function localDateStr(d: Date): string {
+  return d.toLocaleDateString('sv-SE')
 }

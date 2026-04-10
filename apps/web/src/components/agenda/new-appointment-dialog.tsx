@@ -159,9 +159,12 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
       const slots = buildScheduleSlots(schedule, selectedDate)
       setScheduleSlots(slots)
 
-      // Citas del día para marcar ocupados
-      const from = new Date(`${selectedDate}T00:00:00`).toISOString()
-      const to   = new Date(`${selectedDate}T23:59:59`).toISOString()
+      // Citas del día para marcar ocupados (parse como fecha local, no UTC)
+      const [sy, sm, sd] = selectedDate.split('-').map(Number)
+      const fromDate = new Date(sy!, sm! - 1, sd!, 0, 0, 0)
+      const toDate   = new Date(sy!, sm! - 1, sd!, 23, 59, 59)
+      const from = fromDate.toISOString()
+      const to   = toDate.toISOString()
       const res = await api.appointments.list({ doctorId: effectiveId, from, to }) as { data: any[] }
 
       const booked = new Set<string>()
