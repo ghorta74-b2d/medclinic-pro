@@ -1162,7 +1162,8 @@ export default function PatientDetailPage() {
   const [labEditMode, setLabEditMode] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
 
-  const isReadOnly = userRole === 'ADMIN' || userRole === 'STAFF'
+  // Only STAFF ("Administrativo") is restricted — ADMIN is the clinic owner/doctor and has full access
+  const isReadOnly = userRole === 'STAFF'
 
   useEffect(() => {
     loadPatient()
@@ -1203,7 +1204,7 @@ export default function PatientDetailPage() {
     { key: 'recetas',    label: 'Recetas',      icon: <Pill className="w-4 h-4" />,        count: patient._count.prescriptions },
     { key: 'lab',        label: 'Laboratorio',  icon: <FlaskConical className="w-4 h-4" />, count: patient._count.labResults },
   ]
-  // ADMIN/STAFF only see Recetas tab
+  // STAFF only sees Recetas tab (ADMIN = clinic owner/doctor, has full access)
   const TABS = isReadOnly ? allTabs.filter(t => t.key === 'recetas') : allTabs
 
   return (
