@@ -16,20 +16,25 @@ const DEFAULT_SCHEDULE: Record<string, { start: string; end: string }[]> = {
 }
 
 // Normaliza formato viejo { monday:{start,end,enabled} } y nuevo { mon:[{start,end}] }
+// Días no configurados explícitamente usan DEFAULT_SCHEDULE como fallback
 function normalizeSchedule(cfg: unknown): Record<string, { start: string; end: string }[]> {
   if (!cfg || typeof cfg !== 'object') return DEFAULT_SCHEDULE
   const c = cfg as Record<string, unknown>
-  if (c['mon'] && Array.isArray(c['mon'])) return c as Record<string, { start: string; end: string }[]>
+  if (c['mon'] && Array.isArray(c['mon'])) {
+    // Nuevo formato: merge con DEFAULT para que días ausentes usen el default
+    return { ...DEFAULT_SCHEDULE, ...(c as Record<string, { start: string; end: string }[]>) }
+  }
   const map: Record<string, string> = {
     monday: 'mon', tuesday: 'tue', wednesday: 'wed',
     thursday: 'thu', friday: 'fri', saturday: 'sat', sunday: 'sun',
   }
-  const out: Record<string, { start: string; end: string }[]> = {}
+  const out: Record<string, { start: string; end: string }[]> = { ...DEFAULT_SCHEDULE }
   for (const [long, short] of Object.entries(map)) {
     const d = c[long] as { start?: string; end?: string; enabled?: boolean } | undefined
-    if (d && d.enabled !== false) out[short] = [{ start: d.start ?? '09:00', end: d.end ?? '19:00' }]
+    if (d && d.enabled === false) delete out[short]   // explícitamente desactivado
+    else if (d) out[short] = [{ start: d.start ?? '09:00', end: d.end ?? '19:00' }]
   }
-  return Object.keys(out).length > 0 ? out : DEFAULT_SCHEDULE
+  return out
 }
 
 // Slots dentro del horario laboral de un día dado (30 min cada uno)
