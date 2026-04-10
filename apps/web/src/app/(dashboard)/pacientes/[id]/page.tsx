@@ -4,15 +4,17 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
-import { formatDate, formatDateTime, formatRelative, getInitials, calculateAge, formatCurrency } from '@/lib/utils'
+import { formatDate, formatDateTime, getInitials, calculateAge, formatCurrency } from '@/lib/utils'
 import {
   ArrowLeft, Phone, Mail, Calendar, Droplets, AlertTriangle,
-  FileText, Pill, FlaskConical, ChevronRight, Clock, Pencil, X, Check, Loader2, Printer,
+  FileText, Pill, FlaskConical, ChevronDown, ChevronUp, Clock,
+  Pencil, X, Check, Loader2, Printer, Plus, Stethoscope, UserCheck,
 } from 'lucide-react'
-import type { Patient, ClinicalNote, Appointment, Prescription, LabResult } from 'medclinic-shared'
+import type { Patient, ClinicalNote, Appointment, Prescription, LabResult, VitalSigns } from 'medclinic-shared'
 import { GENDER_LABELS, BLOOD_TYPE_LABELS, STATUS_LABELS } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
 import { PrescriptionBuilder } from '@/components/prescriptions/prescription-builder'
+import { ClinicalNoteEditor } from '@/components/clinical-notes/note-editor'
 
 // ── Phone helpers ──────────────────────────────────────────────────────────────
 function extractPhone(phone: string): { prefix: string; digits: string } {
@@ -36,22 +38,22 @@ function EditPatientModal({
   const [error, setError] = useState('')
   const [phoneDigits, setPhoneDigits] = useState(initDigits)
   const [form, setForm] = useState({
-    firstName:         patient.firstName,
-    lastName:          patient.lastName,
-    email:             patient.email ?? '',
-    dateOfBirth:       patient.dateOfBirth ? patient.dateOfBirth.toString().slice(0, 10) : '',
-    gender:            patient.gender ?? '',
-    bloodType:         patient.bloodType ?? 'UNKNOWN',
-    curp:              patient.curp ?? '',
-    address:           patient.address ?? '',
-    city:              patient.city ?? '',
-    state:             patient.state ?? '',
-    allergies:         patient.allergies.join(', '),
-    chronicConditions: patient.chronicConditions.join(', '),
-    currentMedications:patient.currentMedications.join(', '),
-    emergencyName:     patient.emergencyName ?? '',
-    emergencyPhone:    patient.emergencyPhone ?? '',
-    notes:             (patient as any).notes ?? '',
+    firstName:          patient.firstName,
+    lastName:           patient.lastName,
+    email:              patient.email ?? '',
+    dateOfBirth:        patient.dateOfBirth ? patient.dateOfBirth.toString().slice(0, 10) : '',
+    gender:             patient.gender ?? '',
+    bloodType:          patient.bloodType ?? 'UNKNOWN',
+    curp:               patient.curp ?? '',
+    address:            patient.address ?? '',
+    city:               patient.city ?? '',
+    state:              patient.state ?? '',
+    allergies:          patient.allergies.join(', '),
+    chronicConditions:  patient.chronicConditions.join(', '),
+    currentMedications: patient.currentMedications.join(', '),
+    emergencyName:      patient.emergencyName ?? '',
+    emergencyPhone:     patient.emergencyPhone ?? '',
+    notes:              (patient as any).notes ?? '',
   })
 
   function set(field: string, value: string) {
@@ -94,7 +96,7 @@ function EditPatientModal({
     }
   }
 
-  const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4E2DD2]/40 focus:border-[#4E2DD2]'
   const lbl = 'block text-xs font-medium text-gray-600 mb-1'
 
   return (
@@ -108,45 +110,25 @@ function EditPatientModal({
         </div>
 
         <form onSubmit={handleSave} className="p-6 space-y-6">
-
-          {/* Datos personales */}
           <section>
             <h3 className="text-sm font-semibold text-gray-800 mb-3">Datos personales</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={lbl}>Nombre(s) *</label>
-                <input required value={form.firstName} onChange={e => set('firstName', e.target.value)} className={inp} />
-              </div>
-              <div>
-                <label className={lbl}>Apellidos *</label>
-                <input required value={form.lastName} onChange={e => set('lastName', e.target.value)} className={inp} />
-              </div>
+              <div><label className={lbl}>Nombre(s) *</label><input required value={form.firstName} onChange={e => set('firstName', e.target.value)} className={inp} /></div>
+              <div><label className={lbl}>Apellidos *</label><input required value={form.lastName} onChange={e => set('lastName', e.target.value)} className={inp} /></div>
               <div>
                 <label className={lbl}>WhatsApp *</label>
                 <div className="flex">
                   <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-sm text-gray-600 font-medium select-none">+52</span>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    placeholder="5512345678"
-                    value={phoneDigits}
-                    onChange={e => setPhoneDigits(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    maxLength={10}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <input type="tel" inputMode="numeric" placeholder="5512345678" value={phoneDigits}
+                    onChange={e => setPhoneDigits(e.target.value.replace(/\D/g, '').slice(0, 10))} maxLength={10}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4E2DD2]/40" />
                 </div>
                 {phoneDigits.length > 0 && phoneDigits.length < 10 && (
                   <p className="text-xs text-amber-600 mt-0.5">{10 - phoneDigits.length} dígitos restantes</p>
                 )}
               </div>
-              <div>
-                <label className={lbl}>Correo electrónico</label>
-                <input type="email" value={form.email} onChange={e => set('email', e.target.value)} className={inp} />
-              </div>
-              <div>
-                <label className={lbl}>Fecha de nacimiento</label>
-                <input type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={inp} />
-              </div>
+              <div><label className={lbl}>Correo electrónico</label><input type="email" value={form.email} onChange={e => set('email', e.target.value)} className={inp} /></div>
+              <div><label className={lbl}>Fecha de nacimiento</label><input type="date" value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} className={inp} /></div>
               <div>
                 <label className={lbl}>Sexo</label>
                 <select value={form.gender} onChange={e => set('gender', e.target.value)} className={inp}>
@@ -160,85 +142,46 @@ function EditPatientModal({
                 <label className={lbl}>Grupo sanguíneo</label>
                 <select value={form.bloodType} onChange={e => set('bloodType', e.target.value)} className={inp}>
                   {['UNKNOWN','A_POS','A_NEG','B_POS','B_NEG','AB_POS','AB_NEG','O_POS','O_NEG'].map(bt => (
-                    <option key={bt} value={bt}>
-                      {bt === 'UNKNOWN' ? 'Desconocido' : bt.replace('_POS', '+').replace('_NEG', '-')}
-                    </option>
+                    <option key={bt} value={bt}>{bt === 'UNKNOWN' ? 'Desconocido' : bt.replace('_POS', '+').replace('_NEG', '-')}</option>
                   ))}
                 </select>
               </div>
-              <div>
-                <label className={lbl}>CURP</label>
-                <input maxLength={18} value={form.curp} onChange={e => set('curp', e.target.value.toUpperCase())} placeholder="18 caracteres" className={inp} />
-              </div>
+              <div><label className={lbl}>CURP</label><input maxLength={18} value={form.curp} onChange={e => set('curp', e.target.value.toUpperCase())} placeholder="18 caracteres" className={inp} /></div>
             </div>
           </section>
 
-          {/* Domicilio */}
           <section>
             <h3 className="text-sm font-semibold text-gray-800 mb-3">Domicilio</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className={lbl}>Dirección</label>
-                <input value={form.address} onChange={e => set('address', e.target.value)} className={inp} />
-              </div>
-              <div>
-                <label className={lbl}>Ciudad</label>
-                <input value={form.city} onChange={e => set('city', e.target.value)} className={inp} />
-              </div>
-              <div>
-                <label className={lbl}>Estado</label>
-                <input value={form.state} onChange={e => set('state', e.target.value)} className={inp} />
-              </div>
+              <div className="col-span-2"><label className={lbl}>Dirección</label><input value={form.address} onChange={e => set('address', e.target.value)} className={inp} /></div>
+              <div><label className={lbl}>Ciudad</label><input value={form.city} onChange={e => set('city', e.target.value)} className={inp} /></div>
+              <div><label className={lbl}>Estado</label><input value={form.state} onChange={e => set('state', e.target.value)} className={inp} /></div>
             </div>
           </section>
 
-          {/* Antecedentes médicos */}
           <section>
             <h3 className="text-sm font-semibold text-gray-800 mb-3">Antecedentes médicos</h3>
             <div className="space-y-3">
-              <div>
-                <label className={lbl}>Alergias <span className="font-normal text-gray-400">(separadas por comas)</span></label>
-                <input value={form.allergies} onChange={e => set('allergies', e.target.value)} placeholder="Penicilina, Sulfa..." className={inp} />
-              </div>
-              <div>
-                <label className={lbl}>Enfermedades crónicas <span className="font-normal text-gray-400">(separadas por comas)</span></label>
-                <input value={form.chronicConditions} onChange={e => set('chronicConditions', e.target.value)} placeholder="Diabetes, Hipertensión..." className={inp} />
-              </div>
-              <div>
-                <label className={lbl}>Medicamentos actuales <span className="font-normal text-gray-400">(separados por comas)</span></label>
-                <input value={form.currentMedications} onChange={e => set('currentMedications', e.target.value)} placeholder="Metformina 500mg, Losartán..." className={inp} />
-              </div>
-              <div>
-                <label className={lbl}>Notas internas</label>
-                <textarea rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} className={`${inp} resize-none`} placeholder="Observaciones del expediente..." />
-              </div>
+              <div><label className={lbl}>Alergias <span className="font-normal text-gray-400">(separadas por comas)</span></label><input value={form.allergies} onChange={e => set('allergies', e.target.value)} placeholder="Penicilina, Sulfa..." className={inp} /></div>
+              <div><label className={lbl}>Enfermedades crónicas <span className="font-normal text-gray-400">(separadas por comas)</span></label><input value={form.chronicConditions} onChange={e => set('chronicConditions', e.target.value)} placeholder="Diabetes, Hipertensión..." className={inp} /></div>
+              <div><label className={lbl}>Medicamentos actuales <span className="font-normal text-gray-400">(separados por comas)</span></label><input value={form.currentMedications} onChange={e => set('currentMedications', e.target.value)} placeholder="Metformina 500mg, Losartán..." className={inp} /></div>
+              <div><label className={lbl}>Notas internas</label><textarea rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} className={`${inp} resize-none`} placeholder="Observaciones del expediente..." /></div>
             </div>
           </section>
 
-          {/* Contacto de emergencia */}
           <section>
             <h3 className="text-sm font-semibold text-gray-800 mb-3">Contacto de emergencia</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={lbl}>Nombre</label>
-                <input value={form.emergencyName} onChange={e => set('emergencyName', e.target.value)} className={inp} />
-              </div>
-              <div>
-                <label className={lbl}>Teléfono</label>
-                <input value={form.emergencyPhone} onChange={e => set('emergencyPhone', e.target.value)} className={inp} />
-              </div>
+              <div><label className={lbl}>Nombre</label><input value={form.emergencyName} onChange={e => set('emergencyName', e.target.value)} className={inp} /></div>
+              <div><label className={lbl}>Teléfono</label><input value={form.emergencyPhone} onChange={e => set('emergencyPhone', e.target.value)} className={inp} /></div>
             </div>
           </section>
 
           {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
 
           <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose}
-              className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
-              Cancelar
-            </button>
-            <button type="submit" disabled={saving}
-              className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">Cancelar</button>
+            <button type="submit" disabled={saving} className="flex-1 py-2.5 bg-[#4E2DD2] hover:bg-[#3d22a8] disabled:opacity-50 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {saving ? 'Guardando...' : 'Guardar cambios'}
             </button>
@@ -249,6 +192,7 @@ function EditPatientModal({
   )
 }
 
+// ── Types ──────────────────────────────────────────────────────────────────────
 interface PatientWithCount extends Patient {
   insurances: unknown[]
   _count: { appointments: number; clinicalNotes: number; prescriptions: number; labResults: number }
@@ -261,347 +205,241 @@ interface Timeline {
   labResults: LabResult[]
 }
 
-type Tab = 'overview' | 'timeline' | 'expediente' | 'recetas' | 'lab'
+type Tab = 'consultas' | 'recetas' | 'lab'
 
-export default function PatientDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const router = useRouter()
-  const [patient, setPatient] = useState<PatientWithCount | null>(null)
-  const [timeline, setTimeline] = useState<Timeline | null>(null)
-  const [activeTab, setActiveTab] = useState<Tab>('overview')
-  const [loading, setLoading] = useState(true)
-  const [showEdit, setShowEdit] = useState(false)
+// ── Vitals compact strip ───────────────────────────────────────────────────────
+function VitalsStrip({ v }: { v: VitalSigns }) {
+  const items = [
+    v.weightKg    !== undefined ? `${v.weightKg} kg`                               : null,
+    v.heightCm    !== undefined ? `${v.heightCm} cm`                               : null,
+    (v.systolicBp !== undefined && v.diastolicBp !== undefined) ? `${v.systolicBp}/${v.diastolicBp} mmHg` : null,
+    v.heartRateBpm !== undefined ? `${v.heartRateBpm} lpm`                         : null,
+    v.temperatureC !== undefined ? `${v.temperatureC} °C`                          : null,
+    v.spo2Percent  !== undefined ? `${v.spo2Percent}% SpO₂`                        : null,
+    v.glucoseMgDl  !== undefined ? `${v.glucoseMgDl} mg/dL`                        : null,
+  ].filter(Boolean) as string[]
 
-  useEffect(() => {
-    loadPatient()
-    loadTimeline()
-  }, [id])
-
-  async function loadPatient() {
-    try {
-      const res = await api.patients.get(id) as { data: PatientWithCount }
-      setPatient(res.data)
-    } catch { router.push('/pacientes') }
-    finally { setLoading(false) }
-  }
-
-  async function loadTimeline() {
-    try {
-      const res = await api.patients.timeline(id) as { data: Timeline }
-      setTimeline(res.data)
-    } catch {}
-  }
-
-  if (loading || !patient) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
-
-  const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'overview', label: 'Resumen', icon: <FileText className="w-4 h-4" /> },
-    { key: 'timeline', label: 'Historial', icon: <Clock className="w-4 h-4" /> },
-    { key: 'expediente', label: 'Expediente', icon: <FileText className="w-4 h-4" /> },
-    { key: 'recetas', label: 'Recetas', icon: <Pill className="w-4 h-4" /> },
-    { key: 'lab', label: 'Laboratorio', icon: <FlaskConical className="w-4 h-4" /> },
-  ]
-
+  if (items.length === 0) return null
   return (
-    <>
-      <Header
-        title={`${patient.firstName} ${patient.lastName}`}
-        subtitle={patient.dateOfBirth ? `${calculateAge(patient.dateOfBirth)} años · ${patient.gender ? GENDER_LABELS[patient.gender] : ''}` : ''}
-        actions={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowEdit(true)}
-              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-              Editar
-            </button>
-            <button
-              onClick={() => router.push('/pacientes')}
-              className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 text-sm"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Volver
-            </button>
-          </div>
-        }
-      />
-
-      <div className="flex-1 overflow-auto">
-        {/* Patient hero */}
-        <div className="bg-white border-b border-gray-200 px-6 py-5">
-          <div className="flex items-start gap-5">
-            <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-700 text-xl font-bold shrink-0">
-              {getInitials(patient.firstName, patient.lastName)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap gap-4 text-sm text-gray-600 mt-1">
-                <span className="flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5" />{patient.phone}
-                </span>
-                {patient.email && (
-                  <span className="flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5" />{patient.email}
-                  </span>
-                )}
-                {patient.dateOfBirth && (
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />{formatDate(patient.dateOfBirth)}
-                  </span>
-                )}
-                <span className="flex items-center gap-1.5">
-                  <Droplets className="w-3.5 h-3.5" />{BLOOD_TYPE_LABELS[patient.bloodType]}
-                </span>
-              </div>
-              {patient.allergies.length > 0 && (
-                <div className="flex items-center gap-1.5 mt-2">
-                  <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                  <span className="text-xs text-red-700 font-medium">
-                    Alergias: {patient.allergies.join(', ')}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Quick stats */}
-            <div className="flex gap-4 shrink-0">
-              {[
-                { label: 'Citas', value: patient._count.appointments },
-                { label: 'Notas', value: patient._count.clinicalNotes },
-                { label: 'Recetas', value: patient._count.prescriptions },
-                { label: 'Lab', value: patient._count.labResults },
-              ].map((s) => (
-                <div key={s.label} className="text-center">
-                  <p className="text-lg font-bold text-gray-900">{s.value}</p>
-                  <p className="text-xs text-gray-500">{s.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex gap-1 mt-5 border-b border-gray-100 -mb-px">
-            {TABS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={cn(
-                  'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-                  activeTab === tab.key
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                )}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="p-6">
-          {activeTab === 'overview' && <OverviewTab patient={patient} />}
-          {activeTab === 'timeline' && <TimelineTab timeline={timeline} />}
-          {activeTab === 'expediente' && (
-            <NotesTab patientId={id} notes={timeline?.notes ?? []} onRefresh={loadTimeline} />
-          )}
-          {activeTab === 'recetas' && (
-            <PrescriptionsTab
-              patientId={id}
-              patientName={`${patient.firstName} ${patient.lastName}`}
-              prescriptions={timeline?.prescriptions ?? []}
-              onRefresh={loadTimeline}
-            />
-          )}
-          {activeTab === 'lab' && (
-            <LabTab patientId={id} results={timeline?.labResults ?? []} onRefresh={loadTimeline} />
-          )}
-        </div>
-      </div>
-
-      {showEdit && patient && (
-        <EditPatientModal
-          patient={patient}
-          onClose={() => setShowEdit(false)}
-          onSaved={(updated) => {
-            setPatient(prev => prev ? { ...prev, ...updated } : updated)
-            setShowEdit(false)
-          }}
-        />
-      )}
-    </>
-  )
-}
-
-function OverviewTab({ patient }: { patient: PatientWithCount }) {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Background */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">Antecedentes médicos</h3>
-        <dl className="space-y-3">
-          {[
-            { label: 'Alergias', value: patient.allergies.join(', ') || 'Ninguna conocida' },
-            { label: 'Enfermedades crónicas', value: patient.chronicConditions.join(', ') || 'Ninguna' },
-            { label: 'Medicamentos actuales', value: patient.currentMedications.join(', ') || 'Ninguno' },
-            { label: 'Cirugías previas', value: 'Ninguna' },
-          ].map((item) => (
-            <div key={item.label}>
-              <dt className="text-xs font-medium text-gray-500">{item.label}</dt>
-              <dd className="text-sm text-gray-800 mt-0.5">{item.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-
-      {/* Personal */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">Datos personales</h3>
-        <dl className="space-y-3">
-          {[
-            { label: 'CURP', value: patient.curp || '—' },
-            { label: 'Domicilio', value: [patient.address, patient.city, patient.state].filter(Boolean).join(', ') || '—' },
-            { label: 'Contacto emergencia', value: patient.emergencyName ? `${patient.emergencyName} (${patient.emergencyPhone})` : '—' },
-            { label: 'Registro', value: formatDateTime(patient.createdAt) },
-          ].map((item) => (
-            <div key={item.label}>
-              <dt className="text-xs font-medium text-gray-500">{item.label}</dt>
-              <dd className="text-sm text-gray-800 mt-0.5">{item.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </div>
-  )
-}
-
-function TimelineTab({ timeline }: { timeline: Timeline | null }) {
-  if (!timeline) return <div className="text-center py-12 text-gray-400 text-sm">Cargando...</div>
-
-  // Merge all events with timestamps
-  const events = [
-    ...timeline.appointments.map((a) => ({ type: 'appointment' as const, date: new Date(a.startsAt), data: a })),
-    ...timeline.notes.map((n) => ({ type: 'note' as const, date: new Date(n.createdAt), data: n })),
-    ...timeline.prescriptions.map((p) => ({ type: 'prescription' as const, date: new Date(p.createdAt), data: p })),
-    ...timeline.labResults.map((l) => ({ type: 'lab' as const, date: new Date(l.createdAt), data: l })),
-  ].sort((a, b) => b.date.getTime() - a.date.getTime())
-
-  if (events.length === 0) {
-    return <div className="text-center py-12 text-gray-400 text-sm">No hay historial clínico registrado</div>
-  }
-
-  const ICONS = {
-    appointment: <Calendar className="w-4 h-4 text-blue-600" />,
-    note: <FileText className="w-4 h-4 text-green-600" />,
-    prescription: <Pill className="w-4 h-4 text-purple-600" />,
-    lab: <FlaskConical className="w-4 h-4 text-orange-600" />,
-  }
-
-  const LABELS = {
-    appointment: 'Cita',
-    note: 'Nota clínica',
-    prescription: 'Receta',
-    lab: 'Resultado de lab',
-  }
-
-  return (
-    <div className="space-y-2">
-      {events.map((event, i) => (
-        <div key={i} className="flex gap-4 bg-white rounded-xl border border-gray-100 px-4 py-3 hover:border-gray-200 transition-colors">
-          <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
-            {ICONS[event.type]}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-gray-500 uppercase">{LABELS[event.type]}</span>
-              <span className="text-xs text-gray-400">{formatRelative(event.date)}</span>
-            </div>
-            {event.type === 'appointment' && (
-              <p className="text-sm text-gray-800 mt-0.5">
-                {STATUS_LABELS[(event.data as Appointment).status]}
-                {(event.data as Appointment).chiefComplaint && ` · ${(event.data as Appointment).chiefComplaint}`}
-              </p>
-            )}
-            {event.type === 'note' && (
-              <p className="text-sm text-gray-800 mt-0.5">
-                {(event.data as ClinicalNote).chiefComplaint || 'Nota sin motivo especificado'}
-                {' '}
-                <span className="text-xs text-gray-400">({(event.data as ClinicalNote).status})</span>
-              </p>
-            )}
-            {event.type === 'prescription' && (
-              <p className="text-sm text-gray-800 mt-0.5">
-                {(event.data as Prescription).items?.length ?? 0} medicamento(s)
-              </p>
-            )}
-            {event.type === 'lab' && (
-              <p className="text-sm text-gray-800 mt-0.5">{(event.data as LabResult).title}</p>
-            )}
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-300 shrink-0 self-center" />
-        </div>
+    <div className="flex flex-wrap gap-1.5 mt-2">
+      {items.map((item) => (
+        <span key={item} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">{item}</span>
       ))}
     </div>
   )
 }
 
-function NotesTab({ patientId, notes, onRefresh }: { patientId: string; notes: ClinicalNote[]; onRefresh: () => void }) {
-  const router = useRouter()
+// ── ConsultaCard — single past note with full audit trail ──────────────────────
+function ConsultaCard({ note }: { note: ClinicalNote }) {
+  const [expanded, setExpanded] = useState(false)
+  const isSigned = note.status === 'SIGNED'
+
   return (
-    <div>
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={() => router.push(`/expedientes/nuevo?patientId=${patientId}`)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
-        >
-          Nueva nota
-        </button>
-      </div>
-      {notes.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-gray-100">
-          No hay notas clínicas registradas
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {notes.map((note) => (
-            <div key={note.id} className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{note.chiefComplaint || 'Sin motivo especificado'}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Dr. {note.doctor?.firstName} {note.doctor?.lastName} · {formatDate(note.createdAt)}
-                  </p>
-                </div>
-                <span className={cn(
-                  'text-xs px-2 py-0.5 rounded-full font-medium',
-                  note.status === 'SIGNED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                )}>
-                  {note.status === 'SIGNED' ? 'Firmada' : 'Borrador'}
-                </span>
-              </div>
-              {note.diagnoses?.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {note.diagnoses.map((d: {code: string; description: string}, i: number) => (
-                    <span key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
-                      {d.code} · {d.description}
-                    </span>
-                  ))}
-                </div>
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Audit header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-[#4E2DD2]/10 rounded-full flex items-center justify-center shrink-0">
+            <UserCheck className="w-3.5 h-3.5 text-[#4E2DD2]" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-900">
+              Dr. {note.doctor?.firstName} {note.doctor?.lastName}
+              {note.doctor?.specialty && (
+                <span className="font-normal text-gray-500"> · {note.doctor.specialty}</span>
               )}
+            </p>
+            <p className="text-xs text-gray-400 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {formatDateTime(note.createdAt)}
+              {note.signedAt && isSigned && (
+                <span className="ml-1 text-green-600">· Firmado {formatDate(note.signedAt)}</span>
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            'text-xs px-2.5 py-0.5 rounded-full font-medium',
+            isSigned ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+          )}>
+            {isSigned ? 'Firmada' : 'Borrador'}
+          </span>
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="p-1 hover:bg-gray-200 rounded"
+          >
+            {expanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Summary (always visible) */}
+      <div className="px-4 py-3">
+        {note.chiefComplaint && (
+          <p className="text-sm font-medium text-gray-900">{note.chiefComplaint}</p>
+        )}
+        {note.vitalSigns && <VitalsStrip v={note.vitalSigns} />}
+        {note.diagnoses?.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {note.diagnoses.map((d: { code: string; description: string; type: string }, i: number) => (
+              <span key={i} className={cn(
+                'text-xs px-2 py-0.5 rounded font-medium',
+                d.type === 'PRIMARY' ? 'bg-[#4E2DD2]/10 text-[#4E2DD2]' : 'bg-gray-100 text-gray-600'
+              )}>
+                {d.code} · {d.description}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-gray-100 px-4 py-4 space-y-4">
+          {note.physicalExam && Object.keys(note.physicalExam).length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Exploración física</p>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(note.physicalExam as Record<string, string>).map(([key, val]) => val ? (
+                  <div key={key}>
+                    <p className="text-xs font-medium text-gray-500 capitalize">{key}</p>
+                    <p className="text-xs text-gray-800">{val}</p>
+                  </div>
+                ) : null)}
+              </div>
             </div>
-          ))}
+          )}
+          {note.treatmentPlan && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Plan de tratamiento</p>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.treatmentPlan}</p>
+            </div>
+          )}
+          {note.evolutionNotes && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Evolución</p>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.evolutionNotes}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
+// ── ConsultasTab — merged Resumen + Historial + Expediente ─────────────────────
+function ConsultasTab({
+  patientId,
+  patient,
+  notes,
+  onRefresh,
+}: {
+  patientId: string
+  patient: PatientWithCount
+  notes: ClinicalNote[]
+  onRefresh: () => void
+}) {
+  const [newConsulta, setNewConsulta] = useState(false)
+
+  const sorted = [...notes].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+  return (
+    <div className="space-y-5">
+      {/* Medical background strip */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3 text-red-400" /> Alergias
+            </p>
+            {patient.allergies.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {patient.allergies.map(a => (
+                  <span key={a} className="text-xs bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">{a}</span>
+                ))}
+              </div>
+            ) : <p className="text-xs text-gray-400">Ninguna conocida</p>}
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Enf. crónicas</p>
+            {patient.chronicConditions.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {patient.chronicConditions.map(c => (
+                  <span key={c} className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">{c}</span>
+                ))}
+              </div>
+            ) : <p className="text-xs text-gray-400">Ninguna</p>}
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Medicamentos actuales</p>
+            {patient.currentMedications.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {patient.currentMedications.map(m => (
+                  <span key={m} className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">{m}</span>
+                ))}
+              </div>
+            ) : <p className="text-xs text-gray-400">Ninguno</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* New consultation */}
+      {!newConsulta ? (
+        <button
+          onClick={() => setNewConsulta(true)}
+          className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-[#4E2DD2]/30 text-[#4E2DD2] hover:border-[#4E2DD2]/60 hover:bg-[#4E2DD2]/5 rounded-xl py-3 text-sm font-semibold transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Iniciar nueva consulta
+        </button>
+      ) : (
+        <div className="bg-white rounded-xl border-2 border-[#4E2DD2]/20 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3 bg-[#4E2DD2]/5 border-b border-[#4E2DD2]/10">
+            <div className="flex items-center gap-2">
+              <Stethoscope className="w-4 h-4 text-[#4E2DD2]" />
+              <span className="text-sm font-semibold text-[#4E2DD2]">Nueva consulta</span>
+            </div>
+            <button onClick={() => setNewConsulta(false)} className="p-1 hover:bg-[#4E2DD2]/10 rounded">
+              <X className="w-4 h-4 text-[#4E2DD2]" />
+            </button>
+          </div>
+          <div className="p-5">
+            <ClinicalNoteEditor
+              patientId={patientId}
+              patient={patient}
+              onSaved={() => {
+                setNewConsulta(false)
+                onRefresh()
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Past consultations */}
+      {sorted.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Historial de consultas ({sorted.length})
+          </p>
+          <div className="space-y-3">
+            {sorted.map(note => <ConsultaCard key={note.id} note={note} />)}
+          </div>
+        </div>
+      )}
+
+      {sorted.length === 0 && !newConsulta && (
+        <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-dashed border-gray-200">
+          <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          No hay consultas registradas
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── PrescriptionsTab ───────────────────────────────────────────────────────────
 function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: {
   patientId: string
   patientName: string
@@ -638,85 +476,65 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: 
   return (
     <div>
       <div className="flex justify-end mb-4">
-        <button
-          onClick={() => setShowBuilder(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          <Pill className="w-4 h-4" />
-          Nueva receta
+        <button onClick={() => setShowBuilder(true)}
+          className="flex items-center gap-2 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          <Pill className="w-4 h-4" /> Nueva receta
         </button>
       </div>
 
       {prescriptions.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-gray-100">
-          <Pill className="w-8 h-8 mx-auto mb-2 opacity-30" />
-          No hay recetas registradas
+          <Pill className="w-8 h-8 mx-auto mb-2 opacity-30" />No hay recetas registradas
         </div>
       ) : (
         <div className="space-y-3">
           {prescriptions.map((rx) => (
-            <div key={rx.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:border-gray-300 transition-colors">
-              {/* Header */}
+            <div key={rx.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
-                <p className="text-xs text-gray-500">
-                  Dr. {rx.doctor?.firstName} {rx.doctor?.lastName} · {formatDate(rx.createdAt)}
-                </p>
+                <div className="flex items-center gap-2">
+                  <UserCheck className="w-3.5 h-3.5 text-[#4E2DD2]" />
+                  <p className="text-xs text-gray-700 font-medium">
+                    Dr. {rx.doctor?.firstName} {rx.doctor?.lastName}
+                    <span className="font-normal text-gray-400"> · {formatDate(rx.createdAt)}</span>
+                  </p>
+                </div>
                 <div className="flex items-center gap-2">
                   {rx.sentViaWhatsApp && (
                     <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">✓ Enviada</span>
                   )}
-                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${STATUS_STYLE[rx.status] ?? STATUS_STYLE['ACTIVE']}`}>
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${STATUS_STYLE[rx.status] ?? STATUS_STYLE['ACTIVE']!}`}>
                     {rx.status === 'ACTIVE' ? 'Activa' : rx.status === 'COMPLETED' ? 'Completada' : 'Cancelada'}
                   </span>
                 </div>
               </div>
-
-              {/* Medications */}
               <div className="px-4 py-3 space-y-2">
                 {rx.items?.map((item: any, i: number) => (
                   <div key={i} className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">
-                      {i + 1}
-                    </span>
+                    <span className="w-5 h-5 rounded-full bg-[#4E2DD2] text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">{i + 1}</span>
                     <div>
                       <span className="text-sm font-semibold text-gray-900">{item.medicationName}</span>
                       <span className="text-sm text-gray-500"> {item.dose}</span>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {item.route} · {item.frequency} · {item.duration}
-                        {item.instructions && ` · ${item.instructions}`}
-                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">{item.route} · {item.frequency} · {item.duration}{item.instructions && ` · ${item.instructions}`}</p>
                     </div>
                   </div>
                 ))}
-                {rx.instructions && (
-                  <p className="text-xs text-gray-500 italic pt-2 border-t border-gray-100">{rx.instructions}</p>
-                )}
+                {rx.instructions && <p className="text-xs text-gray-500 italic pt-2 border-t border-gray-100">{rx.instructions}</p>}
                 {rx.followUpDate && (
                   <div className="flex items-center gap-1.5 pt-2 border-t border-gray-100">
                     <Calendar className="w-3.5 h-3.5 text-blue-400" />
-                    <span className="text-xs text-gray-500">
-                      Seguimiento: <span className="font-medium text-gray-700">{formatDate(rx.followUpDate)}</span>
-                    </span>
+                    <span className="text-xs text-gray-500">Seguimiento: <span className="font-medium text-gray-700">{formatDate(rx.followUpDate)}</span></span>
                   </div>
                 )}
               </div>
-
-              {/* Actions */}
               <div className="flex items-center gap-2 px-4 py-2.5 border-t border-gray-100 bg-gray-50">
-                <button
-                  onClick={() => router.push(`/recetas/${rx.id}`)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-white transition-colors"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  Ver / Imprimir
+                <button onClick={() => router.push(`/recetas/${rx.id}`)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-white transition-colors">
+                  <Printer className="w-3.5 h-3.5" /> Ver / Imprimir
                 </button>
                 {rx.status === 'ACTIVE' && (
-                  <button
-                    onClick={() => openEdit(rx)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-white transition-colors"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                    Editar
+                  <button onClick={() => openEdit(rx)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-white transition-colors">
+                    <Pencil className="w-3.5 h-3.5" /> Editar
                   </button>
                 )}
               </div>
@@ -726,25 +544,17 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: 
       )}
 
       {showBuilder && (
-        <PrescriptionBuilder
-          patientId={patientId}
-          onClose={() => setShowBuilder(false)}
-          onCreated={() => { setShowBuilder(false); onRefresh() }}
-        />
+        <PrescriptionBuilder patientId={patientId} onClose={() => setShowBuilder(false)} onCreated={() => { setShowBuilder(false); onRefresh() }} />
       )}
-
       {editingRx && (
-        <PrescriptionBuilder
-          onClose={() => setEditingRx(null)}
-          onCreated={() => { setEditingRx(null); onRefresh() }}
-          existing={editingRx}
-        />
+        <PrescriptionBuilder onClose={() => setEditingRx(null)} onCreated={() => { setEditingRx(null); onRefresh() }} existing={editingRx} />
       )}
     </div>
   )
 }
 
-function LabTab({ patientId, results, onRefresh }: { patientId: string; results: LabResult[]; onRefresh: () => void }) {
+// ── LabTab ─────────────────────────────────────────────────────────────────────
+function LabTab({ results }: { results: LabResult[] }) {
   return (
     <div>
       {results.length === 0 ? (
@@ -768,15 +578,10 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
                   r.status === 'RECEIVED' ? 'bg-yellow-100 text-yellow-700' :
                   'bg-gray-100 text-gray-600'
                 )}>
-                  {r.status === 'NOTIFIED' ? 'Notificado' :
-                   r.status === 'REVIEWED' ? 'Revisado' :
-                   r.status === 'RECEIVED' ? 'Recibido' : 'Pendiente'}
+                  {r.status === 'NOTIFIED' ? 'Notificado' : r.status === 'REVIEWED' ? 'Revisado' : r.status === 'RECEIVED' ? 'Recibido' : 'Pendiente'}
                 </span>
                 {(r.fileUrl || r.externalUrl) && (
-                  <a href={r.fileUrl ?? r.externalUrl ?? '#'} target="_blank" rel="noopener noreferrer"
-                     className="text-xs text-blue-600 hover:underline">
-                    Ver
-                  </a>
+                  <a href={r.fileUrl ?? r.externalUrl ?? '#'} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Ver</a>
                 )}
               </div>
             </div>
@@ -784,5 +589,168 @@ function LabTab({ patientId, results, onRefresh }: { patientId: string; results:
         </div>
       )}
     </div>
+  )
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────────
+export default function PatientDetailPage() {
+  const { id } = useParams<{ id: string }>()
+  const router = useRouter()
+  const [patient, setPatient] = useState<PatientWithCount | null>(null)
+  const [timeline, setTimeline] = useState<Timeline | null>(null)
+  const [activeTab, setActiveTab] = useState<Tab>('consultas')
+  const [loading, setLoading] = useState(true)
+  const [showEdit, setShowEdit] = useState(false)
+
+  useEffect(() => {
+    loadPatient()
+    loadTimeline()
+  }, [id])
+
+  async function loadPatient() {
+    try {
+      const res = await api.patients.get(id) as { data: PatientWithCount }
+      setPatient(res.data)
+    } catch { router.push('/pacientes') }
+    finally { setLoading(false) }
+  }
+
+  async function loadTimeline() {
+    try {
+      const res = await api.patients.timeline(id) as { data: Timeline }
+      setTimeline(res.data)
+    } catch {}
+  }
+
+  if (loading || !patient) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-[#4E2DD2] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  const TABS: { key: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
+    { key: 'consultas',  label: 'Consultas',   icon: <Stethoscope className="w-4 h-4" />, count: patient._count.clinicalNotes },
+    { key: 'recetas',    label: 'Recetas',      icon: <Pill className="w-4 h-4" />,        count: patient._count.prescriptions },
+    { key: 'lab',        label: 'Laboratorio',  icon: <FlaskConical className="w-4 h-4" />, count: patient._count.labResults },
+  ]
+
+  return (
+    <>
+      <Header
+        title={`${patient.firstName} ${patient.lastName}`}
+        subtitle={patient.dateOfBirth ? `${calculateAge(patient.dateOfBirth)} años${patient.gender ? ` · ${GENDER_LABELS[patient.gender]}` : ''}` : ''}
+        actions={
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowEdit(true)}
+              className="flex items-center gap-1.5 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+              <Pencil className="w-3.5 h-3.5" /> Editar
+            </button>
+            <button onClick={() => router.push('/pacientes')}
+              className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 text-sm">
+              <ArrowLeft className="w-4 h-4" /> Volver
+            </button>
+          </div>
+        }
+      />
+
+      <div className="flex-1 overflow-auto">
+        {/* Patient hero */}
+        <div className="bg-white border-b border-gray-200 px-6 py-5">
+          <div className="flex items-start gap-5">
+            <div className="w-16 h-16 bg-[#4E2DD2]/10 rounded-2xl flex items-center justify-center text-[#4E2DD2] text-xl font-bold shrink-0">
+              {getInitials(patient.firstName, patient.lastName)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap gap-4 text-sm text-gray-600 mt-1">
+                <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{patient.phone}</span>
+                {patient.email && <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{patient.email}</span>}
+                {patient.dateOfBirth && <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />{formatDate(patient.dateOfBirth)}</span>}
+                <span className="flex items-center gap-1.5"><Droplets className="w-3.5 h-3.5" />{BLOOD_TYPE_LABELS[patient.bloodType]}</span>
+              </div>
+              {patient.allergies.length > 0 && (
+                <div className="flex items-center gap-1.5 mt-2">
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                  <span className="text-xs text-red-700 font-medium">Alergias: {patient.allergies.join(', ')}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-4 shrink-0">
+              {[
+                { label: 'Consultas', value: patient._count.clinicalNotes },
+                { label: 'Recetas',   value: patient._count.prescriptions },
+                { label: 'Lab',       value: patient._count.labResults },
+              ].map((s) => (
+                <div key={s.label} className="text-center">
+                  <p className="text-lg font-bold text-gray-900">{s.value}</p>
+                  <p className="text-xs text-gray-500">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-1 mt-5 border-b border-gray-100 -mb-px">
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+                  activeTab === tab.key
+                    ? 'border-[#4E2DD2] text-[#4E2DD2]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                )}
+              >
+                {tab.icon}
+                {tab.label}
+                {tab.count !== undefined && tab.count > 0 && (
+                  <span className={cn(
+                    'text-xs rounded-full px-1.5 py-0.5 font-semibold min-w-[1.25rem] text-center',
+                    activeTab === tab.key ? 'bg-[#4E2DD2]/10 text-[#4E2DD2]' : 'bg-gray-100 text-gray-500'
+                  )}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-6">
+          {activeTab === 'consultas' && (
+            <ConsultasTab
+              patientId={id}
+              patient={patient}
+              notes={timeline?.notes ?? []}
+              onRefresh={loadTimeline}
+            />
+          )}
+          {activeTab === 'recetas' && (
+            <PrescriptionsTab
+              patientId={id}
+              patientName={`${patient.firstName} ${patient.lastName}`}
+              prescriptions={timeline?.prescriptions ?? []}
+              onRefresh={loadTimeline}
+            />
+          )}
+          {activeTab === 'lab' && (
+            <LabTab results={timeline?.labResults ?? []} />
+          )}
+        </div>
+      </div>
+
+      {showEdit && patient && (
+        <EditPatientModal
+          patient={patient}
+          onClose={() => setShowEdit(false)}
+          onSaved={(updated) => {
+            setPatient(prev => prev ? { ...prev, ...updated } : updated)
+            setShowEdit(false)
+          }}
+        />
+      )}
+    </>
   )
 }
