@@ -127,6 +127,7 @@ export function NewInvoiceDialog({ onClose, onCreated }: NewInvoiceDialogProps) 
 
       await api.billing.createInvoice({
         patientId: selectedPatientId,
+        localDate: new Date().toLocaleDateString('sv-SE'), // client local date for correct invoice number
         items: resolvedLines.map((l) => ({
           serviceId: l.serviceId || undefined,
           description: l.description,

@@ -20,6 +20,7 @@ const CreateInvoiceSchema = z.object({
   })).min(1),
   notes: z.string().optional(),
   dueAt: z.string().datetime().optional(),
+  localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // YYYY-MM-DD in client timezone
   payment: z.object({
     method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INSURANCE', 'STRIPE_ONLINE']),
     reference: z.string().optional(),
@@ -188,7 +189,10 @@ export async function billingRoutes(server: FastifyInstance) {
     if (!patient) return Errors.NOT_FOUND(reply, 'Patient')
 
     // Generate invoice number: INV-YYYYMMDD-XXXX
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    // Use client-provided local date if available (avoids UTC midnight shift on server)
+    const clientDate = (request.body as Record<string, unknown>)['localDate'] as string | undefined
+    const issuedDate = clientDate ?? new Date().toISOString().slice(0, 10)
+    const dateStr = issuedDate.replace(/-/g, '')
     const count = await prisma.invoice.count({ where: { clinicId } })
     const invoiceNumber = `INV-${dateStr}-${String(count + 1).padStart(4, '0')}`
 
@@ -356,16 +360,24 @@ export async function billingRoutes(server: FastifyInstance) {
   // GET /api/billing/dashboard — revenue stats
   server.get('/dashboard', { preHandler: requireStaff }, async (request, reply) => {
     const { clinicId } = request.authUser
-    const query = request.query as { from?: string; to?: string }
+    const query = request.query as {
+      from?: string; to?: string
+      todayUtc?: string    // client local midnight expressed as UTC ISO (timezone-correct)
+      chartFromUtc?: string // client local (today - 6 days) midnight as UTC ISO
+    }
 
     const from = query.from ? new Date(query.from) : (() => {
       const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d
     })()
     const to = query.to ? new Date(query.to) : new Date()
 
-    // 7-day window for chart (always last 7 days regardless of filter)
-    const chart7Start = new Date(); chart7Start.setDate(chart7Start.getDate() - 6); chart7Start.setHours(0, 0, 0, 0)
-    const todayStart  = new Date(); todayStart.setHours(0, 0, 0, 0)
+    // Use client-provided UTC boundaries so chart and "today" respect client timezone
+    const todayStart = query.todayUtc ? new Date(query.todayUtc) : (() => {
+      const d = new Date(); d.setHours(0, 0, 0, 0); return d
+    })()
+    const chart7Start = query.chartFromUtc ? new Date(query.chartFromUtc) : (() => {
+      const d = new Date(); d.setDate(d.getDate() - 6); d.setHours(0, 0, 0, 0); return d
+    })()
 
     const [invoices, payments, payments7d, paymentsToday] = await Promise.all([
       prisma.invoice.findMany({
@@ -376,6 +388,7 @@ export async function billingRoutes(server: FastifyInstance) {
         where: { invoice: { clinicId }, paidAt: { gte: from, lte: to } },
         select: { amount: true, method: true },
       }),
+      // Raw payments for last 7 days — frontend groups by local date
       prisma.paymentRecord.findMany({
         where: { invoice: { clinicId }, paidAt: { gte: chart7Start } },
         select: { amount: true, paidAt: true },
@@ -403,19 +416,6 @@ export async function billingRoutes(server: FastifyInstance) {
     }, {})
     const byPaymentMethod = Object.entries(methodMap).map(([method, amount]) => ({ method, amount }))
 
-    // Daily revenue for last 7 days
-    const dayMap: Record<string, number> = {}
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(chart7Start); d.setDate(d.getDate() + i)
-      const key = d.toISOString().split('T')[0]!
-      dayMap[key] = 0
-    }
-    for (const p of payments7d) {
-      const key = new Date(p.paidAt).toISOString().split('T')[0]!
-      if (key in dayMap) dayMap[key] = (dayMap[key] ?? 0) + Number(p.amount)
-    }
-    const revenueChart = Object.entries(dayMap).map(([date, amount]) => ({ date, amount }))
-
     return reply.send({
       data: {
         totalBilled,
@@ -425,7 +425,8 @@ export async function billingRoutes(server: FastifyInstance) {
         revenueToday,
         invoiceCount: invoices.length,
         byPaymentMethod,
-        revenueChart,
+        // Raw payments for chart — frontend groups by local date to avoid UTC vs local mismatch
+        payments7d: payments7d.map(p => ({ paidAt: p.paidAt.toISOString(), amount: Number(p.amount) })),
         period: { from, to },
       },
     })

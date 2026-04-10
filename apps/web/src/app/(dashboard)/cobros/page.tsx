@@ -22,7 +22,7 @@ interface DashboardData {
     revenueToday: number
     invoiceCount: number
     byPaymentMethod?: { method: string; amount: number }[]
-    revenueChart?: { date: string; amount: number }[]
+    payments7d?: { paidAt: string; amount: number }[]
     currency?: string
   }
 }
@@ -55,7 +55,7 @@ function RevenueChart({ data }: { data: { date: string; amount: number }[] }) {
           <g key={d.date}>
             <rect x={x} y={y} width={BAR_W} height={barH} rx={4} fill="#3B82F6" fillOpacity={0.8} />
             <text x={x + BAR_W / 2} y={H + 14} textAnchor="middle" fontSize={9} fill="#9CA3AF">
-              {(() => { const [,, day] = d.date.split('-'); return day })()} {new Date(`${d.date}T12:00:00`).toLocaleDateString('es', { month: 'short' })}
+              {d.date.split('-')[2]} {new Date(`${d.date}T12:00:00`).toLocaleDateString('es-MX', { month: 'short' })}
             </text>
           </g>
         )
@@ -117,26 +117,42 @@ export default function CobrosPage() {
   const [detailInvoiceId, setDetailInvoiceId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({})
 
-  const chartData = stats?.revenueChart ?? Array.from({ length: 7 }, (_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - 6 + i)
-    return { date: d.toLocaleDateString('sv-SE'), amount: 0 }
-  })
-
   const load = useCallback(async () => {
     setLoading(true)
     try {
+      // Compute local midnight boundaries as UTC so the server uses client timezone
+      const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
+      const chart7Local = new Date(todayLocal); chart7Local.setDate(todayLocal.getDate() - 6)
+
       const params: Record<string, string> = { limit: '50' }
       if (filter !== 'ALL') params['status'] = filter
       const [ivRes, dashRes] = await Promise.all([
         api.billing.invoices(params) as Promise<InvoicesResponse>,
-        api.billing.dashboard() as Promise<DashboardData>,
+        api.billing.dashboard({
+          todayUtc: todayLocal.toISOString(),
+          chartFromUtc: chart7Local.toISOString(),
+        }) as Promise<DashboardData>,
       ])
       setInvoices(ivRes.data)
       setStats(dashRes.data)
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }, [filter])
+
+  // Build chart in local timezone from raw payment data returned by API
+  const chartData = (() => {
+    const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
+    const dayMap: Record<string, number> = {}
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(todayLocal); d.setDate(d.getDate() - 6 + i)
+      dayMap[d.toLocaleDateString('sv-SE')] = 0
+    }
+    for (const p of (stats?.payments7d ?? [])) {
+      const key = new Date(p.paidAt).toLocaleDateString('sv-SE')
+      if (key in dayMap) dayMap[key] = (dayMap[key] ?? 0) + p.amount
+    }
+    return Object.entries(dayMap).map(([date, amount]) => ({ date, amount }))
+  })()
 
   useEffect(() => { load() }, [load])
 

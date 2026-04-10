@@ -24,7 +24,7 @@ interface DashboardStats {
   unconfirmedCount: number
   pendingBalance: number
   pendingBalanceCount: number
-  revenueChart: { date: string; amount: number }[]
+  payments7d?: { paidAt: string; amount: number }[]
 }
 
 interface DashboardResponse {
@@ -57,7 +57,8 @@ function RevenueChart({ data }: { data: { date: string; amount: number }[] }) {
           const barH = Math.max((d.amount / max) * H, 4)
           const x = i * (BAR_W + GAP)
           const y = H - barH
-          const label = formatDate(d.date, 'd MMM').replace('.', '')
+          // Use T12:00:00 to avoid UTC midnight shifting day label in Mexico timezone
+          const label = new Date(`${d.date}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }).replace('.', '')
           return (
             <g key={d.date}>
               <rect x={x} y={y} width={BAR_W} height={barH}
@@ -99,9 +100,16 @@ export default function DashboardPage() {
       const to = new Date(today)
       to.setHours(23, 59, 59, 999)
 
+      // Client-side UTC boundaries so server respects local timezone
+      const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
+      const chart7Local = new Date(todayLocal); chart7Local.setDate(todayLocal.getDate() - 6)
+
       const [aptsRes, dashRes] = await Promise.allSettled([
         api.appointments.list({ from: from.toISOString(), to: to.toISOString() }) as Promise<{ data: Appointment[] }>,
-        api.dashboard.stats() as Promise<DashboardResponse>,
+        api.dashboard.stats({
+          todayUtc: todayLocal.toISOString(),
+          chartFromUtc: chart7Local.toISOString(),
+        }) as Promise<DashboardResponse>,
       ])
 
       if (aptsRes.status === 'fulfilled') setAppointments(aptsRes.value.data)
@@ -173,11 +181,20 @@ export default function DashboardPage() {
     { label: 'Enviar WhatsApp', icon: MessageSquare, color: 'bg-emerald-600 hover:bg-emerald-700 text-white', onClick: () => {} },
   ]
 
-  const chartData = stats?.revenueChart ?? Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today)
-    d.setDate(d.getDate() - 6 + i)
-    return { date: d.toLocaleDateString('sv-SE'), amount: 0 }
-  })
+  // Build chart in local timezone from raw API payments (avoids UTC vs local day mismatch)
+  const chartData = (() => {
+    const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
+    const dayMap: Record<string, number> = {}
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(todayLocal); d.setDate(d.getDate() - 6 + i)
+      dayMap[d.toLocaleDateString('sv-SE')] = 0
+    }
+    for (const p of (stats?.payments7d ?? [])) {
+      const key = new Date(p.paidAt).toLocaleDateString('sv-SE')
+      if (key in dayMap) dayMap[key] = (dayMap[key] ?? 0) + p.amount
+    }
+    return Object.entries(dayMap).map(([date, amount]) => ({ date, amount }))
+  })()
 
   return (
     <>
