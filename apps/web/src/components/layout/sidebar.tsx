@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   Calendar, Users, Pill, FlaskConical, CreditCard,
-  Settings, Video, LayoutDashboard, LogOut, Stethoscope, Bot,
+  Settings, Video, LayoutDashboard, LogOut, Bot,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -77,15 +77,11 @@ export function Sidebar() {
     <aside className="w-64 h-screen sticky top-0 bg-[#2B225F] text-white flex flex-col">
       {/* Brand */}
       <div className="px-6 py-5 border-b border-[#3D3075]">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#4E2DD2] rounded-xl flex items-center justify-center shrink-0">
-            <Stethoscope className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <p className="text-sm font-bold leading-none text-white">MedClinic Pro</p>
-            <p className="text-xs text-[rgba(231,235,239,0.6)] mt-0.5">Gestión Clínica</p>
-          </div>
-        </div>
+        <img
+          src="/logo_white_comp.png"
+          alt="MediaClinic"
+          className="h-8 w-auto object-contain"
+        />
       </div>
 
       {/* Navigation */}
