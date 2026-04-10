@@ -24,6 +24,7 @@ const CreateInvoiceSchema = z.object({
   payment: z.object({
     method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INSURANCE', 'STRIPE_ONLINE']),
     reference: z.string().optional(),
+    insurerName: z.string().optional(),
   }).optional(),
 })
 
@@ -32,6 +33,7 @@ const RecordPaymentSchema = z.object({
   method: z.enum(['CASH', 'CARD', 'TRANSFER', 'INSURANCE', 'STRIPE_ONLINE']),
   reference: z.string().optional(),
   notes: z.string().optional(),
+  insurerName: z.string().optional(),
 })
 
 export async function billingRoutes(server: FastifyInstance) {
@@ -255,6 +257,7 @@ export async function billingRoutes(server: FastifyInstance) {
           currency: 'MXN',
           method: data.payment.method,
           reference: data.payment.reference,
+          insurerName: data.payment.insurerName,
           recordedBy: authUserId,
           recordedByName: recorderName,
         },
@@ -348,6 +351,7 @@ export async function billingRoutes(server: FastifyInstance) {
         method: data.method,
         reference: data.reference,
         notes: data.notes,
+        insurerName: data.insurerName,
         recordedBy: authUserId,
         recordedByName: recorderName,
       },

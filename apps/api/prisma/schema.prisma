@@ -616,6 +616,7 @@ model PaymentRecord {
   notes           String?
   recordedBy      String?       // authUserId
   recordedByName  String?       // denormalized display name
+  insurerName     String?       // name of insurance company if method=INSURANCE
   paidAt          DateTime      @default(now())
   createdAt       DateTime      @default(now())
 

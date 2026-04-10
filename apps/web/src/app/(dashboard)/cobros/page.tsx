@@ -339,7 +339,6 @@ export default function CobrosPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
                     <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> Aseguradora</span>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Copago</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Estado</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Acciones</th>
                 </tr>
@@ -350,9 +349,6 @@ export default function CobrosPage() {
                   const paid = Number(invoice.paidAmount)
                   const remaining = total - paid
                   const isPending = ['SENT', 'PARTIALLY_PAID', 'OVERDUE', 'DRAFT'].includes(invoice.status)
-                  // Estimate insurance/copay split (if insuranceCoverage exists on invoice, use it; else show total)
-                  const ins = (invoice as any).insuranceCoverage as number | undefined
-                  const copay = ins != null ? total - ins : null
 
                   return (
                     <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
@@ -364,8 +360,11 @@ export default function CobrosPage() {
                         <p className="text-sm text-gray-900">{invoice.patient?.firstName} {invoice.patient?.lastName}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-gray-600 max-w-[160px] truncate">
-                          {(invoice as any).description ?? 'Consulta'}
+                        <p className="text-sm text-gray-600 max-w-[180px] truncate">
+                          {(invoice as any).items?.[0]?.description ?? '—'}
+                          {(invoice as any).items?.length > 1 && (
+                            <span className="text-xs text-gray-400 ml-1">+{(invoice as any).items.length - 1}</span>
+                          )}
                         </p>
                       </td>
                       <td className="px-4 py-3">
@@ -377,17 +376,10 @@ export default function CobrosPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {ins != null ? (
-                          <p className="text-sm text-gray-700">{formatCurrency(ins, invoice.currency)}</p>
+                        {(invoice as any).payments?.[0]?.insurerName ? (
+                          <p className="text-sm text-gray-700">{(invoice as any).payments[0].insurerName}</p>
                         ) : (
                           <span className="text-xs text-gray-300">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {copay != null ? (
-                          <p className="text-sm font-medium text-gray-800">{formatCurrency(copay, invoice.currency)}</p>
-                        ) : (
-                          <p className="text-sm text-gray-700">{formatCurrency(total, invoice.currency)}</p>
                         )}
                       </td>
                       <td className="px-4 py-3">

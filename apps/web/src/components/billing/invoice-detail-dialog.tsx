@@ -172,6 +172,9 @@ export function InvoiceDetailDialog({ invoiceId, onClose }: InvoiceDetailDialogP
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900">
                           {METHOD_LABELS[pay.method as string] ?? pay.method}
+                          {pay.insurerName && (
+                            <span className="ml-1.5 text-xs font-normal text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">{pay.insurerName}</span>
+                          )}
                         </p>
                         {pay.reference && (
                           <p className="text-xs text-gray-400 truncate">Ref: {pay.reference}</p>

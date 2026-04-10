@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { X, Plus, Trash2, Banknote, CreditCard, ArrowLeftRight, Clock } from 'lucide-react'
+import { X, Plus, Trash2, Banknote, CreditCard, ArrowLeftRight, Clock, Building2 } from 'lucide-react'
 import type { Patient, Service } from 'medclinic-shared'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -21,17 +21,37 @@ interface LineItem {
   saveToCatalog: boolean // only relevant when serviceId === ''
 }
 
-type PayMethod = 'CASH' | 'CARD' | 'TRANSFER' | ''
+type PayMethod = 'CASH' | 'CARD' | 'TRANSFER' | 'INSURANCE' | ''
+
+const MEXICO_INSURERS = [
+  'AXA Seguros',
+  'GNP Seguros',
+  'Mapfre',
+  'MetLife',
+  'BBVA Seguros',
+  'Seguros Monterrey NY Life',
+  'Allianz',
+  'Zurich',
+  'Cigna',
+  'Bupa',
+  'SURA',
+  'HDI Seguros',
+  'Banorte Seguros',
+  'Inbursa Seguros',
+  'Seguros Atlas',
+  'Otro',
+]
 
 const emptyLine = (): LineItem => ({
   serviceId: '', description: '', quantity: 1, unitPrice: 0, taxRate: 0, saveToCatalog: false,
 })
 
 const PAYMENT_OPTIONS: { value: PayMethod; label: string; desc: string; icon: React.ElementType }[] = [
-  { value: '',         label: 'Sin cobro',  desc: 'Queda pendiente', icon: Clock },
-  { value: 'CASH',     label: 'Efectivo',   desc: '',               icon: Banknote },
-  { value: 'CARD',     label: 'Tarjeta',    desc: 'Créd / Déb',     icon: CreditCard },
-  { value: 'TRANSFER', label: 'SPEI',       desc: 'Transferencia',  icon: ArrowLeftRight },
+  { value: '',          label: 'Sin cobro',  desc: 'Queda pendiente', icon: Clock },
+  { value: 'CASH',      label: 'Efectivo',   desc: '',               icon: Banknote },
+  { value: 'CARD',      label: 'Tarjeta',    desc: 'Créd / Déb',     icon: CreditCard },
+  { value: 'TRANSFER',  label: 'SPEI',       desc: 'Transferencia',  icon: ArrowLeftRight },
+  { value: 'INSURANCE', label: 'Seguro',     desc: 'Aseguradora',    icon: Building2 },
 ]
 
 const REF_PLACEHOLDER: Record<string, string> = {
@@ -50,6 +70,7 @@ export function NewInvoiceDialog({ onClose, onCreated }: NewInvoiceDialogProps) 
   const [notes, setNotes] = useState('')
   const [payMethod, setPayMethod] = useState<PayMethod>('')
   const [payReference, setPayReference] = useState('')
+  const [insurerName, setInsurerName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -140,6 +161,7 @@ export function NewInvoiceDialog({ onClose, onCreated }: NewInvoiceDialogProps) 
           payment: {
             method: payMethod,
             reference: payReference || undefined,
+            insurerName: payMethod === 'INSURANCE' ? insurerName || undefined : undefined,
           },
         } : {}),
       })
@@ -328,13 +350,13 @@ export function NewInvoiceDialog({ onClose, onCreated }: NewInvoiceDialogProps) 
           {/* Payment method */}
           <div>
             <label className="block text-sm font-semibold text-gray-800 mb-2">Método de pago</label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-5 gap-2">
               {PAYMENT_OPTIONS.map((opt) => {
                 const Icon = opt.icon
                 const active = payMethod === opt.value
                 return (
                   <button key={opt.value} type="button"
-                    onClick={() => { setPayMethod(opt.value); setPayReference('') }}
+                    onClick={() => { setPayMethod(opt.value); setPayReference(''); setInsurerName('') }}
                     className={cn(
                       'p-3 rounded-xl border-2 transition-all text-center flex flex-col items-center gap-1',
                       active ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
@@ -351,7 +373,25 @@ export function NewInvoiceDialog({ onClose, onCreated }: NewInvoiceDialogProps) 
               })}
             </div>
 
-            {payMethod !== '' && (
+            {payMethod === 'INSURANCE' && (
+              <div className="mt-2 space-y-2">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Aseguradora *</label>
+                  <select value={insurerName} onChange={(e) => setInsurerName(e.target.value)} className={inputClass}>
+                    <option value="">— Seleccionar aseguradora —</option>
+                    {MEXICO_INSURERS.map((ins) => (
+                      <option key={ins} value={ins}>{ins}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Número de autorización (opcional)</label>
+                  <input type="text" value={payReference} onChange={(e) => setPayReference(e.target.value)}
+                    placeholder="Número de autorización del seguro" className={inputClass} />
+                </div>
+              </div>
+            )}
+            {payMethod !== '' && payMethod !== 'INSURANCE' && (
               <div className="mt-2">
                 <label className="block text-xs text-gray-500 mb-1">Referencia (opcional)</label>
                 <input
