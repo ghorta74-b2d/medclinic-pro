@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
-import { api } from '@/lib/api'
+import { api, getUserRole } from '@/lib/api'
 import { formatDate, formatDateTime, getInitials, calculateAge, formatCurrency } from '@/lib/utils'
 import {
   ArrowLeft, Phone, Mail, Calendar, Droplets, AlertTriangle,
@@ -434,11 +434,12 @@ function ConsultasTab({
 }
 
 // ── PrescriptionsTab ───────────────────────────────────────────────────────────
-function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: {
+function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh, readOnly = false }: {
   patientId: string
   patientName: string
   prescriptions: Prescription[]
   onRefresh: () => void
+  readOnly?: boolean
 }) {
   const router = useRouter()
   const [showBuilder, setShowBuilder] = useState(false)
@@ -469,12 +470,14 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: 
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
-        <button onClick={() => setShowBuilder(true)}
-          className="flex items-center gap-2 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-          <Pill className="w-4 h-4" /> Nueva receta
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="flex justify-end mb-4">
+          <button onClick={() => setShowBuilder(true)}
+            className="flex items-center gap-2 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            <Pill className="w-4 h-4" /> Nueva receta
+          </button>
+        </div>
+      )}
 
       {prescriptions.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-gray-100">
@@ -525,7 +528,7 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh }: 
                   className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-white transition-colors">
                   <Printer className="w-3.5 h-3.5" /> Ver / Imprimir
                 </button>
-                {rx.status === 'ACTIVE' && (
+                {!readOnly && rx.status === 'ACTIVE' && (
                   <button onClick={() => openEdit(rx)}
                     className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-white transition-colors">
                     <Pencil className="w-3.5 h-3.5" /> Editar
@@ -1018,11 +1021,20 @@ export default function PatientDetailPage() {
   const [loading, setLoading] = useState(true)
   const [showEdit, setShowEdit] = useState(false)
   const [labEditMode, setLabEditMode] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  const isReadOnly = userRole === 'ADMIN' || userRole === 'STAFF'
 
   useEffect(() => {
     loadPatient()
     loadTimeline()
+    getUserRole().then(role => setUserRole(role))
   }, [id])
+
+  // Restrict tab to recetas for admin roles once role is known
+  useEffect(() => {
+    if (isReadOnly) setActiveTab('recetas')
+  }, [isReadOnly])
 
   async function loadPatient() {
     try {
@@ -1047,11 +1059,13 @@ export default function PatientDetailPage() {
     )
   }
 
-  const TABS: { key: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
+  const allTabs: { key: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
     { key: 'consultas',  label: 'Consultas',   icon: <Stethoscope className="w-4 h-4" />, count: patient._count.clinicalNotes },
     { key: 'recetas',    label: 'Recetas',      icon: <Pill className="w-4 h-4" />,        count: patient._count.prescriptions },
     { key: 'lab',        label: 'Laboratorio',  icon: <FlaskConical className="w-4 h-4" />, count: patient._count.labResults },
   ]
+  // ADMIN/STAFF only see Recetas tab
+  const TABS = isReadOnly ? allTabs.filter(t => t.key === 'recetas') : allTabs
 
   return (
     <>
@@ -1060,10 +1074,12 @@ export default function PatientDetailPage() {
         subtitle={patient.dateOfBirth ? `${calculateAge(patient.dateOfBirth)} años${patient.gender ? ` · ${GENDER_LABELS[patient.gender]}` : ''}` : ''}
         actions={
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowEdit(true)}
-              className="flex items-center gap-1.5 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-              <Pencil className="w-3.5 h-3.5" /> Editar
-            </button>
+            {!isReadOnly && (
+              <button onClick={() => setShowEdit(true)}
+                className="flex items-center gap-1.5 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                <Pencil className="w-3.5 h-3.5" /> Editar
+              </button>
+            )}
             <button onClick={() => router.push('/pacientes')}
               className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 text-sm">
               <ArrowLeft className="w-4 h-4" /> Volver
@@ -1165,6 +1181,7 @@ export default function PatientDetailPage() {
               patientName={`${patient.firstName} ${patient.lastName}`}
               prescriptions={timeline?.prescriptions ?? []}
               onRefresh={loadTimeline}
+              readOnly={isReadOnly}
             />
           )}
           {activeTab === 'lab' && (
