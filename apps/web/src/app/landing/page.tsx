@@ -13,7 +13,7 @@ function FadeUp({ children, delay = 0, className = '' }: { children: React.React
   const [visible, setVisible] = useState(false)
   useEffect(() => {
     const el = ref.current; if (!el) return
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisible(true) }, { threshold: 0.1 })
+    const obs = new IntersectionObserver((entries) => { if (entries[0]?.isIntersecting) setVisible(true) }, { threshold: 0.1 })
     obs.observe(el); return () => obs.disconnect()
   }, [])
   return (
@@ -38,7 +38,7 @@ function Counter({ end, suffix = '' }: { end: number; suffix?: string }) {
   const [started, setStarted] = useState(false)
   useEffect(() => {
     const el = ref.current; if (!el) return
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setStarted(true) }, { threshold: 0.5 })
+    const obs = new IntersectionObserver((entries) => { if (entries[0]?.isIntersecting) setStarted(true) }, { threshold: 0.5 })
     obs.observe(el); return () => obs.disconnect()
   }, [])
   useEffect(() => {
