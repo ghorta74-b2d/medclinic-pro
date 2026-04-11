@@ -177,7 +177,7 @@ export default function LandingPage() {
       <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-500 ${scrolled ? 'bg-[#f9f9f7]/90 backdrop-blur-2xl border-b border-black/5' : 'bg-transparent'}`}>
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <img
-            src={scrolled ? '/logo_final.png' : '/logo_white_comp.svg'}
+            src={scrolled ? '/logo_mediaclinic.svg' : '/logo_white_comp.svg'}
             alt="MediaClinic"
             className="h-7 w-auto transition-all duration-500"
           />
