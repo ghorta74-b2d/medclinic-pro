@@ -80,7 +80,7 @@ export function Sidebar() {
         <img
           src="/logo_white_comp.svg"
           alt="MediaClinic"
-          className="h-8 w-auto object-contain"
+          className="h-10 w-auto object-contain"
         />
       </div>
 
