@@ -261,25 +261,32 @@ export default function LandingPage() {
         </FadeUp>
       </section>
 
-      {/* ── Stats — huge numbers, Apple style ── */}
-      <section className="bg-[#1d1d1f] py-32 px-6">
-        <FadeUp className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-1">
+      {/* ── Stats ── */}
+      <section className="bg-[#1d1d1f] py-28 px-6 overflow-hidden">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-white/8 divide-y lg:divide-y-0">
             {[
-              { end: 2500, suffix: '+', label: 'Médicos activos' },
-              { end: 60,   suffix: '%', label: 'Menos inasistencias' },
-              { end: 30,   suffix: 's', label: 'Respuesta del IA' },
-              { end: 100,  suffix: '%', label: 'En la nube, sin instalación' },
+              { end: 2500, suffix: '+', label: 'Médicos activos',           desc: 'En México y LATAM',           accent: '#3b82f6' },
+              { end: 60,   suffix: '%', label: 'Menos inasistencias',       desc: 'Gracias al asistente IA',     accent: '#10b981' },
+              { end: 30,   suffix: 's', label: 'Tiempo de respuesta IA',    desc: 'Disponible las 24 horas',     accent: '#a78bfa' },
+              { end: 100,  suffix: '%', label: 'En la nube',                desc: 'Sin instalación, sin servidores', accent: '#f59e0b' },
             ].map((s, i) => (
-              <FadeUp key={s.label} delay={i * 80} className="border border-white/8 px-8 py-10">
-                <div className="text-5xl lg:text-6xl font-bold text-white mb-3 tabular-nums">
+              <FadeUp key={s.label} delay={i * 80} className="px-8 py-12 lg:py-16 flex flex-col gap-4">
+                <div
+                  className="w-8 h-[3px] rounded-full"
+                  style={{ backgroundColor: s.accent }}
+                />
+                <div className="text-[3.5rem] lg:text-[4.5rem] font-bold leading-none tabular-nums" style={{ color: s.accent }}>
                   <Counter end={s.end} suffix={s.suffix} />
                 </div>
-                <div className="text-[#6e6e73] text-sm leading-snug">{s.label}</div>
+                <div>
+                  <p className="text-white font-semibold text-sm">{s.label}</p>
+                  <p className="text-[#6e6e73] text-xs mt-0.5">{s.desc}</p>
+                </div>
               </FadeUp>
             ))}
           </div>
-        </FadeUp>
+        </div>
       </section>
 
       {/* ── Feature steps — sticky scroll ── */}
@@ -321,25 +328,141 @@ export default function LandingPage() {
               })}
             </div>
 
-            {/* Right: visual — hidden on mobile */}
+            {/* Right: visual — mini mockups per step */}
             <div className="hidden lg:block sticky top-28 self-start">
-              <div className="aspect-square bg-[#1d1d1f] rounded-3xl overflow-hidden flex items-center justify-center relative">
-                {STEPS.map((step, i) => {
-                  const Icon = step.icon
-                  return (
-                    <div
-                      key={i}
-                      className="absolute inset-0 flex flex-col items-center justify-center transition-all duration-700"
-                      style={{ opacity: activeStep === i ? 1 : 0, transform: activeStep === i ? 'scale(1)' : 'scale(0.92)' }}
-                    >
-                      <div className="w-24 h-24 rounded-3xl bg-white/8 border border-white/10 flex items-center justify-center mb-6">
-                        <Icon className="w-10 h-10 text-white/80" />
+              <div className="aspect-square bg-[#141414] rounded-3xl overflow-hidden relative border border-white/5 shadow-2xl">
+                {/* Step 01 — Agenda */}
+                <div className="absolute inset-0 p-7 flex flex-col transition-all duration-700" style={{ opacity: activeStep === 0 ? 1 : 0, transform: activeStep === 0 ? 'translateY(0)' : 'translateY(16px)' }}>
+                  <div className="flex items-center justify-between mb-5">
+                    <span className="text-white font-semibold text-sm">Agenda — Hoy</span>
+                    <span className="text-[10px] text-blue-400 bg-blue-400/10 px-2.5 py-1 rounded-full font-medium">9 confirmadas</span>
+                  </div>
+                  <div className="space-y-2.5 flex-1">
+                    {[
+                      { time: '09:00', name: 'García, Ana',    status: 'confirmed', via: 'IA · WhatsApp' },
+                      { time: '09:30', name: 'Pérez, Luis',    status: 'confirmed', via: 'IA · WhatsApp' },
+                      { time: '10:00', name: 'López, María',   status: 'pending',   via: 'Sin confirmar' },
+                      { time: '10:30', name: 'Torres, Ramón',  status: 'confirmed', via: 'IA · WhatsApp' },
+                      { time: '11:00', name: 'Soto, Carmen',   status: 'confirmed', via: 'IA · WhatsApp' },
+                    ].map((a) => (
+                      <div key={a.time} className="flex items-center gap-3 bg-white/4 rounded-xl px-3.5 py-2.5 border border-white/5">
+                        <span className="text-[#6e6e73] text-xs font-mono w-10 shrink-0">{a.time}</span>
+                        <span className="text-white/80 text-xs flex-1">{a.name}</span>
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${a.status === 'confirmed' ? 'text-emerald-400 bg-emerald-400/10' : 'text-yellow-400 bg-yellow-400/10'}`}>
+                          {a.status === 'confirmed' ? '✓ ' + a.via : '● Pendiente'}
+                        </span>
                       </div>
-                      <p className="text-white/80 text-xl font-semibold text-center px-10">{step.title}</p>
-                      <p className="text-[#6e6e73] text-sm text-center px-12 mt-3 leading-relaxed">{step.body}</p>
+                    ))}
+                  </div>
+                  <div className="mt-4 bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3 flex items-center gap-2.5">
+                    <Bot className="w-4 h-4 text-blue-400 shrink-0" />
+                    <span className="text-blue-300 text-xs">Asistente IA confirmó 4 citas en los últimos 30 min</span>
+                  </div>
+                </div>
+
+                {/* Step 02 — Expediente */}
+                <div className="absolute inset-0 p-7 flex flex-col transition-all duration-700" style={{ opacity: activeStep === 1 ? 1 : 0, transform: activeStep === 1 ? 'translateY(0)' : 'translateY(16px)' }}>
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-400 text-sm font-bold shrink-0">AG</div>
+                    <div>
+                      <p className="text-white font-semibold text-sm">García, Ana · 34 años</p>
+                      <p className="text-[#6e6e73] text-xs">Última visita: hace 3 días</p>
                     </div>
-                  )
-                })}
+                  </div>
+                  <div className="space-y-2.5 flex-1">
+                    {[
+                      { label: 'Diagnóstico', value: 'J00 · Rinofaringitis aguda', color: 'text-white/80' },
+                      { label: 'Alergias', value: 'Penicilina', color: 'text-red-400' },
+                      { label: 'Presión arterial', value: '120/80 mmHg', color: 'text-emerald-400' },
+                      { label: 'Temperatura', value: '37.2 °C', color: 'text-white/80' },
+                      { label: 'Peso', value: '58 kg · IMC 22.4', color: 'text-white/80' },
+                    ].map(r => (
+                      <div key={r.label} className="flex items-center justify-between bg-white/4 rounded-xl px-3.5 py-2.5 border border-white/5">
+                        <span className="text-[#6e6e73] text-xs">{r.label}</span>
+                        <span className={`text-xs font-medium ${r.color}`}>{r.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <div className="flex-1 bg-white/4 rounded-xl px-3 py-2 text-center border border-white/5">
+                      <p className="text-[10px] text-[#6e6e73]">Consultas</p>
+                      <p className="text-white font-bold text-sm">12</p>
+                    </div>
+                    <div className="flex-1 bg-white/4 rounded-xl px-3 py-2 text-center border border-white/5">
+                      <p className="text-[10px] text-[#6e6e73]">Recetas</p>
+                      <p className="text-white font-bold text-sm">8</p>
+                    </div>
+                    <div className="flex-1 bg-white/4 rounded-xl px-3 py-2 text-center border border-white/5">
+                      <p className="text-[10px] text-[#6e6e73]">Estudios</p>
+                      <p className="text-white font-bold text-sm">4</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 03 — Cobros */}
+                <div className="absolute inset-0 p-7 flex flex-col transition-all duration-700" style={{ opacity: activeStep === 2 ? 1 : 0, transform: activeStep === 2 ? 'translateY(0)' : 'translateY(16px)' }}>
+                  <div className="flex items-center justify-between mb-5">
+                    <span className="text-white font-semibold text-sm">Cobros — Hoy</span>
+                    <span className="text-emerald-400 font-bold text-sm">$8,400</span>
+                  </div>
+                  <div className="space-y-2.5 flex-1">
+                    {[
+                      { name: 'García, Ana',   amount: '$800',   status: 'Pagado',   aseg: 'GNP',  color: 'text-emerald-400' },
+                      { name: 'Pérez, Luis',   amount: '$1,200', status: 'Pagado',   aseg: 'AXA',  color: 'text-emerald-400' },
+                      { name: 'López, María',  amount: '$700',   status: 'Pendiente',aseg: '—',    color: 'text-yellow-400' },
+                      { name: 'Torres, Ramón', amount: '$900',   status: 'Pagado',   aseg: 'Metlife', color: 'text-emerald-400' },
+                    ].map(p => (
+                      <div key={p.name} className="flex items-center gap-3 bg-white/4 rounded-xl px-3.5 py-2.5 border border-white/5">
+                        <div className="flex-1">
+                          <p className="text-white/80 text-xs">{p.name}</p>
+                          <p className="text-[#6e6e73] text-[10px]">{p.aseg}</p>
+                        </div>
+                        <span className="text-white/80 text-xs font-medium">{p.amount}</span>
+                        <span className={`text-[10px] font-medium ${p.color}`}>{p.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-3">
+                      <p className="text-[10px] text-emerald-400/70">Cobrado</p>
+                      <p className="text-emerald-400 font-bold text-base">$7,700</p>
+                    </div>
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-3">
+                      <p className="text-[10px] text-yellow-400/70">Pendiente</p>
+                      <p className="text-yellow-400 font-bold text-base">$700</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 04 — Receta */}
+                <div className="absolute inset-0 p-7 flex flex-col transition-all duration-700" style={{ opacity: activeStep === 3 ? 1 : 0, transform: activeStep === 3 ? 'translateY(0)' : 'translateY(16px)' }}>
+                  <div className="flex items-center justify-between mb-5">
+                    <span className="text-white font-semibold text-sm">Receta Digital</span>
+                    <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full font-medium">✓ Enviada</span>
+                  </div>
+                  <div className="bg-white/4 rounded-2xl p-4 border border-white/5 flex-1 flex flex-col gap-3">
+                    <div className="pb-3 border-b border-white/8">
+                      <p className="text-[#6e6e73] text-[10px] uppercase tracking-widest mb-1">Paciente</p>
+                      <p className="text-white text-sm font-medium">García, Ana · 34 años</p>
+                    </div>
+                    <div className="space-y-2.5 flex-1">
+                      {[
+                        { rx: 'Amoxicilina 500mg', sig: '1 cápsula c/8h × 7 días' },
+                        { rx: 'Ibuprofeno 400mg',  sig: '1 tableta c/12h · SOS' },
+                        { rx: 'Loratadina 10mg',   sig: '1 tableta c/24h × 5 días' },
+                      ].map((r, i) => (
+                        <div key={i} className="bg-white/3 rounded-xl px-3 py-2.5">
+                          <p className="text-white/90 text-xs font-semibold">Rx {r.rx}</p>
+                          <p className="text-[#6e6e73] text-[11px] mt-0.5">{r.sig}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-4 bg-[#25D366]/10 border border-[#25D366]/20 rounded-xl px-4 py-3 flex items-center gap-2.5">
+                    <span className="text-base shrink-0">💬</span>
+                    <span className="text-[#25D366] text-xs">Receta enviada por WhatsApp hace 2 min</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
