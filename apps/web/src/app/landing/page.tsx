@@ -452,18 +452,18 @@ export default function LandingPage() {
 
       {/* ── IA Section — black, editorial ── */}
       <section id="ia" className="bg-black py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-20 items-center">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid lg:grid-cols-[1fr_auto] gap-10 lg:gap-16 items-center">
             <FadeUp>
               <p className="text-white/30 text-xs font-semibold uppercase tracking-widest mb-6">Asistente IA</p>
-              <h2 className="text-4xl lg:text-5xl font-bold text-white tracking-tight leading-[1.08] mb-8">
+              <h2 className="text-4xl lg:text-5xl font-bold text-white tracking-tight leading-[1.08] mb-7">
                 Tu clínica trabaja<br />
                 <span className="text-white/30">aunque no estés.</span>
               </h2>
-              <p className="text-white/50 text-lg leading-relaxed mb-10 max-w-md">
-                Agentes de WhatsApp y voz que confirman citas, envían cobros, notifican resultados y responden preguntas — los 7 días de la semana.
+              <p className="text-white/45 text-lg leading-relaxed mb-9 max-w-sm">
+                Agentes de WhatsApp que confirman citas, envían cobros y notifican resultados — los 7 días de la semana.
               </p>
-              <ul className="space-y-4">
+              <ul className="space-y-3.5">
                 {[
                   'Confirmación automática de citas vía WhatsApp',
                   'Cobros y ligas de pago sin intervención humana',
@@ -471,17 +471,15 @@ export default function LandingPage() {
                   'Respuestas automáticas a preguntas frecuentes',
                   'Formularios de pre-consulta personalizados',
                 ].map(item => (
-                  <li key={item} className="flex items-center gap-3 text-sm text-white/50">
-                    <span className="w-5 h-5 rounded-full bg-white/8 border border-white/12 flex items-center justify-center shrink-0">
-                      <Check className="w-3 h-3 text-white/60" />
-                    </span>
+                  <li key={item} className="flex items-center gap-3 text-sm text-white/45">
+                    <Check className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                     {item}
                   </li>
                 ))}
               </ul>
             </FadeUp>
 
-            <FadeUp delay={150} className="flex justify-center lg:justify-end">
+            <FadeUp delay={120}>
               <WhatsAppDemo />
             </FadeUp>
           </div>
