@@ -295,63 +295,7 @@ export default function LandingPage() {
             </div>
           </FadeUp>
 
-          {/* ── Row 2: Asistente IA ── mockup left / text right */}
-          <FadeUp delay={60}>
-            <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center border-t border-white/8 py-20">
-              {/* WhatsApp mockup */}
-              <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#111b21]">
-                <div className="bg-[#1f2c33] px-4 py-3 flex items-center gap-3 border-b border-white/8">
-                  <div className="w-8 h-8 bg-violet-600/70 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0">MC</div>
-                  <div>
-                    <p className="text-white/85 text-xs font-semibold">MediaClinic IA</p>
-                    <p className="text-[#8696a0] text-[10px] flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />en línea
-                    </p>
-                  </div>
-                </div>
-                <div className="bg-[#0b141a] px-4 py-5 space-y-2.5">
-                  {[
-                    { msg: 'Hola Ana 👋 ¿Confirmas tu cita mañana a las 9 AM?', out: false },
-                    { msg: 'Sí, confirmo ✅',                                    out: true  },
-                    { msg: 'Formulario de pre-consulta: link.mc/pre 📋',          out: false },
-                  ].map((m, i) => (
-                    <div key={i} className={`flex ${m.out ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[78%] px-3.5 py-2 rounded-2xl text-[11px] leading-relaxed ${m.out ? 'bg-[#005c4b] text-[#e9edef] rounded-tr-sm' : 'bg-[#202c33] text-[#e9edef] rounded-tl-sm'}`}>
-                        {m.msg}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t border-white/8 px-4 py-3 flex gap-2">
-                  {['Confirmación','Cobros','Resultados'].map(t => (
-                    <span key={t} className="text-[10px] text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full font-medium">{t}</span>
-                  ))}
-                </div>
-              </div>
-              {/* Text */}
-              <div>
-                <div className="flex items-center gap-2.5 mb-7">
-                  <Bot className="w-4 h-4 text-violet-400" />
-                  <span className="text-white/35 text-[10px] uppercase tracking-[0.25em] font-semibold">Asistente IA</span>
-                </div>
-                <h3 className="text-3xl lg:text-4xl font-bold text-white leading-[1.08] tracking-tight mb-5">
-                  24/7 sin staff<br />adicional.
-                </h3>
-                <p className="text-white/45 text-base leading-relaxed max-w-md">
-                  Confirma citas, envía ligas de pago y notifica resultados de laboratorio por WhatsApp — mientras tú descansas.
-                </p>
-                <div className="mt-8 space-y-3">
-                  {['Confirmación automática de citas','Cobros por WhatsApp sin apps extra','Notificación de resultados al instante'].map(f => (
-                    <div key={f} className="flex items-center gap-3 text-white/40 text-sm">
-                      <Check className="w-4 h-4 text-violet-400 shrink-0" />{f}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </FadeUp>
-
-          {/* ── Row 3: Expediente · Cobros · Recetas — 3 col, no cards ── */}
+          {/* ── Row 2: Expediente · Cobros · Recetas — 3 col, no cards ── */}
           <div className="border-t border-white/8 pt-20 grid lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-white/8">
 
             {/* Expediente */}
