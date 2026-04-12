@@ -205,38 +205,40 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Statement — centered, Apple/Pluma editorial ── */}
-      <section className="bg-white px-6 pt-36 pb-32">
-        <div className="max-w-5xl mx-auto text-center">
+      {/* ══════════════════════════════════════════
+          STATEMENT — white, centered
+      ══════════════════════════════════════════ */}
+      <section className="bg-white py-28 lg:py-36 px-6">
+        <div className="max-w-[980px] mx-auto text-center">
           <FadeUp>
-            <p className="text-[10px] uppercase tracking-[0.35em] text-black/30 font-semibold mb-10">
-              La plataforma clínica completa
-            </p>
-            <h2 className="text-[clamp(2.8rem,7vw,5.5rem)] font-bold text-black leading-[1.04] tracking-tight mb-8">
-              Menos herramientas.<br />
-              <span className="text-black/18">Más medicina.</span>
+            <p className="text-[#6e6e73] text-[17px] mb-5">La plataforma clínica completa.</p>
+            <h2 className="text-[clamp(2.4rem,5.5vw,3.8rem)] font-semibold text-[#1d1d1f] leading-[1.06] tracking-tight mb-6">
+              Diseñada para la medicina moderna.
             </h2>
-            <p className="text-black/45 text-lg lg:text-xl leading-relaxed max-w-2xl mx-auto">
-              MediaClinic reemplaza cinco apps distintas con una sola plataforma, potenciada por inteligencia artificial que trabaja contigo las 24 horas.
+            <p className="text-[#6e6e73] text-[17px] leading-[1.6] max-w-[580px] mx-auto mb-10">
+              MediaClinic reúne agenda, expediente, recetas, cobros y telemedicina en una sola plataforma — potenciada por inteligencia artificial.
             </p>
+            <a href="#precios" className="inline-flex items-center gap-1.5 bg-[#0071e3] text-white text-[17px] px-6 py-3 rounded-full hover:bg-[#0077ed] transition-colors">
+              Ver planes <ChevronRight className="w-4 h-4" />
+            </a>
           </FadeUp>
 
-          {/* ── 5-column feature strip ── */}
+          {/* 5-module strip */}
           <FadeUp delay={120}>
-            <div className="mt-20 pt-14 border-t border-black/8 grid grid-cols-2 lg:grid-cols-5 gap-x-6 gap-y-12">
+            <div className="mt-20 pt-10 border-t border-[#d2d2d7] grid grid-cols-2 lg:grid-cols-5 gap-x-8 gap-y-10">
               {[
-                { Icon: Calendar, label: 'Agenda IA',     desc: 'Confirmaciones automáticas por WhatsApp' },
-                { Icon: Users,    label: 'Expediente',    desc: 'Historia clínica digital y CIE-10' },
-                { Icon: Pill,     label: 'Recetas',       desc: 'Digitales, firmadas con QR único' },
-                { Icon: CreditCard, label: 'Cobros',      desc: 'Efectivo, tarjeta y aseguradoras' },
-                { Icon: Video,    label: 'Telemedicina',  desc: 'Videoconsulta integrada, sin apps extra' },
+                { Icon: Calendar,   label: 'Agenda IA',    desc: 'Confirmaciones automáticas' },
+                { Icon: Users,      label: 'Expediente',   desc: 'Historia clínica digital' },
+                { Icon: Pill,       label: 'Recetas',      desc: 'Digitales con QR' },
+                { Icon: CreditCard, label: 'Cobros',       desc: 'Seguros y pagos en línea' },
+                { Icon: Video,      label: 'Telemedicina', desc: 'Videoconsulta integrada' },
               ].map(({ Icon, label, desc }) => (
-                <div key={label} className="flex flex-col items-center lg:items-center text-center group cursor-default">
-                  <div className="w-11 h-11 rounded-2xl bg-black/[0.05] flex items-center justify-center mb-4 group-hover:bg-black/[0.09] transition-colors">
-                    <Icon className="w-[18px] h-[18px] text-black/55" />
+                <div key={label} className="flex flex-col items-center cursor-default">
+                  <div className="w-12 h-12 rounded-2xl bg-[#f5f5f7] flex items-center justify-center mb-3">
+                    <Icon className="w-5 h-5 text-[#1d1d1f]" />
                   </div>
-                  <p className="text-sm font-semibold text-black mb-1 leading-tight">{label}</p>
-                  <p className="text-xs text-black/38 leading-snug max-w-[130px]">{desc}</p>
+                  <p className="text-[15px] font-semibold text-[#1d1d1f] mb-0.5">{label}</p>
+                  <p className="text-[12px] text-[#6e6e73] leading-snug">{desc}</p>
                 </div>
               ))}
             </div>
@@ -244,127 +246,204 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features — Apple alternating rows ── */}
-      <section id="plataforma" className="bg-black px-6 pt-32 pb-24">
-        <div className="max-w-6xl mx-auto">
-
-          {/* Header */}
-          <FadeUp className="mb-20">
-            <p className="text-white/25 text-[10px] uppercase tracking-[0.3em] font-semibold mb-5">Plataforma</p>
-            <h2 className="text-4xl lg:text-5xl font-bold text-white tracking-tight leading-[1.06] max-w-lg">
-              Todo lo que necesita tu consultorio.
-            </h2>
-          </FadeUp>
-
-          {/* ── Row 1: Agenda ── text left / mockup right */}
+      {/* ══════════════════════════════════════════
+          AGENDA IA — white · text left / mockup right
+      ══════════════════════════════════════════ */}
+      <section id="plataforma" className="bg-white py-20 lg:py-28 px-6 border-t border-[#d2d2d7]">
+        <div className="max-w-[980px] mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <FadeUp>
-            <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center border-t border-white/8 py-20">
-              <div>
-                <div className="flex items-center gap-2.5 mb-7">
-                  <Calendar className="w-4 h-4 text-blue-400" />
-                  <span className="text-white/35 text-[10px] uppercase tracking-[0.25em] font-semibold">Agenda inteligente</span>
-                </div>
-                <h3 className="text-3xl lg:text-4xl font-bold text-white leading-[1.08] tracking-tight mb-5">
-                  Tu agenda<br />confirma sola.
-                </h3>
-                <p className="text-white/45 text-base leading-relaxed max-w-md">
-                  El asistente IA contacta a cada paciente por WhatsApp, confirma asistencia y gestiona reprogramaciones — sin que muevas un dedo.
-                </p>
+            <p className="text-[#6e6e73] text-[12px] uppercase tracking-wide font-medium mb-5">Agenda inteligente</p>
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold text-[#1d1d1f] tracking-tight leading-[1.07] mb-5">
+              Tu agenda confirma sola.
+            </h2>
+            <p className="text-[#6e6e73] text-[17px] leading-[1.6] mb-7 max-w-[400px]">
+              El asistente IA contacta a cada paciente por WhatsApp, confirma asistencia y gestiona reprogramaciones — sin que muevas un dedo.
+            </p>
+            <a href="#precios" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
+              Conocer más <ChevronRight className="w-4 h-4" />
+            </a>
+          </FadeUp>
+          <FadeUp delay={100}>
+            <div className="bg-[#f5f5f7] rounded-2xl overflow-hidden">
+              <div className="bg-white border-b border-[#d2d2d7] px-5 py-4 flex items-center justify-between">
+                <span className="text-[15px] font-semibold text-[#1d1d1f]">Agenda — Hoy</span>
+                <span className="text-[12px] text-[#0071e3] font-medium">9 confirmadas</span>
               </div>
-              {/* Floating mockup — no outer card */}
-              <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#0d0d0d]">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
-                  <span className="text-white/70 text-xs font-semibold">Agenda — Hoy</span>
-                  <span className="text-[10px] text-blue-400 bg-blue-400/10 px-2.5 py-1 rounded-full font-medium">9 confirmadas</span>
-                </div>
-                <div className="p-4 space-y-2">
-                  {[
-                    { time: '09:00', name: 'García, Ana',   tag: '✓ IA',       color: 'text-emerald-400 bg-emerald-400/10' },
-                    { time: '09:30', name: 'Pérez, Luis',   tag: '✓ IA',       color: 'text-emerald-400 bg-emerald-400/10' },
-                    { time: '10:00', name: 'López, María',  tag: '● Pendiente', color: 'text-yellow-400  bg-yellow-400/10' },
-                    { time: '10:30', name: 'Torres, Ramón', tag: '✓ IA',       color: 'text-emerald-400 bg-emerald-400/10' },
-                  ].map(a => (
-                    <div key={a.time} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/4 transition-colors">
-                      <span className="text-white/25 text-xs font-mono w-9 shrink-0">{a.time}</span>
-                      <span className="text-white/65 text-xs flex-1">{a.name}</span>
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${a.color}`}>{a.tag}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="divide-y divide-[#d2d2d7]/60">
+                {[
+                  { time: '09:00', name: 'García, Ana',   tag: '✓ Confirmada', ok: true  },
+                  { time: '09:30', name: 'Pérez, Luis',   tag: '✓ Confirmada', ok: true  },
+                  { time: '10:00', name: 'López, María',  tag: '● Pendiente',  ok: false },
+                  { time: '10:30', name: 'Torres, Ramón', tag: '✓ Confirmada', ok: true  },
+                ].map(a => (
+                  <div key={a.time} className="flex items-center gap-4 px-5 py-3.5 bg-white/70">
+                    <span className="text-[13px] text-[#6e6e73] font-mono w-10 shrink-0">{a.time}</span>
+                    <span className="text-[15px] text-[#1d1d1f] flex-1">{a.name}</span>
+                    <span className={`text-[12px] font-medium ${a.ok ? 'text-[#1a7f37]' : 'text-[#b45309]'}`}>{a.tag}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="px-5 py-3 border-t border-[#d2d2d7]/60">
+                <p className="text-[12px] text-[#6e6e73]">Confirmaciones enviadas automáticamente · sin intervención humana</p>
               </div>
             </div>
           </FadeUp>
+        </div>
+      </section>
 
-          {/* ── Row 2: Expediente · Cobros · Recetas — 3 col, no cards ── */}
-          <div className="border-t border-white/8 pt-20 grid lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-white/8">
-
-            {/* Expediente */}
-            <FadeUp delay={0} className="lg:pr-14 pb-14 lg:pb-0">
-              <div className="flex items-center gap-2.5 mb-6">
-                <Users className="w-4 h-4 text-emerald-400" />
-                <span className="text-white/35 text-[10px] uppercase tracking-[0.25em] font-semibold">Expediente</span>
+      {/* ══════════════════════════════════════════
+          EXPEDIENTE — #f5f5f7 · mockup left / text right
+      ══════════════════════════════════════════ */}
+      <section className="bg-[#f5f5f7] py-20 lg:py-28 px-6">
+        <div className="max-w-[980px] mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <FadeUp>
+            <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+              <div className="px-5 py-4 border-b border-[#d2d2d7] flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-[#0071e3] flex items-center justify-center text-white text-[11px] font-semibold shrink-0">AG</div>
+                <div>
+                  <p className="text-[15px] font-semibold text-[#1d1d1f]">García, Ana</p>
+                  <p className="text-[12px] text-[#6e6e73]">F · 34 años · Última visita: ayer</p>
+                </div>
               </div>
-              <h3 className="text-2xl font-bold text-white leading-tight mb-3">Historial completo.</h3>
-              <p className="text-white/40 text-sm leading-relaxed mb-7">Notas SOAP, diagnósticos CIE-10, alergias y signos vitales en un solo lugar.</p>
-              <div className="space-y-2.5">
+              <div className="divide-y divide-[#d2d2d7]/60">
                 {[
-                  { label: 'Diagnóstico', value: 'J00 · Rinofaringitis', color: 'text-white/65' },
-                  { label: 'Alergias',    value: 'Penicilina',           color: 'text-red-400'  },
-                  { label: 'P. arterial', value: '120/80 mmHg',          color: 'text-emerald-400' },
+                  { label: 'Diagnóstico', value: 'J00 · Rinofaringitis aguda', c: 'text-[#1d1d1f]' },
+                  { label: 'Alergias',    value: 'Penicilina',                  c: 'text-[#cc0000]' },
+                  { label: 'Presión',     value: '120/80 mmHg',                 c: 'text-[#1a7f37]' },
+                  { label: 'Peso',        value: '64 kg · IMC 23.1',            c: 'text-[#1d1d1f]' },
                 ].map(r => (
-                  <div key={r.label} className="flex items-center justify-between py-2.5 border-b border-white/6 last:border-0">
-                    <span className="text-white/28 text-xs">{r.label}</span>
-                    <span className={`text-xs font-semibold ${r.color}`}>{r.value}</span>
+                  <div key={r.label} className="flex items-center justify-between px-5 py-3">
+                    <span className="text-[13px] text-[#6e6e73]">{r.label}</span>
+                    <span className={`text-[13px] font-medium ${r.c}`}>{r.value}</span>
                   </div>
                 ))}
               </div>
-            </FadeUp>
+              <div className="px-5 py-4 bg-[#f5f5f7] border-t border-[#d2d2d7]">
+                <p className="text-[11px] text-[#6e6e73] font-medium uppercase tracking-wide mb-1.5">Notas SOAP</p>
+                <p className="text-[13px] text-[#1d1d1f] leading-relaxed">S: Tos seca 3 días, rinorrea clara. O: No fiebre, FC 72. A: J00. P: Reposo, hidratación, amoxicilina...</p>
+              </div>
+            </div>
+          </FadeUp>
+          <FadeUp delay={100}>
+            <p className="text-[#6e6e73] text-[12px] uppercase tracking-wide font-medium mb-5">Expediente clínico</p>
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold text-[#1d1d1f] tracking-tight leading-[1.07] mb-5">
+              Historial completo.<br />A la mano.
+            </h2>
+            <p className="text-[#6e6e73] text-[17px] leading-[1.6] mb-7 max-w-[400px]">
+              Notas SOAP, diagnósticos CIE-10, alergias, signos vitales y medicamentos en un expediente digital que abre en segundos.
+            </p>
+            <a href="#precios" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
+              Conocer más <ChevronRight className="w-4 h-4" />
+            </a>
+          </FadeUp>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════
+          ASISTENTE IA — white · text left / demo right
+      ══════════════════════════════════════════ */}
+      <section id="ia" className="bg-white py-20 lg:py-28 px-6 border-t border-[#d2d2d7]">
+        <div className="max-w-[980px] mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <FadeUp>
+            <p className="text-[#6e6e73] text-[12px] uppercase tracking-wide font-medium mb-5">Asistente IA</p>
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold text-[#1d1d1f] tracking-tight leading-[1.07] mb-5">
+              Tu clínica trabaja<br />aunque no estés.
+            </h2>
+            <p className="text-[#6e6e73] text-[17px] leading-[1.6] mb-7 max-w-[400px]">
+              Agentes de IA que confirman citas, envían ligas de pago y notifican resultados por WhatsApp — los 7 días de la semana.
+            </p>
+            <ul className="space-y-3.5 mb-8">
+              {[
+                'Confirmación automática de citas vía WhatsApp',
+                'Cobros y ligas de pago sin intervención humana',
+                'Notificación de resultados de laboratorio',
+                'Formularios de pre-consulta personalizados',
+              ].map(f => (
+                <li key={f} className="flex items-start gap-3 text-[15px] text-[#1d1d1f]">
+                  <Check className="w-4 h-4 text-[#0071e3] shrink-0 mt-0.5" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <a href="#precios" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
+              Conocer más <ChevronRight className="w-4 h-4" />
+            </a>
+          </FadeUp>
+          <FadeUp delay={120} className="flex justify-center">
+            <WhatsAppDemo />
+          </FadeUp>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════
+          COBROS & RECETAS — #f5f5f7 · 2-col cards
+      ══════════════════════════════════════════ */}
+      <section className="bg-[#f5f5f7] py-20 lg:py-28 px-6">
+        <div className="max-w-[980px] mx-auto">
+          <FadeUp className="mb-14">
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold text-[#1d1d1f] tracking-tight leading-[1.07] mb-3">
+              Más que un expediente.
+            </h2>
+            <p className="text-[#6e6e73] text-[17px] leading-[1.6] max-w-[480px]">
+              Cobra, prescribe y conecta con aseguradoras — todo desde la misma pantalla.
+            </p>
+          </FadeUp>
+          <div className="grid lg:grid-cols-2 gap-4">
 
             {/* Cobros */}
-            <FadeUp delay={80} className="lg:px-14 py-14 lg:py-0">
-              <div className="flex items-center gap-2.5 mb-6">
-                <CreditCard className="w-4 h-4 text-amber-400" />
-                <span className="text-white/35 text-[10px] uppercase tracking-[0.25em] font-semibold">Cobros</span>
-              </div>
-              <h3 className="text-2xl font-bold text-white leading-tight mb-3">Cobra el 100%.</h3>
-              <p className="text-white/40 text-sm leading-relaxed mb-7">Ligas de pago por WhatsApp y 16 aseguradoras integradas sin comisión adicional.</p>
-              <div className="space-y-2.5">
-                {[
-                  { name: 'García, Ana',  amount: '$800',   tag: 'Pagado',    c: 'text-emerald-400 bg-emerald-400/10' },
-                  { name: 'Pérez, Luis',  amount: '$1,200', tag: 'Pagado',    c: 'text-emerald-400 bg-emerald-400/10' },
-                  { name: 'López, María', amount: '$700',   tag: 'Pendiente', c: 'text-yellow-400  bg-yellow-400/10'  },
-                ].map(p => (
-                  <div key={p.name} className="flex items-center gap-3 py-2.5 border-b border-white/6 last:border-0">
-                    <span className="text-white/60 text-xs flex-1">{p.name}</span>
-                    <span className="text-white/40 text-xs font-medium">{p.amount}</span>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${p.c}`}>{p.tag}</span>
-                  </div>
-                ))}
+            <FadeUp delay={0}>
+              <div className="bg-white rounded-2xl p-8 h-full flex flex-col">
+                <div className="w-10 h-10 rounded-xl bg-[#f5f5f7] flex items-center justify-center mb-6">
+                  <CreditCard className="w-5 h-5 text-[#1d1d1f]" />
+                </div>
+                <h3 className="text-[24px] font-semibold text-[#1d1d1f] mb-2">Cobra el 100%.</h3>
+                <p className="text-[#6e6e73] text-[17px] leading-[1.6] mb-6">
+                  Ligas de pago por WhatsApp y 16 aseguradoras integradas, sin comisión adicional.
+                </p>
+                <div className="flex-1 divide-y divide-[#d2d2d7]/60 mb-6">
+                  {[
+                    { name: 'García, Ana',  amount: '$800',   tag: 'Pagado',    ok: true  },
+                    { name: 'Pérez, Luis',  amount: '$1,200', tag: 'Pagado',    ok: true  },
+                    { name: 'López, María', amount: '$700',   tag: 'Pendiente', ok: false },
+                  ].map(p => (
+                    <div key={p.name} className="flex items-center gap-3 py-3">
+                      <span className="text-[15px] text-[#1d1d1f] flex-1">{p.name}</span>
+                      <span className="text-[15px] font-medium text-[#1d1d1f]">{p.amount}</span>
+                      <span className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${p.ok ? 'text-[#1a7f37] bg-[#dcfce7]' : 'text-[#b45309] bg-[#fef9c3]'}`}>{p.tag}</span>
+                    </div>
+                  ))}
+                </div>
+                <a href="#precios" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
+                  Conocer más <ChevronRight className="w-4 h-4" />
+                </a>
               </div>
             </FadeUp>
 
             {/* Recetas */}
-            <FadeUp delay={160} className="lg:pl-14 pt-14 lg:pt-0">
-              <div className="flex items-center gap-2.5 mb-6">
-                <Pill className="w-4 h-4 text-blue-400" />
-                <span className="text-white/35 text-[10px] uppercase tracking-[0.25em] font-semibold">Recetas</span>
-              </div>
-              <h3 className="text-2xl font-bold text-white leading-tight mb-3">Digital y firmada.</h3>
-              <p className="text-white/40 text-sm leading-relaxed mb-7">Prescripciones con firma electrónica enviadas al instante por WhatsApp.</p>
-              <div className="space-y-2.5">
-                {[
-                  { rx: 'Amoxicilina 500mg', sig: '1 cáp. c/8h × 7 días' },
-                  { rx: 'Ibuprofeno 400mg',  sig: '1 tab. c/12h · SOS' },
-                  { rx: 'Loratadina 10mg',   sig: '1 tab. c/24h × 5 días' },
-                ].map((r, i) => (
-                  <div key={i} className="py-2.5 border-b border-white/6 last:border-0">
-                    <p className="text-white/70 text-xs font-semibold">Rx {r.rx}</p>
-                    <p className="text-white/30 text-[11px] mt-0.5">{r.sig}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-5 flex items-center gap-2 text-[#25D366] text-xs font-medium">
-                <span>💬</span><span>Enviada por WhatsApp</span>
+            <FadeUp delay={80}>
+              <div className="bg-white rounded-2xl p-8 h-full flex flex-col">
+                <div className="w-10 h-10 rounded-xl bg-[#f5f5f7] flex items-center justify-center mb-6">
+                  <Pill className="w-5 h-5 text-[#1d1d1f]" />
+                </div>
+                <h3 className="text-[24px] font-semibold text-[#1d1d1f] mb-2">Recetas digitales.</h3>
+                <p className="text-[#6e6e73] text-[17px] leading-[1.6] mb-6">
+                  Prescripciones con firma electrónica y código QR, enviadas al instante por WhatsApp.
+                </p>
+                <div className="flex-1 bg-[#f5f5f7] rounded-xl divide-y divide-[#d2d2d7]/60 mb-6">
+                  {[
+                    { rx: 'Amoxicilina 500mg', sig: '1 cáp. cada 8h × 7 días' },
+                    { rx: 'Ibuprofeno 400mg',  sig: '1 tab. cada 12h · SOS' },
+                    { rx: 'Loratadina 10mg',   sig: '1 tab. cada 24h × 5 días' },
+                  ].map((r, i) => (
+                    <div key={i} className="px-4 py-3">
+                      <p className="text-[15px] font-medium text-[#1d1d1f]">Rx {r.rx}</p>
+                      <p className="text-[13px] text-[#6e6e73] mt-0.5">{r.sig}</p>
+                    </div>
+                  ))}
+                </div>
+                <a href="#precios" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
+                  Conocer más <ChevronRight className="w-4 h-4" />
+                </a>
               </div>
             </FadeUp>
 
@@ -372,86 +451,54 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Stats — white ── */}
-      <section className="bg-white py-28 px-6 border-b border-black/8">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-16">
+      {/* ══════════════════════════════════════════
+          STATS — white
+      ══════════════════════════════════════════ */}
+      <section className="bg-white py-20 px-6 border-t border-[#d2d2d7]">
+        <div className="max-w-[980px] mx-auto">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
             {[
-              { end: 2500, suffix: '+', label: 'Médicos activos',         desc: 'En México y LATAM',             color: '#2563eb' },
-              { end: 60,   suffix: '%', label: 'Menos inasistencias',     desc: 'Gracias al asistente IA',       color: '#059669' },
-              { end: 30,   suffix: 's', label: 'Respuesta del asistente', desc: 'Disponible las 24 horas',       color: '#7c3aed' },
-              { end: 100,  suffix: '%', label: 'En la nube',              desc: 'Sin instalación ni servidores', color: '#d97706' },
+              { end: 2500, suffix: '+', label: 'Médicos activos',     desc: 'En México y LATAM' },
+              { end: 60,   suffix: '%', label: 'Menos inasistencias', desc: 'Gracias al asistente IA' },
+              { end: 30,   suffix: 's', label: 'Respuesta IA',        desc: 'Disponible las 24 horas' },
+              { end: 100,  suffix: '%', label: 'En la nube',          desc: 'Sin instalación ni servidores' },
             ].map((s, i) => (
-              <FadeUp key={s.label} delay={i * 80} className="flex flex-col">
-                <div className="text-5xl lg:text-6xl font-bold leading-none tabular-nums mb-3">
-                  <Counter end={s.end} suffix={s.suffix} color={s.color} />
+              <FadeUp key={s.label} delay={i * 80}>
+                <div className="text-[48px] lg:text-[56px] font-semibold text-[#1d1d1f] leading-none tabular-nums mb-3">
+                  <Counter end={s.end} suffix={s.suffix} color="#1d1d1f" />
                 </div>
-                <p className="font-semibold text-sm text-black">{s.label}</p>
-                <p className="text-xs text-black/40 mt-0.5">{s.desc}</p>
+                <p className="text-[17px] font-semibold text-[#1d1d1f] mb-1">{s.label}</p>
+                <p className="text-[15px] text-[#6e6e73]">{s.desc}</p>
               </FadeUp>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── IA Section — black, editorial ── */}
-      <section id="ia" className="bg-black py-32 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid lg:grid-cols-[1fr_auto] gap-10 lg:gap-16 items-center">
-            <FadeUp>
-              <p className="text-white/30 text-xs font-semibold uppercase tracking-widest mb-6">Asistente IA</p>
-              <h2 className="text-4xl lg:text-5xl font-bold text-white tracking-tight leading-[1.08] mb-7">
-                Tu clínica trabaja<br />
-                <span className="text-white/30">aunque no estés.</span>
-              </h2>
-              <p className="text-white/45 text-lg leading-relaxed mb-9 max-w-sm">
-                Agentes de WhatsApp que confirman citas, envían cobros y notifican resultados — los 7 días de la semana.
-              </p>
-              <ul className="space-y-3.5">
-                {[
-                  'Confirmación automática de citas vía WhatsApp',
-                  'Cobros y ligas de pago sin intervención humana',
-                  'Notificación de resultados de laboratorio',
-                  'Respuestas automáticas a preguntas frecuentes',
-                  'Formularios de pre-consulta personalizados',
-                ].map(item => (
-                  <li key={item} className="flex items-center gap-3 text-sm text-white/45">
-                    <Check className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </FadeUp>
-
-            <FadeUp delay={120}>
-              <WhatsAppDemo />
-            </FadeUp>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Testimonials — white ── */}
-      <section className="bg-white py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <FadeUp className="mb-16">
-            <p className="text-black/35 text-xs font-semibold uppercase tracking-widest mb-4">Testimonios</p>
-            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight text-black">Lo dicen los médicos.</h2>
+      {/* ══════════════════════════════════════════
+          TESTIMONIOS — #f5f5f7
+      ══════════════════════════════════════════ */}
+      <section className="bg-[#f5f5f7] py-20 lg:py-28 px-6">
+        <div className="max-w-[980px] mx-auto">
+          <FadeUp className="mb-14">
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold text-[#1d1d1f] tracking-tight">
+              Lo dicen los médicos.
+            </h2>
           </FadeUp>
-
-          <div className="grid md:grid-cols-3 gap-5">
+          <div className="grid md:grid-cols-3 gap-4">
             {[
-              { quote: 'Mis inasistencias bajaron 60% en el primer mes. El asistente de WhatsApp confirma citas mientras yo duermo.', name: 'Dr. Alejandro Reyes', role: 'Cardiólogo · Monterrey', init: 'AR' },
+              { quote: 'Mis inasistencias bajaron 60% en el primer mes. El asistente confirma citas mientras yo duermo.', name: 'Dr. Alejandro Reyes', role: 'Cardiólogo · Monterrey', init: 'AR' },
               { quote: 'Por fin un sistema pensado para México. Elegante, rápido y mis pacientes lo aman desde el primer día.', name: 'Dra. Fernanda Castillo', role: 'Dermatóloga · CDMX', init: 'FC' },
               { quote: 'En 2 semanas recuperé la inversión. Ahora cobro el 100% y tengo todo el historial en mi celular.', name: 'Dr. Ricardo Soto', role: 'Medicina General · Guadalajara', init: 'RS' },
             ].map((t, i) => (
               <FadeUp key={t.name} delay={i * 80}>
-                <div className="bg-[#f5f5f5] rounded-3xl p-8 h-full flex flex-col hover:bg-[#f0f0f0] transition-colors duration-300">
-                  <p className="text-black/70 text-[15px] leading-relaxed flex-1 mb-8">"{t.quote}"</p>
+                <div className="bg-white rounded-2xl p-8 h-full flex flex-col">
+                  <p className="text-[#1d1d1f] text-[17px] leading-[1.6] flex-1 mb-8">"{t.quote}"</p>
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-black flex items-center justify-center text-white text-xs font-bold shrink-0">{t.init}</div>
+                    <div className="w-10 h-10 rounded-full bg-[#0071e3] flex items-center justify-center text-white text-[12px] font-semibold shrink-0">{t.init}</div>
                     <div>
-                      <p className="font-semibold text-sm text-black">{t.name}</p>
-                      <p className="text-xs text-black/40">{t.role}</p>
+                      <p className="text-[15px] font-semibold text-[#1d1d1f]">{t.name}</p>
+                      <p className="text-[13px] text-[#6e6e73]">{t.role}</p>
                     </div>
                   </div>
                 </div>
@@ -461,18 +508,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Pricing ── */}
-      <section id="precios" className="bg-[#f5f5f5] py-32 px-6">
-        <div className="max-w-5xl mx-auto">
-          <FadeUp className="mb-16 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-            <div>
-              <p className="text-black/35 text-xs font-semibold uppercase tracking-widest mb-4">Precios</p>
-              <h2 className="text-4xl lg:text-5xl font-bold tracking-tight text-black">Elige tu plan.</h2>
-            </div>
-            <div className="inline-flex items-center gap-1 bg-black/8 rounded-full p-1">
-              <button onClick={() => setAnnual(false)} className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${!annual ? 'bg-white shadow-sm text-black' : 'text-black/50'}`}>Mensual</button>
-              <button onClick={() => setAnnual(true)} className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${annual ? 'bg-white shadow-sm text-black' : 'text-black/50'}`}>
-                Anual <span className="text-xs text-emerald-600 font-bold">−10%</span>
+      {/* ══════════════════════════════════════════
+          PRECIOS — white
+      ══════════════════════════════════════════ */}
+      <section id="precios" className="bg-white py-20 lg:py-28 px-6 border-t border-[#d2d2d7]">
+        <div className="max-w-[980px] mx-auto">
+          <FadeUp className="mb-14 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold text-[#1d1d1f] tracking-tight">
+              Elige tu plan.
+            </h2>
+            <div className="inline-flex items-center gap-1 bg-[#f5f5f7] rounded-full p-1">
+              <button onClick={() => setAnnual(false)} className={`px-5 py-2 rounded-full text-[15px] font-medium transition-all ${!annual ? 'bg-white shadow-sm text-[#1d1d1f]' : 'text-[#6e6e73]'}`}>Mensual</button>
+              <button onClick={() => setAnnual(true)} className={`px-5 py-2 rounded-full text-[15px] font-medium transition-all flex items-center gap-1.5 ${annual ? 'bg-white shadow-sm text-[#1d1d1f]' : 'text-[#6e6e73]'}`}>
+                Anual <span className="text-[12px] text-[#1a7f37] font-semibold">−10%</span>
               </button>
             </div>
           </FadeUp>
@@ -480,70 +528,75 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-4">
             {PLANS.map((plan, i) => (
               <FadeUp key={plan.name} delay={i * 80}>
-                <div className={`rounded-3xl p-8 h-full flex flex-col transition-all duration-300 ${plan.hot ? 'bg-black text-white' : 'bg-white border border-black/8 hover:shadow-md'}`}>
-                  {plan.hot && <span className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4 block">Más popular</span>}
-                  <h3 className={`text-lg font-bold mb-1 ${plan.hot ? 'text-white' : 'text-black'}`}>{plan.name}</h3>
-                  <p className={`text-sm mb-6 ${plan.hot ? 'text-white/40' : 'text-black/40'}`}>{plan.desc}</p>
+                <div className={`rounded-2xl p-8 h-full flex flex-col ${plan.hot ? 'bg-[#1d1d1f]' : 'bg-[#f5f5f7]'}`}>
+                  {plan.hot && <span className="text-[12px] font-medium text-[#0071e3] mb-4 block">Más popular</span>}
+                  <h3 className={`text-[20px] font-semibold mb-1 ${plan.hot ? 'text-white' : 'text-[#1d1d1f]'}`}>{plan.name}</h3>
+                  <p className={`text-[15px] mb-6 ${plan.hot ? 'text-white/50' : 'text-[#6e6e73]'}`}>{plan.desc}</p>
                   <div className="mb-8">
-                    <span className={`text-5xl font-bold tabular-nums ${plan.hot ? 'text-white' : 'text-black'}`}>
+                    <span className={`text-[48px] font-semibold tabular-nums ${plan.hot ? 'text-white' : 'text-[#1d1d1f]'}`}>
                       ${(annual ? plan.annual : plan.monthly).toLocaleString()}
                     </span>
-                    <span className={`text-sm ml-1.5 ${plan.hot ? 'text-white/35' : 'text-black/35'}`}>/mes</span>
+                    <span className={`text-[15px] ml-1 ${plan.hot ? 'text-white/40' : 'text-[#6e6e73]'}`}>/mes</span>
                   </div>
                   <ul className="space-y-3 flex-1 mb-8">
                     {plan.features.map(f => (
-                      <li key={f} className={`flex items-center gap-3 text-sm ${plan.hot ? 'text-white/60' : 'text-black/60'}`}>
-                        <Check className={`w-4 h-4 shrink-0 ${plan.hot ? 'text-blue-400' : 'text-black'}`} />
+                      <li key={f} className={`flex items-start gap-3 text-[15px] ${plan.hot ? 'text-white/70' : 'text-[#1d1d1f]'}`}>
+                        <Check className="w-4 h-4 text-[#0071e3] shrink-0 mt-0.5" />
                         {f}
                       </li>
                     ))}
                   </ul>
                   <a
                     href="mailto:demo@mediaclinic.mx"
-                    className={`flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm transition-all ${plan.hot ? 'bg-white text-black hover:bg-white/90' : 'bg-black text-white hover:bg-black/80'}`}
+                    className={`flex items-center justify-center py-3.5 rounded-full text-[17px] transition-colors ${plan.hot ? 'bg-[#0071e3] text-white hover:bg-[#0077ed]' : 'bg-[#1d1d1f] text-white hover:bg-black'}`}
                   >
-                    Comenzar <ChevronRight className="w-4 h-4" />
+                    Comenzar
                   </a>
                 </div>
               </FadeUp>
             ))}
           </div>
           <FadeUp>
-            <p className="text-center text-xs text-black/35 mt-8">14 días de prueba gratuita · Sin tarjeta de crédito · Cancela cuando quieras</p>
+            <p className="text-center text-[13px] text-[#6e6e73] mt-8">14 días de prueba gratuita · Sin tarjeta de crédito · Cancela cuando quieras</p>
           </FadeUp>
         </div>
       </section>
 
-      {/* ── Final CTA — black ── */}
-      <section className="bg-black py-40 px-6 text-center">
-        <FadeUp className="max-w-2xl mx-auto">
-          <h2 className="text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.07] mb-8">
-            Moderniza tu clínica.<br />
-            <span className="text-white/25">Empieza hoy.</span>
+      {/* ══════════════════════════════════════════
+          CTA FINAL — #1d1d1f
+      ══════════════════════════════════════════ */}
+      <section className="bg-[#1d1d1f] py-36 px-6 text-center">
+        <FadeUp className="max-w-[660px] mx-auto">
+          <h2 className="text-[clamp(2.4rem,5vw,3.5rem)] font-semibold text-white tracking-tight leading-[1.06] mb-6">
+            Moderniza tu clínica.<br />Empieza hoy.
           </h2>
-          <p className="text-white/40 text-lg mb-12 max-w-md mx-auto leading-relaxed">
+          <p className="text-[17px] text-white/60 mb-10 leading-[1.6]">
             Únete a miles de médicos en México y LATAM que ya gestionan su práctica con MediaClinic.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
-            <a href="mailto:demo@mediaclinic.mx" className="flex items-center gap-2 bg-white text-black px-8 py-4 rounded-full font-semibold text-sm hover:bg-white/90 transition-all hover:scale-[1.02]">
-              Agendar demo gratis <ArrowRight className="w-4 h-4" />
+            <a href="mailto:demo@mediaclinic.mx" className="bg-[#0071e3] text-white text-[17px] px-8 py-3.5 rounded-full hover:bg-[#0077ed] transition-colors">
+              Agendar demo gratis
             </a>
-            <Link href="/login" className="flex items-center gap-2 border border-white/15 text-white/70 px-8 py-4 rounded-full font-semibold text-sm hover:bg-white/6 transition-all">
+            <Link href="/login" className="text-white text-[17px] px-8 py-3.5 rounded-full border border-white/20 hover:bg-white/8 transition-colors">
               Iniciar sesión
             </Link>
           </div>
         </FadeUp>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="bg-black border-t border-white/8 py-10 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-6">
-          <img src="/logo-white.svg" alt="MediaClinic" className="h-7 w-auto opacity-30" />
-          <div className="flex flex-wrap justify-center gap-6 text-xs text-white/25">
-            {['Plataforma','Precios','Privacidad','Términos','HIPAA'].map(l => <a key={l} href="#" className="hover:text-white/50 transition-colors">{l}</a>)}
-            <Link href="/login" className="hover:text-white/50 transition-colors">Acceso</Link>
+      {/* ══════════════════════════════════════════
+          FOOTER
+      ══════════════════════════════════════════ */}
+      <footer className="bg-[#1d1d1f] border-t border-white/10 py-10 px-6">
+        <div className="max-w-[980px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-6">
+          <img src="/logo-white.svg" alt="MediaClinic" className="h-7 w-auto opacity-40" />
+          <div className="flex flex-wrap justify-center gap-6 text-[13px] text-white/30">
+            {['Plataforma','Precios','Privacidad','Términos','HIPAA'].map(l => (
+              <a key={l} href="#" className="hover:text-white/60 transition-colors">{l}</a>
+            ))}
+            <Link href="/login" className="hover:text-white/60 transition-colors">Acceso</Link>
           </div>
-          <p className="text-xs text-white/20">© 2026 MediaClinic · B2D Automation</p>
+          <p className="text-[13px] text-white/20">© 2026 MediaClinic</p>
         </div>
       </footer>
     </div>
