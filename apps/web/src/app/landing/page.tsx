@@ -4,7 +4,7 @@ import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import Link from 'next/link'
 import {
   ArrowRight, Check, ChevronRight, Menu, X,
-  Calendar, Users, Pill, CreditCard, Bot,
+  Calendar, Users, Pill, CreditCard, Bot, Video,
 } from 'lucide-react'
 
 /* ── Fade-up on scroll ── */
@@ -205,77 +205,42 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Insurers ticker ── */}
-      <div className="border-b border-black/8 py-6 overflow-hidden bg-white">
-        <p className="text-center text-[10px] text-black/30 uppercase tracking-[0.25em] mb-6 font-semibold">Compatible con 16 aseguradoras</p>
-        <div className="flex gap-16 animate-marquee whitespace-nowrap w-max items-center">
-          {[
-            /* GNP */
-            <svg key="gnp1" height="22" viewBox="0 0 120 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="32" fill="#003087">GNP</text></svg>,
-            /* AXA */
-            <svg key="axa1" height="22" viewBox="0 0 90 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="32" fill="#00008F">AXA</text></svg>,
-            /* MetLife */
-            <svg key="met1" height="22" viewBox="0 0 160 36" fill="none"><text x="0" y="28" fontFamily="Arial,sans-serif" fontWeight="700" fontSize="26" fill="#0099CC">MetLife</text></svg>,
-            /* Mapfre */
-            <svg key="map1" height="22" viewBox="0 0 160 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="26" fill="#CC0000">MAPFRE</text></svg>,
-            /* Zurich */
-            <svg key="zur1" height="22" viewBox="0 0 140 36" fill="none"><text x="0" y="28" fontFamily="Arial,sans-serif" fontWeight="700" fontSize="26" fill="#0000A0">Zurich</text></svg>,
-            /* BBVA */
-            <svg key="bbva1" height="22" viewBox="0 0 160 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="24" fill="#004B9E">BBVA</text></svg>,
-            /* Inbursa */
-            <svg key="inb1" height="22" viewBox="0 0 190 36" fill="none"><text x="0" y="28" fontFamily="Arial,sans-serif" fontWeight="700" fontSize="24" fill="#E31837">Inbursa</text></svg>,
-            /* Allianz */
-            <svg key="all1" height="22" viewBox="0 0 170 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="26" fill="#003781">Allianz</text></svg>,
-            /* HDI */
-            <svg key="hdi1" height="22" viewBox="0 0 90 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="28" fill="#E2000F">HDI</text></svg>,
-            /* Sura */
-            <svg key="sur1" height="22" viewBox="0 0 120 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="28" fill="#003DA5">Sura</text></svg>,
-            /* Seguros Monterrey */
-            <svg key="sm1" height="22" viewBox="0 0 320 36" fill="none"><text x="0" y="28" fontFamily="Arial,sans-serif" fontWeight="700" fontSize="22" fill="#005BAC">Seguros Monterrey</text></svg>,
-            /* Insignia */
-            <svg key="ins1" height="22" viewBox="0 0 200 36" fill="none"><text x="0" y="28" fontFamily="Arial,sans-serif" fontWeight="700" fontSize="24" fill="#6B21A8">Insignia</text></svg>,
-            /* duplicate set */
-            <svg key="gnp2" height="22" viewBox="0 0 120 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="32" fill="#003087">GNP</text></svg>,
-            <svg key="axa2" height="22" viewBox="0 0 90 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="32" fill="#00008F">AXA</text></svg>,
-            <svg key="met2" height="22" viewBox="0 0 160 36" fill="none"><text x="0" y="28" fontFamily="Arial,sans-serif" fontWeight="700" fontSize="26" fill="#0099CC">MetLife</text></svg>,
-            <svg key="map2" height="22" viewBox="0 0 160 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="26" fill="#CC0000">MAPFRE</text></svg>,
-            <svg key="zur2" height="22" viewBox="0 0 140 36" fill="none"><text x="0" y="28" fontFamily="Arial,sans-serif" fontWeight="700" fontSize="26" fill="#0000A0">Zurich</text></svg>,
-            <svg key="bbva2" height="22" viewBox="0 0 160 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="24" fill="#004B9E">BBVA</text></svg>,
-            <svg key="inb2" height="22" viewBox="0 0 190 36" fill="none"><text x="0" y="28" fontFamily="Arial,sans-serif" fontWeight="700" fontSize="24" fill="#E31837">Inbursa</text></svg>,
-            <svg key="all2" height="22" viewBox="0 0 170 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="26" fill="#003781">Allianz</text></svg>,
-            <svg key="hdi2" height="22" viewBox="0 0 90 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="28" fill="#E2000F">HDI</text></svg>,
-            <svg key="sur2" height="22" viewBox="0 0 120 36" fill="none"><text x="0" y="28" fontFamily="Arial Black,sans-serif" fontWeight="900" fontSize="28" fill="#003DA5">Sura</text></svg>,
-            <svg key="sm2" height="22" viewBox="0 0 320 36" fill="none"><text x="0" y="28" fontFamily="Arial,sans-serif" fontWeight="700" fontSize="22" fill="#005BAC">Seguros Monterrey</text></svg>,
-            <svg key="ins2" height="22" viewBox="0 0 200 36" fill="none"><text x="0" y="28" fontFamily="Arial,sans-serif" fontWeight="700" fontSize="24" fill="#6B21A8">Insignia</text></svg>,
-          ].map((logo, i) => (
-            <span key={i} className="shrink-0 opacity-60 hover:opacity-90 transition-opacity">{logo}</span>
-          ))}
-        </div>
-      </div>
+      {/* ── Statement — centered, Apple/Pluma editorial ── */}
+      <section className="bg-white px-6 pt-36 pb-32">
+        <div className="max-w-5xl mx-auto text-center">
+          <FadeUp>
+            <p className="text-[10px] uppercase tracking-[0.35em] text-black/30 font-semibold mb-10">
+              La plataforma clínica completa
+            </p>
+            <h2 className="text-[clamp(2.8rem,7vw,5.5rem)] font-bold text-black leading-[1.04] tracking-tight mb-8">
+              Menos herramientas.<br />
+              <span className="text-black/18">Más medicina.</span>
+            </h2>
+            <p className="text-black/45 text-lg lg:text-xl leading-relaxed max-w-2xl mx-auto">
+              MediaClinic reemplaza cinco apps distintas con una sola plataforma, potenciada por inteligencia artificial que trabaja contigo las 24 horas.
+            </p>
+          </FadeUp>
 
-      {/* ── Statement — white, editorial ── */}
-      <section className="bg-white py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-end">
-            <FadeUp>
-              <h2 className="text-5xl lg:text-6xl font-bold text-black leading-[1.07] tracking-tight">
-                Cinco herramientas.<br />
-                <span className="text-black/25">Una sola plataforma.</span>
-              </h2>
-            </FadeUp>
-            <FadeUp delay={100}>
-              <p className="text-black/55 text-lg leading-relaxed mb-8">
-                MediaClinic unifica agenda, expediente clínico, recetas digitales, cobros y telemedicina — todo potenciado por un asistente de IA que trabaja 24/7 en tu nombre.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {['Agenda IA','Expediente','Recetas','Cobros','Telemedicina','WhatsApp','CIE-10','Aseguradoras'].map(t => (
-                  <span key={t} className="text-xs font-medium px-3.5 py-1.5 rounded-full border border-black/12 text-black/50 hover:border-black/30 transition-colors cursor-default">
-                    {t}
-                  </span>
-                ))}
-              </div>
-            </FadeUp>
-          </div>
+          {/* ── 5-column feature strip ── */}
+          <FadeUp delay={120}>
+            <div className="mt-20 pt-14 border-t border-black/8 grid grid-cols-2 lg:grid-cols-5 gap-x-6 gap-y-12">
+              {[
+                { Icon: Calendar, label: 'Agenda IA',     desc: 'Confirmaciones automáticas por WhatsApp' },
+                { Icon: Users,    label: 'Expediente',    desc: 'Historia clínica digital y CIE-10' },
+                { Icon: Pill,     label: 'Recetas',       desc: 'Digitales, firmadas con QR único' },
+                { Icon: CreditCard, label: 'Cobros',      desc: 'Efectivo, tarjeta y aseguradoras' },
+                { Icon: Video,    label: 'Telemedicina',  desc: 'Videoconsulta integrada, sin apps extra' },
+              ].map(({ Icon, label, desc }) => (
+                <div key={label} className="flex flex-col items-center lg:items-center text-center group cursor-default">
+                  <div className="w-11 h-11 rounded-2xl bg-black/[0.05] flex items-center justify-center mb-4 group-hover:bg-black/[0.09] transition-colors">
+                    <Icon className="w-[18px] h-[18px] text-black/55" />
+                  </div>
+                  <p className="text-sm font-semibold text-black mb-1 leading-tight">{label}</p>
+                  <p className="text-xs text-black/38 leading-snug max-w-[130px]">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </FadeUp>
         </div>
       </section>
 
