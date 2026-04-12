@@ -141,9 +141,9 @@ export default function LandingPage() {
       }`}>
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <img
-            src={overHero ? '/logo_white_comp.svg' : '/logo_mediaclinic.svg'}
+            src={overHero ? '/logo-white.svg' : '/logo-color.svg'}
             alt="MediaClinic"
-            className="h-9 w-auto transition-all duration-500"
+            className="h-10 w-auto transition-all duration-500"
           />
 
           <div className="hidden md:flex items-center gap-8 text-sm">
@@ -616,7 +616,7 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <footer className="bg-black border-t border-white/8 py-10 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-6">
-          <img src="/logo_white_comp.svg" alt="MediaClinic" className="h-7 w-auto opacity-30" />
+          <img src="/logo-white.svg" alt="MediaClinic" className="h-7 w-auto opacity-30" />
           <div className="flex flex-wrap justify-center gap-6 text-xs text-white/25">
             {['Plataforma','Precios','Privacidad','Términos','HIPAA'].map(l => <a key={l} href="#" className="hover:text-white/50 transition-colors">{l}</a>)}
             <Link href="/login" className="hover:text-white/50 transition-colors">Acceso</Link>

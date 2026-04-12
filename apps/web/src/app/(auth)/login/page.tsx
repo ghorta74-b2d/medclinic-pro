@@ -46,7 +46,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <img
-            src="/logo_final.png"
+            src="/logo-color.svg"
             alt="MediaClinic"
             className="mx-auto mb-4 h-14 w-auto object-contain"
           />

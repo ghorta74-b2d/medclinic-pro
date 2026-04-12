@@ -78,7 +78,7 @@ export function Sidebar() {
       {/* Brand */}
       <div className="px-6 py-5 border-b border-[#3D3075]">
         <img
-          src="/logo_white_comp.svg"
+          src="/logo-white.svg"
           alt="MediaClinic"
           className="h-10 w-auto object-contain"
         />
