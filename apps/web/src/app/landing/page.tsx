@@ -244,171 +244,186 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features bento grid — black ── */}
-      <section id="plataforma" className="bg-black py-32 px-6">
+      {/* ── Features — Apple alternating rows ── */}
+      <section id="plataforma" className="bg-black px-6 pt-32 pb-24">
         <div className="max-w-6xl mx-auto">
-          <FadeUp className="mb-16">
-            <p className="text-white/30 text-xs uppercase tracking-widest mb-4 font-semibold">Plataforma</p>
-            <h2 className="text-4xl lg:text-5xl font-bold text-white tracking-tight max-w-xl">
+
+          {/* Header */}
+          <FadeUp className="mb-20">
+            <p className="text-white/25 text-[10px] uppercase tracking-[0.3em] font-semibold mb-5">Plataforma</p>
+            <h2 className="text-4xl lg:text-5xl font-bold text-white tracking-tight leading-[1.06] max-w-lg">
               Todo lo que necesita tu consultorio.
             </h2>
           </FadeUp>
 
-          {/* Row 1 */}
-          <div className="grid lg:grid-cols-3 gap-4 mb-4">
-
-            {/* Agenda — wide */}
-            <FadeUp delay={0} className="lg:col-span-2 bg-[#0a0a0a] rounded-3xl border border-white/8 overflow-hidden">
-              <div className="p-8 pb-0">
-                <div className="flex items-center gap-3 mb-1">
-                  <Calendar className="w-5 h-5 text-blue-400" />
-                  <span className="text-white/40 text-xs uppercase tracking-widest font-semibold">Agenda inteligente</span>
+          {/* ── Row 1: Agenda ── text left / mockup right */}
+          <FadeUp>
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center border-t border-white/8 py-20">
+              <div>
+                <div className="flex items-center gap-2.5 mb-7">
+                  <Calendar className="w-4 h-4 text-blue-400" />
+                  <span className="text-white/35 text-[10px] uppercase tracking-[0.25em] font-semibold">Agenda inteligente</span>
                 </div>
-                <h3 className="text-2xl font-bold text-white mt-3 mb-2">Tu agenda confirma sola.</h3>
-                <p className="text-white/45 text-sm leading-relaxed max-w-sm">
+                <h3 className="text-3xl lg:text-4xl font-bold text-white leading-[1.08] tracking-tight mb-5">
+                  Tu agenda<br />confirma sola.
+                </h3>
+                <p className="text-white/45 text-base leading-relaxed max-w-md">
                   El asistente IA contacta a cada paciente por WhatsApp, confirma asistencia y gestiona reprogramaciones — sin que muevas un dedo.
                 </p>
               </div>
-              {/* Mini agenda mockup */}
-              <div className="mx-8 mt-8 bg-[#111] rounded-t-2xl border-t border-x border-white/8 p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-white text-xs font-semibold">Agenda — Hoy</span>
+              {/* Floating mockup — no outer card */}
+              <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#0d0d0d]">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
+                  <span className="text-white/70 text-xs font-semibold">Agenda — Hoy</span>
                   <span className="text-[10px] text-blue-400 bg-blue-400/10 px-2.5 py-1 rounded-full font-medium">9 confirmadas</span>
                 </div>
-                <div className="space-y-2">
+                <div className="p-4 space-y-2">
                   {[
-                    { time: '09:00', name: 'García, Ana',    tag: '✓ IA', color: 'text-emerald-400 bg-emerald-400/10' },
-                    { time: '09:30', name: 'Pérez, Luis',    tag: '✓ IA', color: 'text-emerald-400 bg-emerald-400/10' },
-                    { time: '10:00', name: 'López, María',   tag: '● Pendiente', color: 'text-yellow-400 bg-yellow-400/10' },
-                    { time: '10:30', name: 'Torres, Ramón',  tag: '✓ IA', color: 'text-emerald-400 bg-emerald-400/10' },
+                    { time: '09:00', name: 'García, Ana',   tag: '✓ IA',       color: 'text-emerald-400 bg-emerald-400/10' },
+                    { time: '09:30', name: 'Pérez, Luis',   tag: '✓ IA',       color: 'text-emerald-400 bg-emerald-400/10' },
+                    { time: '10:00', name: 'López, María',  tag: '● Pendiente', color: 'text-yellow-400  bg-yellow-400/10' },
+                    { time: '10:30', name: 'Torres, Ramón', tag: '✓ IA',       color: 'text-emerald-400 bg-emerald-400/10' },
                   ].map(a => (
-                    <div key={a.time} className="flex items-center gap-3 bg-white/4 rounded-xl px-3 py-2.5 border border-white/5">
-                      <span className="text-white/30 text-xs font-mono w-9 shrink-0">{a.time}</span>
-                      <span className="text-white/70 text-xs flex-1">{a.name}</span>
+                    <div key={a.time} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/4 transition-colors">
+                      <span className="text-white/25 text-xs font-mono w-9 shrink-0">{a.time}</span>
+                      <span className="text-white/65 text-xs flex-1">{a.name}</span>
                       <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${a.color}`}>{a.tag}</span>
                     </div>
                   ))}
                 </div>
               </div>
-            </FadeUp>
+            </div>
+          </FadeUp>
 
-            {/* IA WhatsApp — tall */}
-            <FadeUp delay={80} className="bg-[#0a0a0a] rounded-3xl border border-white/8 overflow-hidden">
-              <div className="p-8 pb-6">
-                <div className="flex items-center gap-3 mb-1">
-                  <Bot className="w-5 h-5 text-violet-400" />
-                  <span className="text-white/40 text-xs uppercase tracking-widest font-semibold">Asistente IA</span>
-                </div>
-                <h3 className="text-2xl font-bold text-white mt-3 mb-2">24/7 sin staff.</h3>
-                <p className="text-white/45 text-sm leading-relaxed">
-                  Confirma, cobra y notifica mientras tú descansas.
-                </p>
-              </div>
-              <div className="px-8 pb-8">
-                {/* Mini WhatsApp */}
-                <div className="bg-[#111b21] rounded-2xl overflow-hidden border border-white/8">
-                  <div className="bg-[#1f2c33] px-3.5 py-2.5 flex items-center gap-2.5">
-                    <div className="w-7 h-7 bg-violet-600/80 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0">MC</div>
-                    <div>
-                      <p className="text-white text-xs font-semibold">MediaClinic IA</p>
-                      <p className="text-[#8696a0] text-[10px] flex items-center gap-1">
-                        <span className="w-1 h-1 rounded-full bg-green-400 inline-block" />en línea
-                      </p>
-                    </div>
+          {/* ── Row 2: Asistente IA ── mockup left / text right */}
+          <FadeUp delay={60}>
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center border-t border-white/8 py-20">
+              {/* WhatsApp mockup */}
+              <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#111b21]">
+                <div className="bg-[#1f2c33] px-4 py-3 flex items-center gap-3 border-b border-white/8">
+                  <div className="w-8 h-8 bg-violet-600/70 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0">MC</div>
+                  <div>
+                    <p className="text-white/85 text-xs font-semibold">MediaClinic IA</p>
+                    <p className="text-[#8696a0] text-[10px] flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />en línea
+                    </p>
                   </div>
-                  <div className="bg-[#0b141a] px-3 py-3 space-y-2">
-                    {['Hola Ana 👋 ¿Confirmas tu cita mañana a las 9 AM?', 'Sí, confirmo ✅', 'Formulario: link.mc/pre 📋'].map((m, i) => (
-                      <div key={i} className={`flex ${i === 1 ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] px-3 py-1.5 rounded-xl text-[11px] leading-relaxed ${i === 1 ? 'bg-[#005c4b] text-[#e9edef] rounded-tr-sm' : 'bg-[#202c33] text-[#e9edef] rounded-tl-sm'}`}>
-                          {m}
-                        </div>
+                </div>
+                <div className="bg-[#0b141a] px-4 py-5 space-y-2.5">
+                  {[
+                    { msg: 'Hola Ana 👋 ¿Confirmas tu cita mañana a las 9 AM?', out: false },
+                    { msg: 'Sí, confirmo ✅',                                    out: true  },
+                    { msg: 'Formulario de pre-consulta: link.mc/pre 📋',          out: false },
+                  ].map((m, i) => (
+                    <div key={i} className={`flex ${m.out ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[78%] px-3.5 py-2 rounded-2xl text-[11px] leading-relaxed ${m.out ? 'bg-[#005c4b] text-[#e9edef] rounded-tr-sm' : 'bg-[#202c33] text-[#e9edef] rounded-tl-sm'}`}>
+                        {m.msg}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="mt-4 space-y-2">
-                  {['Confirmación automática de citas','Cobros por WhatsApp','Notificación de resultados'].map(f => (
-                    <div key={f} className="flex items-center gap-2.5 text-white/45 text-xs">
-                      <Check className="w-3.5 h-3.5 text-violet-400 shrink-0" />{f}
+                <div className="border-t border-white/8 px-4 py-3 flex gap-2">
+                  {['Confirmación','Cobros','Resultados'].map(t => (
+                    <span key={t} className="text-[10px] text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full font-medium">{t}</span>
+                  ))}
+                </div>
+              </div>
+              {/* Text */}
+              <div>
+                <div className="flex items-center gap-2.5 mb-7">
+                  <Bot className="w-4 h-4 text-violet-400" />
+                  <span className="text-white/35 text-[10px] uppercase tracking-[0.25em] font-semibold">Asistente IA</span>
+                </div>
+                <h3 className="text-3xl lg:text-4xl font-bold text-white leading-[1.08] tracking-tight mb-5">
+                  24/7 sin staff<br />adicional.
+                </h3>
+                <p className="text-white/45 text-base leading-relaxed max-w-md">
+                  Confirma citas, envía ligas de pago y notifica resultados de laboratorio por WhatsApp — mientras tú descansas.
+                </p>
+                <div className="mt-8 space-y-3">
+                  {['Confirmación automática de citas','Cobros por WhatsApp sin apps extra','Notificación de resultados al instante'].map(f => (
+                    <div key={f} className="flex items-center gap-3 text-white/40 text-sm">
+                      <Check className="w-4 h-4 text-violet-400 shrink-0" />{f}
                     </div>
                   ))}
                 </div>
               </div>
-            </FadeUp>
-          </div>
+            </div>
+          </FadeUp>
 
-          {/* Row 2 */}
-          <div className="grid lg:grid-cols-3 gap-4">
+          {/* ── Row 3: Expediente · Cobros · Recetas — 3 col, no cards ── */}
+          <div className="border-t border-white/8 pt-20 grid lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-white/8">
 
             {/* Expediente */}
-            <FadeUp delay={0} className="bg-[#0a0a0a] rounded-3xl border border-white/8 p-8">
-              <div className="flex items-center gap-3 mb-1">
-                <Users className="w-5 h-5 text-emerald-400" />
-                <span className="text-white/40 text-xs uppercase tracking-widest font-semibold">Expediente</span>
+            <FadeUp delay={0} className="lg:pr-14 pb-14 lg:pb-0">
+              <div className="flex items-center gap-2.5 mb-6">
+                <Users className="w-4 h-4 text-emerald-400" />
+                <span className="text-white/35 text-[10px] uppercase tracking-[0.25em] font-semibold">Expediente</span>
               </div>
-              <h3 className="text-xl font-bold text-white mt-3 mb-2">Historial completo.</h3>
-              <p className="text-white/45 text-sm leading-relaxed mb-5">Notas SOAP, CIE-10, alergias y signos vitales en un solo lugar.</p>
-              <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-white leading-tight mb-3">Historial completo.</h3>
+              <p className="text-white/40 text-sm leading-relaxed mb-7">Notas SOAP, diagnósticos CIE-10, alergias y signos vitales en un solo lugar.</p>
+              <div className="space-y-2.5">
                 {[
-                  { label: 'Diagnóstico', value: 'J00 · Rinofaringitis', color: 'text-white/70' },
-                  { label: 'Alergias',    value: 'Penicilina',           color: 'text-red-400' },
+                  { label: 'Diagnóstico', value: 'J00 · Rinofaringitis', color: 'text-white/65' },
+                  { label: 'Alergias',    value: 'Penicilina',           color: 'text-red-400'  },
                   { label: 'P. arterial', value: '120/80 mmHg',          color: 'text-emerald-400' },
                 ].map(r => (
-                  <div key={r.label} className="flex items-center justify-between bg-white/4 rounded-xl px-3.5 py-2.5 border border-white/5">
-                    <span className="text-white/35 text-xs">{r.label}</span>
-                    <span className={`text-xs font-medium ${r.color}`}>{r.value}</span>
+                  <div key={r.label} className="flex items-center justify-between py-2.5 border-b border-white/6 last:border-0">
+                    <span className="text-white/28 text-xs">{r.label}</span>
+                    <span className={`text-xs font-semibold ${r.color}`}>{r.value}</span>
                   </div>
                 ))}
               </div>
             </FadeUp>
 
             {/* Cobros */}
-            <FadeUp delay={80} className="bg-[#0a0a0a] rounded-3xl border border-white/8 p-8">
-              <div className="flex items-center gap-3 mb-1">
-                <CreditCard className="w-5 h-5 text-amber-400" />
-                <span className="text-white/40 text-xs uppercase tracking-widest font-semibold">Cobros</span>
+            <FadeUp delay={80} className="lg:px-14 py-14 lg:py-0">
+              <div className="flex items-center gap-2.5 mb-6">
+                <CreditCard className="w-4 h-4 text-amber-400" />
+                <span className="text-white/35 text-[10px] uppercase tracking-[0.25em] font-semibold">Cobros</span>
               </div>
-              <h3 className="text-xl font-bold text-white mt-3 mb-2">Cobra el 100%.</h3>
-              <p className="text-white/45 text-sm leading-relaxed mb-5">Ligas de pago por WhatsApp y 16 aseguradoras integradas.</p>
-              <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-white leading-tight mb-3">Cobra el 100%.</h3>
+              <p className="text-white/40 text-sm leading-relaxed mb-7">Ligas de pago por WhatsApp y 16 aseguradoras integradas sin comisión adicional.</p>
+              <div className="space-y-2.5">
                 {[
-                  { name: 'García, Ana',  amount: '$800',   tag: 'Pagado',    color: 'text-emerald-400 bg-emerald-400/10' },
-                  { name: 'Pérez, Luis',  amount: '$1,200', tag: 'Pagado',    color: 'text-emerald-400 bg-emerald-400/10' },
-                  { name: 'López, María', amount: '$700',   tag: 'Pendiente', color: 'text-yellow-400 bg-yellow-400/10' },
+                  { name: 'García, Ana',  amount: '$800',   tag: 'Pagado',    c: 'text-emerald-400 bg-emerald-400/10' },
+                  { name: 'Pérez, Luis',  amount: '$1,200', tag: 'Pagado',    c: 'text-emerald-400 bg-emerald-400/10' },
+                  { name: 'López, María', amount: '$700',   tag: 'Pendiente', c: 'text-yellow-400  bg-yellow-400/10'  },
                 ].map(p => (
-                  <div key={p.name} className="flex items-center gap-3 bg-white/4 rounded-xl px-3.5 py-2.5 border border-white/5">
-                    <span className="text-white/70 text-xs flex-1">{p.name}</span>
-                    <span className="text-white/50 text-xs font-medium">{p.amount}</span>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${p.color}`}>{p.tag}</span>
+                  <div key={p.name} className="flex items-center gap-3 py-2.5 border-b border-white/6 last:border-0">
+                    <span className="text-white/60 text-xs flex-1">{p.name}</span>
+                    <span className="text-white/40 text-xs font-medium">{p.amount}</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${p.c}`}>{p.tag}</span>
                   </div>
                 ))}
               </div>
             </FadeUp>
 
             {/* Recetas */}
-            <FadeUp delay={160} className="bg-[#0a0a0a] rounded-3xl border border-white/8 p-8">
-              <div className="flex items-center gap-3 mb-1">
-                <Pill className="w-5 h-5 text-blue-400" />
-                <span className="text-white/40 text-xs uppercase tracking-widest font-semibold">Recetas</span>
+            <FadeUp delay={160} className="lg:pl-14 pt-14 lg:pt-0">
+              <div className="flex items-center gap-2.5 mb-6">
+                <Pill className="w-4 h-4 text-blue-400" />
+                <span className="text-white/35 text-[10px] uppercase tracking-[0.25em] font-semibold">Recetas</span>
               </div>
-              <h3 className="text-xl font-bold text-white mt-3 mb-2">Digital y firmada.</h3>
-              <p className="text-white/45 text-sm leading-relaxed mb-5">Prescripciones con firma electrónica enviadas al instante por WhatsApp.</p>
-              <div className="bg-white/4 rounded-2xl p-4 border border-white/5 space-y-2.5">
+              <h3 className="text-2xl font-bold text-white leading-tight mb-3">Digital y firmada.</h3>
+              <p className="text-white/40 text-sm leading-relaxed mb-7">Prescripciones con firma electrónica enviadas al instante por WhatsApp.</p>
+              <div className="space-y-2.5">
                 {[
                   { rx: 'Amoxicilina 500mg', sig: '1 cáp. c/8h × 7 días' },
                   { rx: 'Ibuprofeno 400mg',  sig: '1 tab. c/12h · SOS' },
                   { rx: 'Loratadina 10mg',   sig: '1 tab. c/24h × 5 días' },
                 ].map((r, i) => (
-                  <div key={i} className="bg-white/4 rounded-xl px-3 py-2.5">
-                    <p className="text-white/80 text-xs font-semibold">Rx {r.rx}</p>
-                    <p className="text-white/35 text-[11px] mt-0.5">{r.sig}</p>
+                  <div key={i} className="py-2.5 border-b border-white/6 last:border-0">
+                    <p className="text-white/70 text-xs font-semibold">Rx {r.rx}</p>
+                    <p className="text-white/30 text-[11px] mt-0.5">{r.sig}</p>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 flex items-center gap-2 text-[#25D366] text-xs">
+              <div className="mt-5 flex items-center gap-2 text-[#25D366] text-xs font-medium">
                 <span>💬</span><span>Enviada por WhatsApp</span>
               </div>
             </FadeUp>
+
           </div>
         </div>
       </section>
