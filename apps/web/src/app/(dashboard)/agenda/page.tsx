@@ -7,7 +7,7 @@ import { WeekView } from '@/components/agenda/week-view'
 import { MonthView } from '@/components/agenda/month-view'
 import { DayStats } from '@/components/agenda/day-stats'
 import { NewAppointmentDialog } from '@/components/agenda/new-appointment-dialog'
-import { api } from '@/lib/api'
+import { api, getUserRole, getOwnDoctorId } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -47,14 +47,37 @@ export default function AgendaPage() {
   const [showNewDialog, setShowNewDialog] = useState(false)
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null)
+  // userRole: null mientras carga, luego 'DOCTOR' | 'ADMIN' | 'STAFF' | etc.
+  const [userRole, setUserRole] = useState<string | null>(null)
+  // isStaff: solo STAFF ve la agenda global con filtro de doctores
+  const isStaff = userRole === 'STAFF'
 
   const dateStr = selectedDate.toLocaleDateString('sv-SE')
 
-  // Load doctors for filter
+  // Detecta rol y, para DOCTOR/ADMIN, auto-fija su propio doctorId
   useEffect(() => {
-    api.configuracion.doctors()
-      .then((res: any) => setDoctors(res.data ?? []))
-      .catch(() => {})
+    async function initRole() {
+      try {
+        const role = await getUserRole()
+        setUserRole(role)
+        if (role !== 'STAFF') {
+          // DOCTOR y ADMIN ven solo su propia agenda
+          const [ownId, schedRes] = await Promise.all([
+            getOwnDoctorId(),
+            api.configuracion.getSchedule() as Promise<{ data: { doctorId: string } }>,
+          ])
+          const myId = ownId ?? schedRes.data.doctorId
+          if (myId) setSelectedDoctorId(myId)
+        } else {
+          // STAFF carga la lista de doctores para el filtro
+          const res = await api.configuracion.doctors() as { data: Doctor[] }
+          setDoctors(res.data ?? [])
+        }
+      } catch {
+        // Si falla, dejamos sin filtro (STAFF-like) para no bloquear la vista
+      }
+    }
+    initRole()
   }, [])
 
   const loadAppointments = useCallback(async () => {
@@ -179,8 +202,8 @@ export default function AgendaPage() {
             ))}
           </div>
 
-          {/* Doctor filter */}
-          {doctors.length > 0 && (
+          {/* Doctor filter — solo visible para STAFF (vista global) */}
+          {isStaff && doctors.length > 0 && (
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setSelectedDoctorId(null)}

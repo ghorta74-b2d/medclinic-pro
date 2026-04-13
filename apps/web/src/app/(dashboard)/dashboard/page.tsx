@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
-import { api, getUserRole } from '@/lib/api'
+import { api, getUserRole, getOwnDoctorId } from '@/lib/api'
 import { formatTime, formatCurrency, formatDate } from '@/lib/utils'
 import {
   Users, TrendingUp, Clock, Plus, UserPlus,
@@ -89,6 +89,8 @@ export default function DashboardPage() {
   const [showNewApt, setShowNewApt] = useState(false)
   const [showNewPat, setShowNewPat] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
+  // ownDoctorId: seteado solo para DOCTOR/ADMIN — filtra su propia agenda
+  const [ownDoctorId, setOwnDoctorId] = useState<string | null>(null)
 
   const today = new Date()
 
@@ -104,8 +106,12 @@ export default function DashboardPage() {
       const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
       const chart7Local = new Date(todayLocal); chart7Local.setDate(todayLocal.getDate() - 6)
 
+      // Filtrar por doctor propio si aplica (se setea en el efecto de init del rol)
+      const aptParams: Record<string, string> = { from: from.toISOString(), to: to.toISOString() }
+      if (ownDoctorId) aptParams['doctorId'] = ownDoctorId
+
       const [aptsRes, dashRes] = await Promise.allSettled([
-        api.appointments.list({ from: from.toISOString(), to: to.toISOString() }) as Promise<{ data: Appointment[] }>,
+        api.appointments.list(aptParams) as Promise<{ data: Appointment[] }>,
         api.dashboard.stats({
           todayUtc: todayLocal.toISOString(),
           chartFromUtc: chart7Local.toISOString(),
@@ -119,14 +125,33 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
+  }, [ownDoctorId])
+
+  // Detecta rol y doctor propio — DOCTOR/ADMIN ven solo su propia agenda
+  useEffect(() => {
+    async function initRole() {
+      try {
+        const role = await getUserRole()
+        setUserRole(role)
+        if (role !== 'STAFF') {
+          // DOCTOR y ADMIN ven solo sus propias citas
+          const [ownId, schedRes] = await Promise.allSettled([
+            getOwnDoctorId(),
+            api.configuracion.getSchedule() as Promise<{ data: { doctorId: string } }>,
+          ])
+          const fromJwt = ownId.status === 'fulfilled' ? ownId.value : null
+          const fromSched = schedRes.status === 'fulfilled' ? schedRes.value.data.doctorId : null
+          const myId = fromJwt ?? fromSched
+          if (myId) setOwnDoctorId(myId)
+        }
+      } catch {
+        // Sin filtro si hay error — el usuario ve todo (safe fallback)
+      }
+    }
+    initRole()
   }, [])
 
   useEffect(() => { load() }, [load])
-
-  // Load user role from cached JWT — no extra Supabase client needed
-  useEffect(() => {
-    getUserRole().then(role => setUserRole(role))
-  }, [])
 
   const todayStr = formatDate(today, "EEEE, d 'de' MMMM yyyy")
   const upcomingApts = appointments

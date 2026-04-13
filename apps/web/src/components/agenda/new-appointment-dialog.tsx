@@ -299,10 +299,16 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
         const role = await getUserRole()
         setUserRole(role)
 
-        if (role === 'DOCTOR') {
-          // ► DOCTOR: obtenemos su propio ID y horario desde el endpoint autorizado.
-          //   Esto funciona independientemente de cuántos doctores haya en la clínica.
-          //   El endpoint siempre devuelve el schedule del doctor autenticado.
+        if (role === 'STAFF') {
+          // ► STAFF (recepcionista): carga todos los doctores para elegir uno.
+          //   El doctor se selecciona explícitamente antes de ver horarios.
+          const res = await api.configuracion.doctors() as { data: DoctorWithSchedule[] }
+          setDoctors(res.data)
+          // No pre-seleccionamos ningún doctor — el usuario debe elegir
+        } else {
+          // ► DOCTOR / ADMIN: usan siempre su propio horario.
+          //   ADMIN es el dueño/médico — debe ver solo su propia agenda.
+          //   El endpoint /configuracion/schedule devuelve el schedule del usuario autenticado.
           const [ownId, schedRes] = await Promise.all([
             getOwnDoctorId(),
             api.configuracion.getSchedule() as Promise<{
@@ -315,14 +321,8 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
           setDoctorId(myDoctorId)
 
           // El backend ya aplica DEFAULT_SCHEDULE si el scheduleConfig está vacío
-          // Pero normalizamos igualmente para manejar el formato viejo (long keys)
+          // Normalizamos igualmente para manejar el formato viejo (long keys)
           setActiveSchedule(normalizeSchedule(schedRes.data.scheduleConfig))
-        } else {
-          // ► ADMIN / STAFF: cargamos todos los doctores activos de la clínica.
-          //   El doctor se debe seleccionar explícitamente antes de ver horarios.
-          const res = await api.configuracion.doctors() as { data: DoctorWithSchedule[] }
-          setDoctors(res.data)
-          // No pre-seleccionamos ningún doctor — el usuario debe elegir
         }
       } catch (e) {
         console.error('Error al inicializar el dialog de cita:', e)
@@ -333,9 +333,9 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
     init()
   }, [])
 
-  // ── Cuando ADMIN selecciona un doctor: carga su schedule ─────
+  // ── Cuando STAFF selecciona un doctor: carga su schedule ────
   useEffect(() => {
-    if (userRole === 'DOCTOR') return  // DOCTOR ya tiene su schedule desde init
+    if (userRole !== 'STAFF') return  // Solo STAFF necesita este efecto; DOCTOR/ADMIN tienen su schedule desde init
     if (!doctorId) {
       setActiveSchedule(null)
       setScheduleSlots([])
@@ -463,7 +463,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
     e.preventDefault()
     setError('')
 
-    if (userRole !== 'DOCTOR' && !doctorId) {
+    if (isStaffRole && !doctorId) {
       setError('Selecciona un doctor para la cita')
       return
     }
@@ -522,7 +522,8 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
     }
   }
 
-  const isAdminRole = userRole === 'ADMIN' || userRole === 'STAFF'
+  // Solo STAFF (recepcionista) ve el selector de doctor — DOCTOR y ADMIN usan siempre el suyo propio
+  const isStaffRole = userRole === 'STAFF'
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -629,7 +630,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
           </div>
 
           {/* ── DOCTOR (solo ADMIN/STAFF — el DOCTOR siempre tiene el suyo pre-seleccionado) ── */}
-          {isAdminRole && (
+          {isStaffRole && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Doctor <span className="text-red-500">*</span>
@@ -684,7 +685,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
                   <div key={i} className="h-8 rounded-lg bg-gray-100 animate-pulse" />
                 ))}
               </div>
-            ) : isAdminRole && !doctorId ? (
+            ) : isStaffRole && !doctorId ? (
               <p className="text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg">
                 Selecciona un doctor para ver los horarios disponibles.
               </p>
@@ -788,7 +789,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
               className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
               Cancelar
             </button>
-            <button type="submit" disabled={loading || !selectedTime || (isAdminRole && !doctorId)}
+            <button type="submit" disabled={loading || !selectedTime || (isStaffRole && !doctorId)}
               className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
               {loading
                 ? (patientMode === 'new' ? 'Registrando...' : 'Creando...')
