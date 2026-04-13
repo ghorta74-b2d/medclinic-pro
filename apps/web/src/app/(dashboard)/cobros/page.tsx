@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
-import { api, getUserRole, getOwnDoctorId, sessionCache } from '@/lib/api'
+import { api, getUserRole, getOwnDoctorId, sessionCache, readCache, writeCache } from '@/lib/api'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { CreditCard, Plus, DollarSign, TrendingUp, Clock, Loader2, MessageSquare, Building2, Eye, ChevronDown } from 'lucide-react'
 import type { Invoice } from 'medclinic-shared'
@@ -179,36 +179,40 @@ export default function CobrosPage() {
 
   const load = useCallback(async () => {
     if (!roleReady) return
-    setLoading(true)
+
+    const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
+    const todayUtc = todayLocal.toISOString()
+    const effectiveDoctor =
+      userRole === 'DOCTOR' ? ownDoctorId :
+      selectedDoctorId !== 'ALL' ? selectedDoctorId : undefined
+
+    let fromLocal: Date
+    if (viewMode === 'dia') {
+      fromLocal = new Date(todayLocal)
+    } else if (viewMode === 'semana') {
+      fromLocal = new Date(todayLocal); fromLocal.setDate(todayLocal.getDate() - 6)
+    } else {
+      fromLocal = new Date(todayLocal); fromLocal.setDate(1)
+    }
+
+    const cacheKey = `_cobros_${effectiveDoctor ?? 'all'}_${viewMode}_${filter}`
+
+    // Stale-while-revalidate: show cached invoices + stats instantly
+    const cached = readCache<{ invoices: Invoice[]; stats: DashboardData['data'] }>(cacheKey)
+    if (cached) {
+      setInvoices(cached.invoices)
+      setStats(cached.stats)
+      setLoading(false)
+    }
+
+    // Always fetch fresh data in background
     try {
-      const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
-      const todayUtc = todayLocal.toISOString()
-
-      // Compute "from" boundary based on selected view mode
-      let fromLocal: Date
-      if (viewMode === 'dia') {
-        fromLocal = new Date(todayLocal)
-      } else if (viewMode === 'semana') {
-        fromLocal = new Date(todayLocal); fromLocal.setDate(todayLocal.getDate() - 6)
-      } else {
-        fromLocal = new Date(todayLocal); fromLocal.setDate(1)
-      }
-
-      // Effective doctorId:
-      // - DOCTOR → always their own (API also enforces this server-side)
-      // - ADMIN/STAFF → selectedDoctorId unless 'ALL'
-      const effectiveDoctor =
-        userRole === 'DOCTOR' ? ownDoctorId :
-        selectedDoctorId !== 'ALL' ? selectedDoctorId : undefined
-
       const ivParams: Record<string, string> = { limit: '50' }
       if (filter !== 'ALL') ivParams['status'] = filter
       if (effectiveDoctor) ivParams['doctorId'] = effectiveDoctor
 
       const dashParams: Record<string, string> = {
-        from: fromLocal.toISOString(),
-        todayUtc,
-        chartFromUtc: fromLocal.toISOString(),
+        from: fromLocal.toISOString(), todayUtc, chartFromUtc: fromLocal.toISOString(),
       }
       if (effectiveDoctor) dashParams['doctorId'] = effectiveDoctor
 
@@ -218,6 +222,7 @@ export default function CobrosPage() {
       ])
       setInvoices(ivRes.data)
       setStats(dashRes.data)
+      writeCache(cacheKey, { invoices: ivRes.data, stats: dashRes.data })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }, [filter, viewMode, roleReady, userRole, ownDoctorId, selectedDoctorId])

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
-import { api, getUserRole, getOwnDoctorId, sessionCache } from '@/lib/api'
+import { api, getUserRole, getOwnDoctorId, sessionCache, readCache, writeCache } from '@/lib/api'
 import { formatTime, formatCurrency, formatDate } from '@/lib/utils'
 import {
   Users, TrendingUp, Clock, Plus, UserPlus,
@@ -102,21 +102,26 @@ export default function DashboardPage() {
   const today = new Date()
 
   const load = useCallback(async () => {
-    if (!roleReady) return  // Esperar hasta que role + doctorId estén resueltos
-    setLoading(true)
+    if (!roleReady) return
+
+    const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
+    const todayStr = todayLocal.toLocaleDateString('sv-SE')
+    const chart7Local = new Date(todayLocal); chart7Local.setDate(todayLocal.getDate() - 6)
+    const effectiveDoctor = userRole === 'ADMIN' ? selectedFilterDoctorId : ownDoctorId
+    const cacheKey = `_dash_${effectiveDoctor ?? 'all'}_${todayStr}`
+
+    // Stale-while-revalidate: show cached dashboard data instantly
+    const cached = readCache<{ appointments: Appointment[]; stats: DashboardStats }>(cacheKey)
+    if (cached) {
+      setAppointments(cached.appointments)
+      setStats(cached.stats)
+      setLoading(false)
+    }
+
+    // Always fetch fresh data in background
     try {
-      const from = new Date(today)
-      from.setHours(0, 0, 0, 0)
-      const to = new Date(today)
-      to.setHours(23, 59, 59, 999)
-
-      // Client-side UTC boundaries so server respects local timezone
-      const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
-      const chart7Local = new Date(todayLocal); chart7Local.setDate(todayLocal.getDate() - 6)
-
-      // Filtro efectivo: ADMIN usa selectedFilterDoctorId (puede ser null=global, o un doctorId)
-      //                  DOCTOR/STAFF usan siempre su propio ownDoctorId
-      const effectiveDoctor = userRole === 'ADMIN' ? selectedFilterDoctorId : ownDoctorId
+      const from = new Date(todayLocal)
+      const to = new Date(todayLocal); to.setHours(23, 59, 59, 999)
 
       const aptParams: Record<string, string> = { from: from.toISOString(), to: to.toISOString() }
       if (effectiveDoctor) aptParams['doctorId'] = effectiveDoctor
@@ -132,8 +137,12 @@ export default function DashboardPage() {
         api.dashboard.stats(statsParams) as Promise<DashboardResponse>,
       ])
 
-      if (aptsRes.status === 'fulfilled') setAppointments(aptsRes.value.data)
-      if (dashRes.status === 'fulfilled') setStats(dashRes.value.data)
+      const newApts  = aptsRes.status === 'fulfilled' ? aptsRes.value.data  : null
+      const newStats = dashRes.status === 'fulfilled' ? dashRes.value.data : null
+      if (newApts)  setAppointments(newApts)
+      if (newStats) setStats(newStats)
+      // Only cache when both calls succeed
+      if (newApts && newStats) writeCache(cacheKey, { appointments: newApts, stats: newStats })
     } catch (err) {
       console.error(err)
     } finally {

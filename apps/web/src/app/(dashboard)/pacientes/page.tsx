@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
-import { api } from '@/lib/api'
+import { api, readCache, writeCache } from '@/lib/api'
 import { formatDate, formatCurrency, getInitials, calculateAge } from '@/lib/utils'
 import { Search, Plus } from 'lucide-react'
 import type { Patient } from 'medclinic-shared'
@@ -33,14 +33,29 @@ export default function PacientesPage() {
   const [showNew, setShowNew] = useState(false)
 
   const load = useCallback(async () => {
-    setLoading(true)
+    const params: Record<string, string> = { page: String(page), limit: '20' }
+    if (search) params['q'] = search
+
+    // Stale-while-revalidate: show cached list instantly on return visits
+    // Only cache non-search page-1 (the most common landing state)
+    const cacheKey = `_pts_${page}_${search}`
+    if (!search || page === 1) {
+      const cached = readCache<PatientsResponse>(cacheKey)
+      if (cached) {
+        setPatients(cached.data)
+        setTotalPages(cached.pagination.pages)
+        setTotal(cached.pagination.total)
+        setLoading(false)
+      }
+    }
+
+    // Always fetch fresh data in background
     try {
-      const params: Record<string, string> = { page: String(page), limit: '20' }
-      if (search) params['q'] = search
       const res = await api.patients.list(params) as PatientsResponse
       setPatients(res.data)
       setTotalPages(res.pagination.pages)
       setTotal(res.pagination.total)
+      writeCache(cacheKey, res)
     } catch (err) {
       console.error(err)
     } finally {

@@ -125,6 +125,26 @@ export function warmupApi(): void {
   fetch(`${base}/health`, { method: 'GET' }).catch(() => {})
 }
 
+// ── Stale-while-revalidate helpers ───────────────────────────────────────────
+// Read a cached entry from sessionStorage. Returns data if fresh, null if
+// expired or missing. Default TTL: 3 minutes.
+export function readCache<T>(key: string, maxAgeMs = 3 * 60 * 1000): T | null {
+  try {
+    const raw = typeof window !== 'undefined' ? sessionStorage.getItem(key) : null
+    if (!raw) return null
+    const { data, ts } = JSON.parse(raw) as { data: T; ts: number }
+    if (Date.now() - ts > maxAgeMs) return null
+    return data as T
+  } catch { return null }
+}
+
+export function writeCache(key: string, data: unknown): void {
+  try {
+    if (typeof window !== 'undefined')
+      sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }))
+  } catch {}
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
