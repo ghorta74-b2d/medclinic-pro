@@ -8,7 +8,7 @@ import { formatTime, formatCurrency, formatDate } from '@/lib/utils'
 import {
   Users, TrendingUp, Clock, Plus, UserPlus,
   FileText, Link2, Video, MessageSquare, Bot, Loader2,
-  ChevronRight, CreditCard
+  ChevronRight, CreditCard, Stethoscope, Building2
 } from 'lucide-react'
 import { NewAppointmentDialog } from '@/components/agenda/new-appointment-dialog'
 import { NewPatientDialog } from '@/components/patients/new-patient-dialog'
@@ -89,8 +89,10 @@ export default function DashboardPage() {
   const [showNewApt, setShowNewApt] = useState(false)
   const [showNewPat, setShowNewPat] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
-  // ownDoctorId: seteado solo para DOCTOR/ADMIN — filtra su propia agenda
   const [ownDoctorId, setOwnDoctorId] = useState<string | null>(null)
+  // ADMIN only: lista de doctores + filtro seleccionado (null = clínica completa)
+  const [doctors, setDoctors] = useState<{ id: string; firstName: string; lastName: string; specialty?: string | null }[]>([])
+  const [selectedFilterDoctorId, setSelectedFilterDoctorId] = useState<string | null>(null)
   // roleReady: true solo cuando role + doctorId están resueltos — evita flash de citas ajenas
   const [roleReady, setRoleReady] = useState(false)
 
@@ -109,15 +111,18 @@ export default function DashboardPage() {
       const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
       const chart7Local = new Date(todayLocal); chart7Local.setDate(todayLocal.getDate() - 6)
 
-      // Filtrar por doctor propio si aplica (se setea en el efecto de init del rol)
+      // Filtro efectivo: ADMIN usa selectedFilterDoctorId (puede ser null=global, o un doctorId)
+      //                  DOCTOR/STAFF usan siempre su propio ownDoctorId
+      const effectiveDoctor = userRole === 'ADMIN' ? selectedFilterDoctorId : ownDoctorId
+
       const aptParams: Record<string, string> = { from: from.toISOString(), to: to.toISOString() }
-      if (ownDoctorId) aptParams['doctorId'] = ownDoctorId
+      if (effectiveDoctor) aptParams['doctorId'] = effectiveDoctor
 
       const statsParams: Record<string, string> = {
         todayUtc: todayLocal.toISOString(),
         chartFromUtc: chart7Local.toISOString(),
       }
-      if (ownDoctorId) statsParams['doctorId'] = ownDoctorId
+      if (effectiveDoctor) statsParams['doctorId'] = effectiveDoctor
 
       const [aptsRes, dashRes] = await Promise.allSettled([
         api.appointments.list(aptParams) as Promise<{ data: Appointment[] }>,
@@ -131,16 +136,15 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [ownDoctorId, roleReady])
+  }, [ownDoctorId, roleReady, userRole, selectedFilterDoctorId])
 
-  // Detecta rol y doctor propio — DOCTOR/ADMIN ven solo su propia agenda
+  // Detecta rol y doctor propio — DOCTOR/ADMIN ven solo su propia agenda por default
   useEffect(() => {
     async function initRole() {
       try {
         const role = await getUserRole()
         setUserRole(role)
         if (role !== 'STAFF') {
-          // DOCTOR y ADMIN ven solo sus propias citas
           const [ownId, schedRes] = await Promise.allSettled([
             getOwnDoctorId(),
             api.configuracion.getSchedule() as Promise<{ data: { doctorId: string } }>,
@@ -148,12 +152,19 @@ export default function DashboardPage() {
           const fromJwt = ownId.status === 'fulfilled' ? ownId.value : null
           const fromSched = schedRes.status === 'fulfilled' ? schedRes.value.data.doctorId : null
           const myId = fromJwt ?? fromSched
-          if (myId) setOwnDoctorId(myId)
+          if (myId) {
+            setOwnDoctorId(myId)
+            // ADMIN: pre-selecciona sus propios datos + carga la lista de doctores
+            if (role === 'ADMIN') {
+              setSelectedFilterDoctorId(myId)
+              const docsRes = await api.configuracion.doctors() as { data: { id: string; firstName: string; lastName: string; specialty?: string | null }[] }
+              setDoctors(docsRes.data ?? [])
+            }
+          }
         }
       } catch {
         // Sin filtro si hay error — el usuario ve todo (safe fallback)
       } finally {
-        // Solo después de resolver role + doctorId se permite el primer fetch
         setRoleReady(true)
       }
     }
@@ -254,6 +265,48 @@ export default function DashboardPage() {
       />
 
       <div className="flex-1 p-6 overflow-auto space-y-6">
+
+        {/* Selector de vista — solo ADMIN (doctor superadmin de la clínica) */}
+        {userRole === 'ADMIN' && doctors.length > 0 && (
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-medium text-gray-500">Viendo datos de:</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Clínica completa */}
+              <button
+                onClick={() => setSelectedFilterDoctorId(null)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all',
+                  selectedFilterDoctorId === null
+                    ? 'bg-[#0D1B2E] text-white border-[#0D1B2E]'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                )}>
+                <Building2 className="w-3.5 h-3.5" />
+                Clínica completa
+              </button>
+              {/* Un botón por doctor */}
+              {doctors.map(d => {
+                const isOwn = d.id === ownDoctorId
+                const isSelected = selectedFilterDoctorId === d.id
+                return (
+                  <button
+                    key={d.id}
+                    onClick={() => setSelectedFilterDoctorId(d.id)}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all',
+                      isSelected
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
+                    )}>
+                    <Stethoscope className="w-3.5 h-3.5" />
+                    {d.firstName} {d.lastName}
+                    {isOwn && <span className={cn('text-xs ml-0.5', isSelected ? 'text-blue-200' : 'text-gray-400')}>(tú)</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {kpis.map((kpi) => {
