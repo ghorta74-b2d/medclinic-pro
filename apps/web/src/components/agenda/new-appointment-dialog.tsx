@@ -109,24 +109,52 @@ const DEFAULT_SCHEDULE: Record<string, { start: string; end: string }[]> = {
 }
 
 // Normaliza formato viejo { monday:{start,end,enabled} } y nuevo { mon:[{start,end}] }
-// Días no configurados explícitamente usan DEFAULT_SCHEDULE como fallback
+// Siempre hace merge con DEFAULT_SCHEDULE para que días ausentes tengan fallback
 function normalizeSchedule(cfg: unknown): Record<string, { start: string; end: string }[]> {
-  if (!cfg || typeof cfg !== 'object') return DEFAULT_SCHEDULE
+  if (!cfg || typeof cfg !== 'object') return { ...DEFAULT_SCHEDULE }
   const c = cfg as Record<string, unknown>
-  if (c['mon'] && Array.isArray(c['mon'])) {
-    // Nuevo formato: merge con DEFAULT para que días ausentes usen el default
-    return { ...DEFAULT_SCHEDULE, ...(c as Record<string, { start: string; end: string }[]>) }
-  }
-  const map: Record<string, string> = {
+
+  const SHORT_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+  const LONG_TO_SHORT: Record<string, string> = {
     monday: 'mon', tuesday: 'tue', wednesday: 'wed',
     thursday: 'thu', friday: 'fri', saturday: 'sat', sunday: 'sun',
   }
+
+  // Detecta si hay al menos una clave corta con valor array (formato nuevo)
+  const hasNewFormat = SHORT_DAYS.some(k => Array.isArray(c[k]))
+  // Detecta si hay al menos una clave larga (formato viejo)
+  const hasOldFormat = Object.keys(LONG_TO_SHORT).some(k => c[k] && typeof c[k] === 'object' && !Array.isArray(c[k]))
+
   const out: Record<string, { start: string; end: string }[]> = { ...DEFAULT_SCHEDULE }
-  for (const [long, short] of Object.entries(map)) {
-    const d = c[long] as { start?: string; end?: string; enabled?: boolean } | undefined
-    if (d && d.enabled === false) delete out[short]   // explícitamente desactivado
-    else if (d) out[short] = [{ start: d.start ?? '09:00', end: d.end ?? '19:00' }]
+
+  if (hasNewFormat) {
+    // Formato nuevo: { mon:[{start,end}], ... } — sólo días explícitos, resto usa DEFAULT
+    for (const day of SHORT_DAYS) {
+      const val = c[day]
+      if (Array.isArray(val)) {
+        if (val.length === 0) {
+          // Array vacío = día deshabilitado explícitamente
+          delete out[day]
+        } else {
+          out[day] = val as { start: string; end: string }[]
+        }
+      }
+      // Si no existe la clave → se mantiene el DEFAULT para ese día
+    }
+  } else if (hasOldFormat) {
+    // Formato viejo: { monday:{start,end,enabled}, ... }
+    for (const [long, short] of Object.entries(LONG_TO_SHORT)) {
+      const d = c[long] as { start?: string; end?: string; enabled?: boolean } | undefined
+      if (!d) continue
+      if (d.enabled === false) {
+        delete out[short]
+      } else {
+        out[short] = [{ start: d.start ?? '09:00', end: d.end ?? '19:00' }]
+      }
+    }
   }
+  // Si no reconoce el formato, devuelve DEFAULT_SCHEDULE completo
+
   return out
 }
 
@@ -221,6 +249,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
   const [scheduleSlots, setScheduleSlots] = useState<string[]>([])   // slots en horario laboral
   const [bookedSet, setBookedSet] = useState<Set<string>>(new Set()) // slots ocupados
   const [loadingSlots, setLoadingSlots] = useState(false)
+  const [slotsLoaded, setSlotsLoaded] = useState(false)  // ¿ya intentamos cargar?
 
   // ── Motivo ───────────────────────────────────────────────────
   const [complaint, setComplaint] = useState('')
@@ -248,9 +277,15 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
 
   async function loadDayAvailability() {
     const effectiveId = doctorId || (doctors.length === 1 ? doctors[0]!.id : '')
-    if (!effectiveId || !selectedDate) return
+    if (!effectiveId || !selectedDate) {
+      // Sin doctor seleccionado — limpiar slots pero marcar como "cargado" para mostrar mensaje correcto
+      setScheduleSlots([])
+      setSlotsLoaded(true)
+      return
+    }
 
     setLoadingSlots(true)
+    setSlotsLoaded(false)
     try {
       const doc = doctors.find(d => d.id === effectiveId)
       const schedule = normalizeSchedule((doc as any)?.scheduleConfig)
@@ -286,6 +321,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
       })
     } catch {} finally {
       setLoadingSlots(false)
+      setSlotsLoaded(true)
     }
   }
 
@@ -526,6 +562,11 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
                   <div key={i} className="h-8 rounded-lg bg-gray-100 animate-pulse" />
                 ))}
               </div>
+            ) : !slotsLoaded ? null
+            : scheduleSlots.length === 0 && doctors.length > 1 && !doctorId ? (
+              <p className="text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg">
+                Selecciona un doctor para ver los horarios disponibles.
+              </p>
             ) : scheduleSlots.length === 0 ? (
               <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
                 Sin horario laboral este día.
