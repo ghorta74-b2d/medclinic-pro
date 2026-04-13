@@ -116,7 +116,7 @@ export async function billingRoutes(server: FastifyInstance) {
 
   // GET /api/billing/invoices
   server.get('/invoices', { preHandler: requireStaff }, async (request, reply) => {
-    const { clinicId } = request.authUser
+    const { clinicId, role, doctorId: authDoctorId } = request.authUser
     const query = request.query as {
       patientId?: string
       status?: string
@@ -124,10 +124,18 @@ export async function billingRoutes(server: FastifyInstance) {
       to?: string
       page?: string
       limit?: string
+      doctorId?: string
     }
 
     const page = parseInt(query.page ?? '1', 10)
     const limit = parseInt(query.limit ?? '20', 10)
+
+    // Determine effective doctorId filter:
+    // - DOCTOR → always their own (cannot be overridden)
+    // - ADMIN / STAFF → use query param if provided, else global view
+    const effectiveDoctorId =
+      role === 'DOCTOR' ? authDoctorId :
+      query.doctorId ? query.doctorId : undefined
 
     const where: Record<string, unknown> = { clinicId }
     if (query.patientId) where['patientId'] = query.patientId
@@ -137,6 +145,10 @@ export async function billingRoutes(server: FastifyInstance) {
         ...(query.from ? { gte: new Date(query.from) } : {}),
         ...(query.to ? { lte: new Date(query.to) } : {}),
       }
+    }
+    // Filter by doctor via appointment join (invoices without appointment excluded in per-doctor view)
+    if (effectiveDoctorId) {
+      where['appointment'] = { doctorId: effectiveDoctorId }
     }
 
     const [invoices, total] = await Promise.all([
@@ -377,11 +389,12 @@ export async function billingRoutes(server: FastifyInstance) {
 
   // GET /api/billing/dashboard — revenue stats
   server.get('/dashboard', { preHandler: requireStaff }, async (request, reply) => {
-    const { clinicId } = request.authUser
+    const { clinicId, role, doctorId: authDoctorId } = request.authUser
     const query = request.query as {
       from?: string; to?: string
-      todayUtc?: string    // client local midnight expressed as UTC ISO (timezone-correct)
+      todayUtc?: string     // client local midnight expressed as UTC ISO (timezone-correct)
       chartFromUtc?: string // client local (today - 6 days) midnight as UTC ISO
+      doctorId?: string     // ADMIN/STAFF can filter by doctor; DOCTOR always auto-filtered
     }
 
     const from = query.from ? new Date(query.from) : (() => {
@@ -397,22 +410,38 @@ export async function billingRoutes(server: FastifyInstance) {
       const d = new Date(); d.setDate(d.getDate() - 6); d.setHours(0, 0, 0, 0); return d
     })()
 
+    // Determine effective doctorId filter:
+    // - DOCTOR → always their own
+    // - ADMIN / STAFF → use query param if provided, else global view
+    const effectiveDoctorId =
+      role === 'DOCTOR' ? authDoctorId :
+      query.doctorId ? query.doctorId : undefined
+
+    // Build doctor-aware appointment filter for payment records
+    const appointmentFilter = effectiveDoctorId
+      ? { appointment: { doctorId: effectiveDoctorId } }
+      : {}
+
     const [invoices, payments, payments7d, paymentsToday] = await Promise.all([
       prisma.invoice.findMany({
-        where: { clinicId, issuedAt: { gte: from, lte: to } },
+        where: {
+          clinicId,
+          issuedAt: { gte: from, lte: to },
+          ...appointmentFilter,
+        },
         select: { total: true, paidAmount: true, status: true },
       }),
       prisma.paymentRecord.findMany({
-        where: { invoice: { clinicId }, paidAt: { gte: from, lte: to } },
+        where: { invoice: { clinicId, ...appointmentFilter }, paidAt: { gte: from, lte: to } },
         select: { amount: true, method: true },
       }),
       // Raw payments for last 7 days — frontend groups by local date
       prisma.paymentRecord.findMany({
-        where: { invoice: { clinicId }, paidAt: { gte: chart7Start } },
+        where: { invoice: { clinicId, ...appointmentFilter }, paidAt: { gte: chart7Start } },
         select: { amount: true, paidAt: true },
       }),
       prisma.paymentRecord.findMany({
-        where: { invoice: { clinicId }, paidAt: { gte: todayStart } },
+        where: { invoice: { clinicId, ...appointmentFilter }, paidAt: { gte: todayStart } },
         select: { amount: true },
       }),
     ])

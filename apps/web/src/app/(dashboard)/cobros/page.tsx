@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
-import { api } from '@/lib/api'
+import { api, getUserRole, getOwnDoctorId } from '@/lib/api'
 import { formatDate, formatCurrency } from '@/lib/utils'
-import { CreditCard, Plus, Link2, DollarSign, TrendingUp, Clock, Loader2, MessageSquare, Building2, Eye } from 'lucide-react'
+import { CreditCard, Plus, DollarSign, TrendingUp, Clock, Loader2, MessageSquare, Building2, Eye, ChevronDown } from 'lucide-react'
 import type { Invoice } from 'medclinic-shared'
 import { INVOICE_STATUS_LABELS } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
@@ -127,6 +127,8 @@ const FILTERS = [
   { value: 'OVERDUE', label: 'Vencidas' },
 ]
 
+interface Doctor { id: string; firstName: string; lastName: string }
+
 export default function CobrosPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [stats, setStats] = useState<DashboardData['data'] | null>(null)
@@ -138,7 +140,36 @@ export default function CobrosPage() {
   const [detailInvoiceId, setDetailInvoiceId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({})
 
+  // Role / doctor filter state
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [ownDoctorId, setOwnDoctorId] = useState<string | null>(null)
+  const [doctors, setDoctors] = useState<Doctor[]>([])
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL') // 'ALL' = toda la clínica
+  const [roleReady, setRoleReady] = useState(false)
+
+  // Detect role and own doctorId on mount
+  useEffect(() => {
+    async function initRole() {
+      try {
+        const role = await getUserRole()
+        setUserRole(role)
+        if (role === 'DOCTOR') {
+          const myId = await getOwnDoctorId()
+          if (myId) setOwnDoctorId(myId)
+          // DOCTOR never sees the selector — no doctors list needed
+        } else {
+          // ADMIN / STAFF: load doctors list for filter selector
+          const res = await api.configuracion.doctors() as { data: Doctor[] }
+          setDoctors(res.data ?? [])
+        }
+      } catch { /* si falla, muestra vista global */ }
+      finally { setRoleReady(true) }
+    }
+    initRole()
+  }, [])
+
   const load = useCallback(async () => {
+    if (!roleReady) return
     setLoading(true)
     try {
       const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
@@ -147,28 +178,40 @@ export default function CobrosPage() {
       // Compute "from" boundary based on selected view mode
       let fromLocal: Date
       if (viewMode === 'dia') {
-        fromLocal = new Date(todayLocal) // today midnight
+        fromLocal = new Date(todayLocal)
       } else if (viewMode === 'semana') {
         fromLocal = new Date(todayLocal); fromLocal.setDate(todayLocal.getDate() - 6)
       } else {
-        fromLocal = new Date(todayLocal); fromLocal.setDate(1) // start of current month
+        fromLocal = new Date(todayLocal); fromLocal.setDate(1)
       }
 
-      const params: Record<string, string> = { limit: '50' }
-      if (filter !== 'ALL') params['status'] = filter
+      // Effective doctorId:
+      // - DOCTOR → always their own (API also enforces this server-side)
+      // - ADMIN/STAFF → selectedDoctorId unless 'ALL'
+      const effectiveDoctor =
+        userRole === 'DOCTOR' ? ownDoctorId :
+        selectedDoctorId !== 'ALL' ? selectedDoctorId : undefined
+
+      const ivParams: Record<string, string> = { limit: '50' }
+      if (filter !== 'ALL') ivParams['status'] = filter
+      if (effectiveDoctor) ivParams['doctorId'] = effectiveDoctor
+
+      const dashParams: Record<string, string> = {
+        from: fromLocal.toISOString(),
+        todayUtc,
+        chartFromUtc: fromLocal.toISOString(),
+      }
+      if (effectiveDoctor) dashParams['doctorId'] = effectiveDoctor
+
       const [ivRes, dashRes] = await Promise.all([
-        api.billing.invoices(params) as Promise<InvoicesResponse>,
-        api.billing.dashboard({
-          from: fromLocal.toISOString(),
-          todayUtc,
-          chartFromUtc: fromLocal.toISOString(),
-        }) as Promise<DashboardData>,
+        api.billing.invoices(ivParams) as Promise<InvoicesResponse>,
+        api.billing.dashboard(dashParams) as Promise<DashboardData>,
       ])
       setInvoices(ivRes.data)
       setStats(dashRes.data)
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
-  }, [filter, viewMode])
+  }, [filter, viewMode, roleReady, userRole, ownDoctorId, selectedDoctorId])
 
   // Build chart bars in local timezone — granularity depends on viewMode
   const chartBars = useMemo((): ChartBar[] => {
@@ -258,15 +301,41 @@ export default function CobrosPage() {
       />
 
       <div className="flex-1 p-6 overflow-auto space-y-6">
-        {/* View mode */}
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 self-start w-fit">
-          {(['dia', 'semana', 'mes'] as ViewMode[]).map((m) => (
-            <button key={m} onClick={() => setViewMode(m)}
-              className={cn('px-3 py-1.5 rounded-md text-sm font-medium transition-colors capitalize',
-                viewMode === m ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
-              {m === 'dia' ? 'Día' : m === 'semana' ? 'Semana' : 'Mes'}
-            </button>
-          ))}
+        {/* Controls row: view mode + doctor filter */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* View mode */}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+            {(['dia', 'semana', 'mes'] as ViewMode[]).map((m) => (
+              <button key={m} onClick={() => setViewMode(m)}
+                className={cn('px-3 py-1.5 rounded-md text-sm font-medium transition-colors capitalize',
+                  viewMode === m ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
+                {m === 'dia' ? 'Día' : m === 'semana' ? 'Semana' : 'Mes'}
+              </button>
+            ))}
+          </div>
+
+          {/* Doctor filter — only visible for ADMIN and STAFF */}
+          {userRole && userRole !== 'DOCTOR' && doctors.length > 0 && (
+            <div className="relative">
+              <select
+                value={selectedDoctorId}
+                onChange={e => setSelectedDoctorId(e.target.value)}
+                className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-1.5 pr-8 text-sm text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                <option value="ALL">Clínica completa</option>
+                {doctors.map(d => (
+                  <option key={d.id} value={d.id}>{d.firstName} {d.lastName}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+            </div>
+          )}
+
+          {/* Context badge — DOCTOR sees their own label */}
+          {userRole === 'DOCTOR' && (
+            <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">
+              Mis ingresos
+            </span>
+          )}
         </div>
 
         {/* KPI Cards */}

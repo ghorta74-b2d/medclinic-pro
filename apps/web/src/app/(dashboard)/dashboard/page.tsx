@@ -113,12 +113,15 @@ export default function DashboardPage() {
       const aptParams: Record<string, string> = { from: from.toISOString(), to: to.toISOString() }
       if (ownDoctorId) aptParams['doctorId'] = ownDoctorId
 
+      const statsParams: Record<string, string> = {
+        todayUtc: todayLocal.toISOString(),
+        chartFromUtc: chart7Local.toISOString(),
+      }
+      if (ownDoctorId) statsParams['doctorId'] = ownDoctorId
+
       const [aptsRes, dashRes] = await Promise.allSettled([
         api.appointments.list(aptParams) as Promise<{ data: Appointment[] }>,
-        api.dashboard.stats({
-          todayUtc: todayLocal.toISOString(),
-          chartFromUtc: chart7Local.toISOString(),
-        }) as Promise<DashboardResponse>,
+        api.dashboard.stats(statsParams) as Promise<DashboardResponse>,
       ])
 
       if (aptsRes.status === 'fulfilled') setAppointments(aptsRes.value.data)
