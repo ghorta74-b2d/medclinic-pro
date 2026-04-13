@@ -267,9 +267,6 @@ export default function LandingPage() {
             <a href="#demo" className="flex items-center gap-2 bg-white text-black px-7 py-3.5 rounded-full font-semibold text-sm hover:bg-white/90 transition-all hover:scale-[1.02]">
               Agendar demo gratis <ArrowRight className="w-4 h-4" />
             </a>
-            <a href="#plataforma" className="flex items-center gap-2 bg-white/12 backdrop-blur text-white px-7 py-3.5 rounded-full font-semibold text-sm border border-white/20 hover:bg-white/22 transition-all">
-              Ver la plataforma
-            </a>
           </div>
         </div>
       </section>
