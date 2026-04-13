@@ -9,6 +9,12 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          '-apple-system', 'BlinkMacSystemFont', 'SF Pro Text', 'SF Pro Display',
+          'Helvetica Neue', 'Arial', 'sans-serif',
+        ],
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -40,10 +46,10 @@ const config: Config = {
           foreground: 'hsl(var(--card-foreground))',
         },
         sidebar: {
-          DEFAULT: '#2B225F',
-          active: '#E7EBEF',
-          border: '#3D3075',
-          text: 'rgba(231,235,239,0.7)',
+          DEFAULT: '#1c1c1e',
+          active: 'rgba(255,255,255,0.12)',
+          border: 'rgba(255,255,255,0.08)',
+          text: 'rgba(255,255,255,0.55)',
         },
         success: {
           DEFAULT: '#389475',

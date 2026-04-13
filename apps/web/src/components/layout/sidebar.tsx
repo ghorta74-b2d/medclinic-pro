@@ -74,9 +74,9 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 h-screen sticky top-0 bg-[#2B225F] text-white flex flex-col">
+    <aside className="w-64 h-screen sticky top-0 bg-[#1c1c1e] text-white flex flex-col">
       {/* Brand */}
-      <div className="px-6 py-5 border-b border-[#3D3075]">
+      <div className="px-6 py-5 border-b border-white/8">
         <img
           src="/logo-white.svg"
           alt="MediaClinic"
@@ -95,10 +95,10 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium transition-colors',
                 isActive
-                  ? 'bg-[#E7EBEF] text-[#2B225F]'
-                  : 'text-[rgba(231,235,239,0.7)] hover:bg-[#3D3075] hover:text-white'
+                  ? 'bg-white/12 text-white'
+                  : 'text-white/55 hover:bg-white/8 hover:text-white'
               )}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -109,7 +109,7 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom — always visible, never pushed out of viewport */}
-      <div className="px-3 py-4 border-t border-[#3D3075] space-y-0.5 shrink-0">
+      <div className="px-3 py-4 border-t border-white/8 space-y-0.5 shrink-0">
         {visibleBottom.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
@@ -118,10 +118,10 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium transition-colors',
                 isActive
-                  ? 'bg-[#E7EBEF] text-[#2B225F]'
-                  : 'text-[rgba(231,235,239,0.7)] hover:bg-[#3D3075] hover:text-white'
+                  ? 'bg-white/12 text-white'
+                  : 'text-white/55 hover:bg-white/8 hover:text-white'
               )}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -132,7 +132,7 @@ export function Sidebar() {
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[rgba(231,235,239,0.7)] hover:bg-[#3D3075] hover:text-red-300 transition-colors w-full text-left">
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium text-white/55 hover:bg-white/8 hover:text-red-400 transition-colors w-full text-left">
           <LogOut className="w-4 h-4 shrink-0" />
           Cerrar sesión
         </button>
