@@ -89,6 +89,11 @@ function UsuariosTab() {
   const [saving, setSaving] = useState(false)
   const [actionId, setActionId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', specialty: '' })
+  const [callerRole, setCallerRole] = useState<string>('')
+
+  useEffect(() => { getUserRole().then(r => setCallerRole(r ?? '')).catch(() => {}) }, [])
 
   const load = () => {
     setLoading(true)
@@ -125,6 +130,32 @@ function UsuariosTab() {
       load()
     } catch (e: any) {
       alert(e.message ?? 'Error')
+    } finally {
+      setActionId(null)
+    }
+  }
+
+  async function handleSaveEdit(user: any) {
+    setActionId(user.id + '_edit')
+    try {
+      await api.configuracion.updateUser(user.id, editForm)
+      setEditingId(null)
+      load()
+    } catch (e: any) {
+      setError(e.message ?? 'Error al guardar')
+    } finally {
+      setActionId(null)
+    }
+  }
+
+  async function handleDelete(user: any) {
+    if (!confirm(`¿Eliminar a ${user.firstName} ${user.lastName}? Esta acción no se puede deshacer.`)) return
+    setActionId(user.id + '_delete')
+    try {
+      await api.configuracion.deleteUser(user.id)
+      load()
+    } catch (e: any) {
+      setError(e.message ?? 'Error al eliminar')
     } finally {
       setActionId(null)
     }
@@ -216,20 +247,39 @@ function UsuariosTab() {
           <tbody className="divide-y divide-gray-100">
             {[...doctors, ...staff].map((user: any) => {
               const isPending = !user.authUserId
-              const isDoctor = user.role === 'DOCTOR' || user.role === 'ADMIN'
+              const isDoctor  = user.role === 'DOCTOR' || user.role === 'ADMIN'
+              const isEditing = editingId === user.id
               return (
                 <tr key={user.id} className={cn('hover:bg-gray-50', !user.isActive && 'opacity-50')}>
                   <td className="px-4 py-3">
-                    <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
-                    {user.specialty && <p className="text-xs text-gray-400">{user.specialty}</p>}
+                    {isEditing ? (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex gap-1">
+                          <input value={editForm.firstName} onChange={e => setEditForm(f => ({ ...f, firstName: e.target.value }))}
+                            className="w-full border border-blue-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Nombre" />
+                          <input value={editForm.lastName} onChange={e => setEditForm(f => ({ ...f, lastName: e.target.value }))}
+                            className="w-full border border-blue-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Apellido" />
+                        </div>
+                        {isDoctor && (
+                          <input value={editForm.specialty} onChange={e => setEditForm(f => ({ ...f, specialty: e.target.value }))}
+                            className="w-full border border-blue-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Especialidad" />
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
+                        {user.specialty && <p className="text-xs text-gray-400">{user.specialty}</p>}
+                      </>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">{user.email}</td>
                   <td className="px-4 py-3">
                     <span className={cn(
                       'inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full',
+                      user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
                       isDoctor ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
                     )}>
-                      {isDoctor ? <Stethoscope className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
+                      {user.role === 'ADMIN' ? <Shield className="w-3 h-3" /> : isDoctor ? <Stethoscope className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
                       {user.role === 'ADMIN' ? 'Admin' : isDoctor ? 'Médico' : 'Administrativo'}
                     </span>
                   </td>
@@ -249,24 +299,46 @@ function UsuariosTab() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handleResend(user)}
-                        disabled={actionId === user.id + '_resend'}
-                        title={isPending ? 'Reenviar invitación' : 'Reenviar acceso'}
-                        className="text-xs text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1">
-                        {actionId === user.id + '_resend' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                        {isPending ? 'Reenviar' : 'Reenviar acceso'}
-                      </button>
-                      {user.role !== 'ADMIN' && (
-                        <button
-                          onClick={() => handleToggleActive(user)}
-                          disabled={actionId === user.id}
-                          className={cn('text-xs hover:underline disabled:opacity-50', user.isActive ? 'text-red-500' : 'text-green-600')}>
-                          {actionId === user.id ? <Loader2 className="w-3 h-3 animate-spin inline" /> : user.isActive ? 'Desactivar' : 'Activar'}
+                    {isEditing ? (
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => handleSaveEdit(user)} disabled={actionId === user.id + '_edit'}
+                          className="text-xs text-white bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded-lg disabled:opacity-50 flex items-center gap-1">
+                          {actionId === user.id + '_edit' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                          Guardar
                         </button>
-                      )}
-                    </div>
+                        <button onClick={() => setEditingId(null)}
+                          className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded-lg border border-gray-200">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => { setEditingId(user.id); setEditForm({ firstName: user.firstName, lastName: user.lastName, specialty: user.specialty ?? '' }) }}
+                          title="Editar" className="text-gray-400 hover:text-blue-600 p-1 rounded">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleResend(user)} disabled={actionId === user.id + '_resend'}
+                          title={isPending ? 'Reenviar invitación' : 'Reenviar acceso'}
+                          className="text-xs text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1">
+                          {actionId === user.id + '_resend' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                          {isPending ? 'Reenviar' : 'Reenviar acceso'}
+                        </button>
+                        {user.role !== 'ADMIN' && (
+                          <>
+                            <button onClick={() => handleToggleActive(user)} disabled={actionId === user.id}
+                              className={cn('text-xs hover:underline disabled:opacity-50', user.isActive ? 'text-red-500' : 'text-green-600')}>
+                              {actionId === user.id ? <Loader2 className="w-3 h-3 animate-spin inline" /> : user.isActive ? 'Desactivar' : 'Activar'}
+                            </button>
+                            {callerRole === 'ADMIN' && (
+                              <button onClick={() => handleDelete(user)} disabled={actionId === user.id + '_delete'}
+                                title="Eliminar usuario" className="text-gray-400 hover:text-red-600 p-1 rounded disabled:opacity-50">
+                                {actionId === user.id + '_delete' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               )
@@ -286,17 +358,18 @@ function UsuariosTab() {
           {/* Role selector */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { value: 'DOCTOR', label: 'Médico', desc: 'Acceso completo a la plataforma', icon: Stethoscope, color: 'border-blue-400 bg-blue-50' },
-              { value: 'STAFF',  label: 'Administrativo', desc: 'Dashboard, Agenda, Pacientes y Cobros', icon: Shield, color: 'border-orange-400 bg-orange-50' },
+              { value: 'DOCTOR', label: 'Médico',          desc: 'Acceso completo a la plataforma',       icon: Stethoscope, color: 'border-blue-400 bg-blue-50',   activeColor: 'text-blue-600' },
+              { value: 'STAFF',  label: 'Administrativo',  desc: 'Dashboard, Agenda, Pacientes y Cobros', icon: Shield,       color: 'border-orange-400 bg-orange-50', activeColor: 'text-orange-600' },
+              ...(callerRole === 'ADMIN' ? [
+                { value: 'ADMIN',  label: 'Administrador',  desc: 'Gestión completa de la clínica y usuarios', icon: Shield, color: 'border-purple-400 bg-purple-50', activeColor: 'text-purple-600' },
+              ] : []),
             ].map(opt => (
               <button key={opt.value}
                 onClick={() => setForm(f => ({ ...f, role: opt.value }))}
                 className={cn('text-left p-3 rounded-xl border-2 transition-all',
                   form.role === opt.value ? opt.color : 'border-gray-200 hover:border-gray-300')}>
                 <div className="flex items-center gap-2 mb-1">
-                  <opt.icon className={cn('w-4 h-4', form.role === opt.value
-                    ? (opt.value === 'DOCTOR' ? 'text-blue-600' : 'text-orange-600')
-                    : 'text-gray-400')} />
+                  <opt.icon className={cn('w-4 h-4', form.role === opt.value ? opt.activeColor : 'text-gray-400')} />
                   <p className="text-sm font-semibold text-gray-900">{opt.label}</p>
                 </div>
                 <p className="text-xs text-gray-500">{opt.desc}</p>
