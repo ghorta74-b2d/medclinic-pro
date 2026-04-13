@@ -200,16 +200,26 @@ export async function billingRoutes(server: FastifyInstance) {
     const { clinicId } = request.authUser
     const data = parsed.data
 
-    const patient = await prisma.patient.findFirst({ where: { id: data.patientId, clinicId } })
-    if (!patient) return Errors.NOT_FOUND(reply, 'Patient')
-
-    // Generate invoice number: INV-YYYYMMDD-XXXX
-    // Use client-provided local date if available (avoids UTC midnight shift on server)
+    // Generate invoice number + validate patient in parallel
+    // Use findFirst (O(1) via createdAt index) instead of count() (O(n) full scan)
     const clientDate = (request.body as Record<string, unknown>)['localDate'] as string | undefined
     const issuedDate = clientDate ?? new Date().toISOString().slice(0, 10)
     const dateStr = issuedDate.replace(/-/g, '')
-    const count = await prisma.invoice.count({ where: { clinicId } })
-    const invoiceNumber = `INV-${dateStr}-${String(count + 1).padStart(4, '0')}`
+
+    const [patient, lastInvoice] = await Promise.all([
+      prisma.patient.findFirst({ where: { id: data.patientId, clinicId } }),
+      prisma.invoice.findFirst({
+        where: { clinicId },
+        orderBy: { createdAt: 'desc' },
+        select: { invoiceNumber: true },
+      }),
+    ])
+    if (!patient) return Errors.NOT_FOUND(reply, 'Patient')
+
+    const lastSeq = lastInvoice
+      ? parseInt(lastInvoice.invoiceNumber.split('-').pop() ?? '0', 10)
+      : 0
+    const invoiceNumber = `INV-${dateStr}-${String(lastSeq + 1).padStart(4, '0')}`
 
     // Calculate totals
     let subtotal = 0
@@ -278,27 +288,31 @@ export async function billingRoutes(server: FastifyInstance) {
     // If payment info was provided, record it and mark invoice as PAID
     if (data.payment) {
       const { authUserId, clinicId: cId } = request.authUser
+      // Parallelize: doctor lookup + payment record creation (doc name needed first)
       const editorDoc = await prisma.doctor.findFirst({
         where: { authUserId, clinicId: cId },
         select: { firstName: true, lastName: true },
       })
       const recorderName = editorDoc ? `${editorDoc.firstName} ${editorDoc.lastName}` : authUserId
-      await prisma.paymentRecord.create({
-        data: {
-          invoiceId: invoice.id,
-          amount: total,
-          currency: 'MXN',
-          method: data.payment.method,
-          reference: data.payment.reference,
-          insurerName: data.payment.insurerName,
-          recordedBy: authUserId,
-          recordedByName: recorderName,
-        },
-      })
-      await prisma.invoice.update({
-        where: { id: invoice.id },
-        data: { paidAmount: total, status: 'PAID', paidAt: new Date() },
-      })
+      // Create payment record and update invoice status in parallel
+      await Promise.all([
+        prisma.paymentRecord.create({
+          data: {
+            invoiceId: invoice.id,
+            amount: total,
+            currency: 'MXN',
+            method: data.payment.method,
+            reference: data.payment.reference,
+            insurerName: data.payment.insurerName,
+            recordedBy: authUserId,
+            recordedByName: recorderName,
+          },
+        }),
+        prisma.invoice.update({
+          where: { id: invoice.id },
+          data: { paidAmount: total, status: 'PAID', paidAt: new Date() },
+        }),
+      ])
     }
 
     return reply.status(201).send({ data: invoice })
@@ -330,29 +344,26 @@ export async function billingRoutes(server: FastifyInstance) {
       customerEmail: invoice.patient.email ?? undefined,
     })
 
+    // Single update: merge both fields into one DB round-trip
     await prisma.invoice.update({
       where: { id },
       data: {
         stripePaymentLinkId: linkId,
         stripePaymentLinkUrl: url,
+        ...(invoice.patient.phone ? { paymentLinkSentAt: new Date() } : {}),
       },
     })
 
-    // Send payment link via WhatsApp
+    // Send payment link via WhatsApp — fire-and-forget (don't block the response)
     if (invoice.patient.phone) {
-      await sendWhatsAppMessage(invoice.patient.phone, {
+      sendWhatsAppMessage(invoice.patient.phone, {
         type: 'payment_link',
         patientName: invoice.patient.firstName,
         invoiceNumber: invoice.invoiceNumber,
         amount: remainingAmount,
         currency: invoice.currency,
         paymentUrl: url,
-      })
-
-      await prisma.invoice.update({
-        where: { id },
-        data: { paymentLinkSentAt: new Date() },
-      })
+      }).catch(console.error)
     }
 
     return reply.send({ data: { url, linkId } })
@@ -366,15 +377,17 @@ export async function billingRoutes(server: FastifyInstance) {
     const parsed = RecordPaymentSchema.safeParse(request.body)
     if (!parsed.success) return Errors.VALIDATION(reply, parsed.error.format())
 
-    const invoice = await prisma.invoice.findFirst({ where: { id, clinicId } })
+    // Parallelize: invoice lookup + editor doctor lookup
+    const [invoice, editorDoc] = await Promise.all([
+      prisma.invoice.findFirst({ where: { id, clinicId } }),
+      prisma.doctor.findFirst({
+        where: { authUserId, clinicId },
+        select: { firstName: true, lastName: true },
+      }),
+    ])
     if (!invoice) return Errors.NOT_FOUND(reply, 'Invoice')
 
     const data = parsed.data
-
-    const editorDoc = await prisma.doctor.findFirst({
-      where: { authUserId, clinicId },
-      select: { firstName: true, lastName: true },
-    })
     const recorderName = editorDoc ? `${editorDoc.firstName} ${editorDoc.lastName}` : authUserId
 
     const payment = await prisma.paymentRecord.create({

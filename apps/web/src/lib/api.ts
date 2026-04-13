@@ -22,6 +22,22 @@ function getSupabaseClient(): Promise<BrowserClient> | null {
 // Token cache — avoid calling getSession() on every request (it's slow)
 let _tokenCache: { token: string; expiresAt: number } | null = null
 
+// Short-lived in-memory cache for frequently read, rarely changed data
+// Keyed by URL — cleared on mutations that could invalidate them
+const _responseCache = new Map<string, { data: unknown; expiresAt: number }>()
+
+const CACHE_TTL: Record<string, number> = {
+  '/api/configuracion/doctors':   5 * 60 * 1000, // 5 min — doctor list rarely changes
+  '/api/appointments/types':     10 * 60 * 1000, // 10 min — appointment types change rarely
+  '/api/billing/services':        5 * 60 * 1000, // 5 min — service catalog
+}
+
+function invalidateCacheFor(...patterns: string[]) {
+  for (const key of _responseCache.keys()) {
+    if (patterns.some(p => key.includes(p))) _responseCache.delete(key)
+  }
+}
+
 async function getToken(): Promise<string | null> {
   if (typeof window === 'undefined') return null
 
@@ -71,6 +87,17 @@ async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const isGet = !options.method || options.method === 'GET'
+  const ttl = isGet ? CACHE_TTL[path] : undefined
+
+  // Serve from cache for allowlisted GET endpoints
+  if (ttl) {
+    const cached = _responseCache.get(path)
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.data as T
+    }
+  }
+
   const token = await getToken()
 
   const response = await fetch(`${API_URL}${path}`, {
@@ -89,7 +116,14 @@ async function request<T>(
     throw new Error(error?.error?.message ?? `HTTP ${response.status}`)
   }
 
-  return response.json() as Promise<T>
+  const data = await response.json() as T
+
+  // Store in cache if applicable
+  if (ttl) {
+    _responseCache.set(path, { data, expiresAt: Date.now() + ttl })
+  }
+
+  return data
 }
 
 // ── Appointments ──────────────────────────────────────────────
@@ -192,12 +226,21 @@ export const api = {
 
   billing: {
     services: () => request('/api/billing/services'),
-    createService: (data: unknown) =>
-      request('/api/billing/services', { method: 'POST', body: JSON.stringify(data) }),
-    updateService: (id: string, data: unknown) =>
-      request(`/api/billing/services/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    deleteService: (id: string) =>
-      request(`/api/billing/services/${id}`, { method: 'DELETE' }),
+    createService: async (data: unknown) => {
+      const result = await request('/api/billing/services', { method: 'POST', body: JSON.stringify(data) })
+      invalidateCacheFor('/api/billing/services')
+      return result
+    },
+    updateService: async (id: string, data: unknown) => {
+      const result = await request(`/api/billing/services/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+      invalidateCacheFor('/api/billing/services')
+      return result
+    },
+    deleteService: async (id: string) => {
+      const result = await request(`/api/billing/services/${id}`, { method: 'DELETE' })
+      invalidateCacheFor('/api/billing/services')
+      return result
+    },
     invoices: (params?: Record<string, string>) => {
       const qs = params ? '?' + new URLSearchParams(params).toString() : ''
       return request(`/api/billing/invoices${qs}`)
@@ -227,12 +270,18 @@ export const api = {
     updateClinic: (data: unknown) =>
       request('/api/configuracion/clinic', { method: 'PATCH', body: JSON.stringify(data) }),
     doctors: () => request('/api/configuracion/doctors'),
-    createDoctor: (data: unknown) =>
-      request('/api/configuracion/doctors', { method: 'POST', body: JSON.stringify(data) }),
+    createDoctor: async (data: unknown) => {
+      const result = await request('/api/configuracion/doctors', { method: 'POST', body: JSON.stringify(data) })
+      invalidateCacheFor('/api/configuracion/doctors')
+      return result
+    },
     // User management with plan limits
     users: () => request('/api/configuracion/users'),
-    inviteUser: (data: unknown) =>
-      request('/api/configuracion/users/invite', { method: 'POST', body: JSON.stringify(data) }),
+    inviteUser: async (data: unknown) => {
+      const result = await request('/api/configuracion/users/invite', { method: 'POST', body: JSON.stringify(data) })
+      invalidateCacheFor('/api/configuracion/doctors')
+      return result
+    },
     updateUser: (id: string, data: unknown) =>
       request(`/api/configuracion/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     resendInvite: (id: string) =>

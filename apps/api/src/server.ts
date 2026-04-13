@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
+import compress from '@fastify/compress'
 import multipart from '@fastify/multipart'
 import rateLimit from '@fastify/rate-limit'
 
@@ -30,6 +31,9 @@ export async function buildServer() {
   await server.register(helmet, {
     contentSecurityPolicy: false, // API only, no HTML
   })
+
+  // Gzip/Brotli compression — reduces JSON payload size by 60-80%
+  await server.register(compress, { global: true })
 
   const allowedOrigins = [
     process.env['NEXT_PUBLIC_APP_URL'],

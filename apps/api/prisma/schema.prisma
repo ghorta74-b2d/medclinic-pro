@@ -190,6 +190,7 @@ model Doctor {
   invoices        Invoice[]
 
   @@unique([clinicId, email])
+  @@index([clinicId, isActive])  // doctor list queries (agenda, billing selectors)
   @@map("doctors")
 }
 
@@ -583,6 +584,9 @@ model Invoice {
 
   @@unique([clinicId, invoiceNumber])
   @@index([clinicId, patientId])
+  @@index([clinicId, issuedAt])     // billing dashboard date-range queries
+  @@index([clinicId, doctorId])     // per-doctor income filtering
+  @@index([createdAt])              // invoice numbering (findFirst orderBy createdAt)
   @@map("invoices")
 }
 
@@ -623,6 +627,8 @@ model PaymentRecord {
   paidAt          DateTime      @default(now())
   createdAt       DateTime      @default(now())
 
+  @@index([invoiceId])   // payment lookup by invoice
+  @@index([paidAt])     // billing dashboard date-range queries
   @@map("payment_records")
 }
 

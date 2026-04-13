@@ -209,26 +209,18 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // ── GET /api/configuracion/doctors ────────────────────────────────────────
-  // Kept for backwards compatibility — returns only active doctors
+  // Returns only active DOCTOR/ADMIN users (excludes STAFF — they have a Doctor
+  // record but are not medical staff). Filters directly via the role column —
+  // no Supabase Auth round-trip needed.
   fastify.get('/doctors', async (request) => {
     const { clinicId } = request.authUser
 
     const doctors = await prisma.doctor.findMany({
-      where: { clinicId, isActive: true },
+      where: { clinicId, isActive: true, role: { not: 'STAFF' } },
       orderBy: { createdAt: 'asc' },
     })
 
-    // Exclude users whose Supabase Auth role is STAFF
-    // (STAFF users get a doctor record created on invite — this filters them out)
-    const supabaseAdmin = getSupabaseAdmin()
-    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers()
-    const staffIds = new Set(
-      (usersData?.users ?? [])
-        .filter(u => u.user_metadata?.role === 'STAFF')
-        .map(u => u.id)
-    )
-
-    return { data: doctors.filter(d => !staffIds.has(d.authUserId ?? '')) }
+    return { data: doctors }
   })
 
   // ── POST /api/configuracion/doctors ───────────────────────────────────────

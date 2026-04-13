@@ -222,14 +222,16 @@ export async function patientsRoutes(server: FastifyInstance) {
     const parsed = UpdatePatientSchema.safeParse(request.body)
     if (!parsed.success) return Errors.VALIDATION(reply, parsed.error.format())
 
-    const existing = await prisma.patient.findFirst({ where: { id, clinicId } })
+    // Parallelize: patient ownership check + editor name lookup
+    const [existing, editor] = await Promise.all([
+      prisma.patient.findFirst({ where: { id, clinicId } }),
+      prisma.doctor.findFirst({
+        where: { authUserId, clinicId },
+        select: { firstName: true, lastName: true },
+      }),
+    ])
     if (!existing) return Errors.NOT_FOUND(reply, 'Patient')
 
-    // Resolve editor name from Doctor table (covers DOCTOR, ADMIN, STAFF)
-    const editor = await prisma.doctor.findFirst({
-      where: { authUserId, clinicId },
-      select: { firstName: true, lastName: true },
-    })
     const editorName = editor
       ? `${editor.firstName} ${editor.lastName}`
       : authUserId

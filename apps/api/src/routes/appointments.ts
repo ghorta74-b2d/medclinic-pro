@@ -220,16 +220,14 @@ export async function appointmentsRoutes(server: FastifyInstance) {
       },
     })
 
-    // Send WhatsApp confirmation
+    // Fire-and-forget: don't block the response waiting for external services
     if (patient.phone) {
-      await sendWhatsAppMessage(patient.phone, {
+      sendWhatsAppMessage(patient.phone, {
         type: 'appointment_confirmation',
         appointment,
       }).catch(console.error)
     }
-
-    // Schedule reminders
-    await scheduleReminders(appointment.id).catch(console.error)
+    scheduleReminders(appointment.id).catch(console.error)
 
     return reply.status(201).send({ data: appointment })
   })
@@ -267,9 +265,9 @@ export async function appointmentsRoutes(server: FastifyInstance) {
       },
     })
 
-    // Notify patient of cancellation
+    // Fire-and-forget: notify patient of cancellation without blocking response
     if (isCancelling && updated.patient.phone) {
-      await sendWhatsAppMessage(updated.patient.phone, {
+      sendWhatsAppMessage(updated.patient.phone, {
         type: 'appointment_cancelled',
         appointment: updated,
         reason: data.cancellationReason,
