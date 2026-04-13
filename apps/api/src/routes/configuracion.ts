@@ -140,7 +140,17 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
       orderBy: { createdAt: 'asc' },
     })
 
-    return { data: doctors }
+    // Exclude users whose Supabase Auth role is STAFF
+    // (STAFF users get a doctor record created on invite — this filters them out)
+    const supabaseAdmin = getSupabaseAdmin()
+    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers()
+    const staffIds = new Set(
+      (usersData?.users ?? [])
+        .filter(u => u.user_metadata?.role === 'STAFF')
+        .map(u => u.id)
+    )
+
+    return { data: doctors.filter(d => !staffIds.has(d.authUserId ?? '')) }
   })
 
   // ── POST /api/configuracion/doctors ───────────────────────────────────────
