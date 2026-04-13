@@ -376,24 +376,30 @@ function ConsultaCard({ note }: { note: ClinicalNote }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
-      {/* Audit header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-200 border-b border-gray-300">
+      {/* Audit header — clic en cualquier parte del header para expandir/colapsar */}
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className={cn(
+          'w-full flex items-center justify-between px-4 py-3 border-b border-gray-300 transition-colors text-left',
+          expanded ? 'bg-[#0D1B2E]' : 'bg-gray-200 hover:bg-gray-300'
+        )}
+      >
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-[#4E2DD2]/10 rounded-full flex items-center justify-center shrink-0">
-            <UserCheck className="w-3.5 h-3.5 text-[#4E2DD2]" />
+          <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0', expanded ? 'bg-white/15' : 'bg-[#4E2DD2]/10')}>
+            <UserCheck className={cn('w-3.5 h-3.5', expanded ? 'text-white' : 'text-[#4E2DD2]')} />
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-900">
+            <p className={cn('text-xs font-semibold', expanded ? 'text-white' : 'text-gray-900')}>
               Dr. {note.doctor?.firstName} {note.doctor?.lastName}
               {note.doctor?.specialty && (
-                <span className="font-normal text-gray-500"> · {note.doctor.specialty}</span>
+                <span className={cn('font-normal', expanded ? 'text-white/70' : 'text-gray-500')}> · {note.doctor.specialty}</span>
               )}
             </p>
-            <p className="text-xs text-gray-400 flex items-center gap-1">
+            <p className={cn('text-xs flex items-center gap-1', expanded ? 'text-white/60' : 'text-gray-400')}>
               <Clock className="w-3 h-3" />
               {formatDateTime(note.createdAt)}
               {note.signedAt && isSigned && (
-                <span className="ml-1 text-green-600">· Firmado {formatDate(note.signedAt)}</span>
+                <span className={cn('ml-1', expanded ? 'text-green-300' : 'text-green-600')}>· Firmado {formatDate(note.signedAt)}</span>
               )}
             </p>
           </div>
@@ -401,18 +407,17 @@ function ConsultaCard({ note }: { note: ClinicalNote }) {
         <div className="flex items-center gap-2">
           <span className={cn(
             'text-xs px-2.5 py-0.5 rounded-full font-medium',
-            isSigned ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+            isSigned
+              ? expanded ? 'bg-green-400/20 text-green-300' : 'bg-green-100 text-green-700'
+              : expanded ? 'bg-amber-400/20 text-amber-300' : 'bg-amber-100 text-amber-700'
           )}>
             {isSigned ? 'Firmada' : 'Borrador'}
           </span>
-          <button
-            onClick={() => setExpanded(e => !e)}
-            className="p-1 hover:bg-gray-200 rounded"
-          >
-            {expanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
-          </button>
+          {expanded
+            ? <ChevronUp className="w-4 h-4 text-white/70" />
+            : <ChevronDown className="w-4 h-4 text-gray-500" />}
         </div>
-      </div>
+      </button>
 
       {/* Summary (always visible) */}
       <div className="px-4 py-3">
@@ -863,33 +868,50 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
   return (
     <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-200 border-b border-gray-300">
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className={cn(
+          'w-full flex items-center justify-between px-4 py-3 border-b border-gray-300 transition-colors text-left',
+          expanded ? 'bg-[#0D1B2E]' : 'bg-gray-200 hover:bg-gray-300'
+        )}
+      >
         <div className="flex items-center gap-3 min-w-0">
-          <FlaskConical className="w-4 h-4 text-orange-400 shrink-0" />
+          <FlaskConical className={cn('w-4 h-4 shrink-0', expanded ? 'text-orange-300' : 'text-orange-400')} />
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{result.title}</p>
-            <p className="text-xs text-gray-400">
+            <p className={cn('text-sm font-semibold truncate', expanded ? 'text-white' : 'text-gray-900')}>{result.title}</p>
+            <p className={cn('text-xs', expanded ? 'text-white/60' : 'text-gray-400')}>
               {result.laboratoryName && `${result.laboratoryName} · `}{formatDate(result.createdAt)}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', STATUS_STYLE[result.status] ?? 'bg-gray-100 text-gray-600')}>
+          <span className={cn(
+            'text-xs px-2 py-0.5 rounded-full font-medium',
+            expanded
+              ? 'bg-white/20 text-white'
+              : (STATUS_STYLE[result.status] ?? 'bg-gray-100 text-gray-600')
+          )}>
             {STATUS_LABEL[result.status] ?? result.status}
           </span>
           {(result.fileUrl ?? result.externalUrl) && (
             <button
-              onClick={() => setShowPdf(true)}
-              className="flex items-center gap-1 px-2 py-0.5 text-xs text-[#4E2DD2] hover:bg-[#4E2DD2]/10 rounded-lg font-medium transition-colors"
+              onClick={(e) => { e.stopPropagation(); setShowPdf(true); }}
+              className={cn(
+                'flex items-center gap-1 px-2 py-0.5 text-xs rounded-lg font-medium transition-colors',
+                expanded
+                  ? 'text-white/80 hover:bg-white/10'
+                  : 'text-[#4E2DD2] hover:bg-[#4E2DD2]/10'
+              )}
             >
               <FileText className="w-3.5 h-3.5" /> Ver PDF
             </button>
           )}
-          <button onClick={() => setExpanded(e => !e)} className="p-1 hover:bg-gray-200 rounded">
-            {expanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
-          </button>
+          {expanded
+            ? <ChevronUp className="w-4 h-4 text-white/70" />
+            : <ChevronDown className="w-4 h-4 text-gray-500" />
+          }
         </div>
-      </div>
+      </button>
 
       {/* PDF viewer modal */}
       {showPdf && (result.fileUrl ?? result.externalUrl) && (
