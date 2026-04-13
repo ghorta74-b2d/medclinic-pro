@@ -9,6 +9,7 @@ import { sendWhatsAppMessage } from '../services/whatsapp.js'
 const CreateInvoiceSchema = z.object({
   patientId: z.string(),
   appointmentId: z.string().optional(),
+  doctorId: z.string().optional(), // ADMIN/STAFF can assign invoice to a specific doctor
   items: z.array(z.object({
     serviceId: z.string().optional(),
     description: z.string().min(1),
@@ -146,9 +147,9 @@ export async function billingRoutes(server: FastifyInstance) {
         ...(query.to ? { lte: new Date(query.to) } : {}),
       }
     }
-    // Filter by doctor via appointment join (invoices without appointment excluded in per-doctor view)
+    // Filter by doctorId directly (column on Invoice — no join needed, includes standalone invoices)
     if (effectiveDoctorId) {
-      where['appointment'] = { doctorId: effectiveDoctorId }
+      where['doctorId'] = effectiveDoctorId
     }
 
     const [invoices, total] = await Promise.all([
@@ -235,11 +236,31 @@ export async function billingRoutes(server: FastifyInstance) {
 
     const total = subtotal + taxAmount
 
+    // Resolve doctorId for this invoice (used for per-doctor income filtering):
+    // 1. If appointmentId provided → derive from appointment
+    // 2. Else if DOCTOR/ADMIN caller → use their own doctorId
+    // 3. Else if STAFF/ADMIN explicitly passed doctorId in body → use that
+    const { role, doctorId: callerDoctorId } = request.authUser
+    let resolvedDoctorId: string | undefined
+
+    if (data.appointmentId) {
+      const apt = await prisma.appointment.findUnique({
+        where: { id: data.appointmentId },
+        select: { doctorId: true },
+      })
+      resolvedDoctorId = apt?.doctorId ?? undefined
+    } else if (role === 'DOCTOR' || role === 'ADMIN') {
+      resolvedDoctorId = callerDoctorId ?? undefined
+    } else if (data.doctorId) {
+      resolvedDoctorId = data.doctorId
+    }
+
     const invoice = await prisma.invoice.create({
       data: {
         clinicId,
         patientId: data.patientId,
         appointmentId: data.appointmentId,
+        doctorId: resolvedDoctorId,
         invoiceNumber,
         subtotal,
         taxAmount,
@@ -417,31 +438,28 @@ export async function billingRoutes(server: FastifyInstance) {
       role === 'DOCTOR' ? authDoctorId :
       query.doctorId ? query.doctorId : undefined
 
-    // Build doctor-aware appointment filter for payment records
-    const appointmentFilter = effectiveDoctorId
-      ? { appointment: { doctorId: effectiveDoctorId } }
-      : {}
+    // Build doctor filter — uses doctorId directly on Invoice (no join, no null exclusions)
+    const doctorFilter = effectiveDoctorId ? { doctorId: effectiveDoctorId } : {}
+
+    const invoiceBase = { clinicId, ...doctorFilter }
+    const paymentBase = { invoice: invoiceBase }
 
     const [invoices, payments, payments7d, paymentsToday] = await Promise.all([
       prisma.invoice.findMany({
-        where: {
-          clinicId,
-          issuedAt: { gte: from, lte: to },
-          ...appointmentFilter,
-        },
+        where: { ...invoiceBase, issuedAt: { gte: from, lte: to } },
         select: { total: true, paidAmount: true, status: true },
       }),
       prisma.paymentRecord.findMany({
-        where: { invoice: { clinicId, ...appointmentFilter }, paidAt: { gte: from, lte: to } },
+        where: { ...paymentBase, paidAt: { gte: from, lte: to } },
         select: { amount: true, method: true },
       }),
       // Raw payments for last 7 days — frontend groups by local date
       prisma.paymentRecord.findMany({
-        where: { invoice: { clinicId, ...appointmentFilter }, paidAt: { gte: chart7Start } },
+        where: { ...paymentBase, paidAt: { gte: chart7Start } },
         select: { amount: true, paidAt: true },
       }),
       prisma.paymentRecord.findMany({
-        where: { invoice: { clinicId, ...appointmentFilter }, paidAt: { gte: todayStart } },
+        where: { ...paymentBase, paidAt: { gte: todayStart } },
         select: { amount: true },
       }),
     ])

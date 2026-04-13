@@ -187,6 +187,7 @@ model Doctor {
   appointments    Appointment[]
   clinicalNotes   ClinicalNote[]
   prescriptions   Prescription[]
+  invoices        Invoice[]
 
   @@unique([clinicId, email])
   @@map("doctors")
@@ -548,6 +549,8 @@ model Invoice {
   patient         Patient       @relation(fields: [patientId], references: [id])
   appointmentId   String?       @unique
   appointment     Appointment?  @relation(fields: [appointmentId], references: [id])
+  doctorId        String?
+  doctor          Doctor?       @relation(fields: [doctorId], references: [id], onDelete: SetNull)
   invoiceNumber   String
   status          InvoiceStatus @default(DRAFT)
   // Amounts
