@@ -3,6 +3,24 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env['RESEND_API_KEY'])
 
+// Logo rendered as HTML — compatible with all email clients (Gmail, Outlook, Apple Mail)
+const LOGO_HTML = `
+  <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:32px;">
+    <!-- ECG icon box -->
+    <div style="display:inline-block;width:44px;height:44px;border:2px solid #0E1320;border-radius:10px;position:relative;overflow:hidden;">
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="44" height="44" rx="8" fill="white"/>
+        <rect x="2" y="2" width="40" height="40" rx="7" stroke="#0E1320" stroke-width="2"/>
+        <polyline points="4,22 10,22 13,14 17,30 21,10 25,26 28,18 32,22 40,22" fill="none" stroke="#438EE8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <!-- Wordmark -->
+    <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.3px;">
+      <span style="color:#0E1320;">med</span><span style="color:#438EE8;">clinic</span>
+    </span>
+  </div>
+`
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -19,7 +37,7 @@ export async function POST(req: NextRequest) {
       subject: `Solicitud de demo — ${nombre}`,
       html: `
         <div style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:40px 24px;background:#fff;">
-          <img src="https://mediaclinic.mx/logo-color.svg" alt="MediaClinic" style="height:36px;margin-bottom:32px;" />
+          ${LOGO_HTML}
           <h2 style="font-size:24px;font-weight:600;color:#1d1d1f;margin:0 0 8px;">Nueva solicitud de demo</h2>
           <p style="font-size:15px;color:#6e6e73;margin:0 0 32px;">Un médico quiere conocer MediaClinic.</p>
 
