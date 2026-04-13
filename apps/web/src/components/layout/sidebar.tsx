@@ -74,7 +74,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 h-screen sticky top-0 bg-[#0D1B2E] text-white flex flex-col">
+    <aside className="w-48 h-screen sticky top-0 bg-[#0D1B2E] text-white flex flex-col">
       {/* Brand */}
       <div className="px-6 py-5 border-b border-white/8">
         <img
