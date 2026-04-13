@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { api } from '@/lib/api'
-import { X, Plus, Trash2, Banknote, CreditCard, ArrowLeftRight, Clock, Building2 } from 'lucide-react'
+import { api, getUserRole } from '@/lib/api'
+import { X, Plus, Trash2, Banknote, CreditCard, ArrowLeftRight, Clock, Building2, Stethoscope } from 'lucide-react'
 import type { Patient, Service } from 'medclinic-shared'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+
+interface Doctor { id: string; firstName: string; lastName: string; specialty?: string }
 
 interface NewInvoiceDialogProps {
   onClose: () => void
@@ -74,10 +76,32 @@ export function NewInvoiceDialog({ onClose, onCreated }: NewInvoiceDialogProps) 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Doctor selector — shown for ADMIN and STAFF, hidden for DOCTOR (auto-assigned server-side)
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [doctors, setDoctors] = useState<Doctor[]>([])
+  const [selectedDoctorId, setSelectedDoctorId] = useState('')
+
   useEffect(() => {
     api.billing.services()
       .then((res) => setServices((res as { data: Service[] }).data))
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    async function initRole() {
+      try {
+        const role = await getUserRole()
+        setUserRole(role)
+        if (role !== 'DOCTOR') {
+          const res = await api.configuracion.doctors() as { data: Doctor[] }
+          const list = res.data ?? []
+          setDoctors(list)
+          // Pre-select first doctor if only one available
+          if (list.length === 1 && list[0]) setSelectedDoctorId(list[0].id)
+        }
+      } catch { /* sin bloquear el dialog */ }
+    }
+    initRole()
   }, [])
 
   useEffect(() => {
@@ -121,6 +145,11 @@ export function NewInvoiceDialog({ onClose, onCreated }: NewInvoiceDialogProps) 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedPatientId) { setError('Seleccione un paciente'); return }
+    // ADMIN / STAFF must assign the invoice to a doctor
+    if (userRole !== 'DOCTOR' && !selectedDoctorId) {
+      setError('Seleccione el médico al que pertenece esta factura')
+      return
+    }
     const validLines = lines.filter((l) => l.description && l.unitPrice > 0)
     if (validLines.length === 0) { setError('Agregue al menos un concepto con precio'); return }
 
@@ -148,7 +177,9 @@ export function NewInvoiceDialog({ onClose, onCreated }: NewInvoiceDialogProps) 
 
       await api.billing.createInvoice({
         patientId: selectedPatientId,
-        localDate: new Date().toLocaleDateString('sv-SE'), // client local date for correct invoice number
+        localDate: new Date().toLocaleDateString('sv-SE'),
+        // Pass doctorId for ADMIN/STAFF — DOCTOR auto-assigned server-side
+        ...(userRole !== 'DOCTOR' && selectedDoctorId ? { doctorId: selectedDoctorId } : {}),
         items: resolvedLines.map((l) => ({
           serviceId: l.serviceId || undefined,
           description: l.description,
@@ -213,6 +244,50 @@ export function NewInvoiceDialog({ onClose, onCreated }: NewInvoiceDialogProps) 
               </div>
             )}
           </div>
+
+          {/* Doctor selector — ADMIN and STAFF must assign every invoice to a doctor */}
+          {userRole !== null && userRole !== 'DOCTOR' && doctors.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                <span className="flex items-center gap-1.5">
+                  <Stethoscope className="w-3.5 h-3.5 text-blue-600" />
+                  Médico responsable *
+                </span>
+              </label>
+              <div className="grid grid-cols-1 gap-2">
+                {doctors.map(d => (
+                  <button key={d.id} type="button"
+                    onClick={() => setSelectedDoctorId(d.id)}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all',
+                      selectedDoctorId === d.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    )}>
+                    <div className={cn(
+                      'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
+                      selectedDoctorId === d.id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                    )}>
+                      {d.firstName[0]}{d.lastName[0]}
+                    </div>
+                    <div>
+                      <p className={cn('text-sm font-medium', selectedDoctorId === d.id ? 'text-blue-900' : 'text-gray-800')}>
+                        Dr. {d.firstName} {d.lastName}
+                      </p>
+                      {d.specialty && (
+                        <p className="text-xs text-gray-400">{d.specialty}</p>
+                      )}
+                    </div>
+                    {selectedDoctorId === d.id && (
+                      <div className="ml-auto w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Line items */}
           <div>
