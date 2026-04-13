@@ -360,28 +360,32 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
 
     const supabaseAdmin = getSupabaseAdmin()
 
-    // Create Doctor record (authUserId left null until invite succeeds)
-    const doctor = await prisma.doctor.create({
-      data: {
-        clinicId,
-        firstName: body.firstName,
-        lastName: body.lastName,
-        email: body.email,
-        specialty: body.specialty ?? '',
-        licenseNumber: body.licenseNumber ?? '',
-        role: body.role as Role,
-        isActive: true,
-        scheduleConfig: {
-          monday:    { start: '09:00', end: '18:00', enabled: true },
-          tuesday:   { start: '09:00', end: '18:00', enabled: true },
-          wednesday: { start: '09:00', end: '18:00', enabled: true },
-          thursday:  { start: '09:00', end: '18:00', enabled: true },
-          friday:    { start: '09:00', end: '18:00', enabled: true },
-          saturday:  { start: '09:00', end: '14:00', enabled: false },
-          sunday:    { start: '09:00', end: '14:00', enabled: false },
+    // STAFF users don't need a Doctor record — they have no schedule and must
+    // not appear in doctor selectors. Create Doctor record only for DOCTOR/ADMIN.
+    let doctor: Awaited<ReturnType<typeof prisma.doctor.create>> | null = null
+    if (body.role !== 'STAFF') {
+      doctor = await prisma.doctor.create({
+        data: {
+          clinicId,
+          firstName: body.firstName,
+          lastName: body.lastName,
+          email: body.email,
+          specialty: body.specialty ?? '',
+          licenseNumber: body.licenseNumber ?? '',
+          role: body.role as Role,
+          isActive: true,
+          scheduleConfig: {
+            monday:    { start: '09:00', end: '18:00', enabled: true },
+            tuesday:   { start: '09:00', end: '18:00', enabled: true },
+            wednesday: { start: '09:00', end: '18:00', enabled: true },
+            thursday:  { start: '09:00', end: '18:00', enabled: true },
+            friday:    { start: '09:00', end: '18:00', enabled: true },
+            saturday:  { start: '09:00', end: '14:00', enabled: false },
+            sunday:    { start: '09:00', end: '14:00', enabled: false },
+          },
         },
-      },
-    })
+      })
+    }
 
     const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`
 
@@ -395,19 +399,19 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
           role: body.role,
           firstName: body.firstName,
           lastName: body.lastName,
-          doctor_id: doctor.id,
+          ...(doctor ? { doctor_id: doctor.id } : {}),
         },
         redirectTo,
       },
     })
 
     if (linkError) {
-      await prisma.doctor.delete({ where: { id: doctor.id } }).catch(() => {})
+      if (doctor) await prisma.doctor.delete({ where: { id: doctor.id } }).catch(() => {})
       return reply.status(400).send({ error: { message: linkError.message } })
     }
 
-    // Link authUserId to doctor record
-    if (linkData?.user?.id) {
+    // Link authUserId to doctor record (only for DOCTOR/ADMIN)
+    if (linkData?.user?.id && doctor) {
       await prisma.doctor.update({
         where: { id: doctor.id },
         data: { authUserId: linkData.user.id },

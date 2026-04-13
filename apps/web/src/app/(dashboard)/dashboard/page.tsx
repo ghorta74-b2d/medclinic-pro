@@ -193,8 +193,15 @@ export default function DashboardPage() {
   useEffect(() => { load() }, [load])
 
   const todayStr = formatDate(today, "EEEE, d 'de' MMMM yyyy")
+  const now = new Date()
+  // Show appointments that haven't ended yet (started within the last 60 min = possibly ongoing)
+  // or are scheduled in the future. Hide fully past ones.
+  const ONGOING_WINDOW_MS = 60 * 60 * 1000
   const upcomingApts = appointments
-    .filter(a => !['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(a.status))
+    .filter(a => {
+      if (['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(a.status)) return false
+      return new Date(a.startsAt).getTime() >= now.getTime() - ONGOING_WINDOW_MS
+    })
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
     .slice(0, 6)
 
@@ -385,15 +392,28 @@ export default function DashboardPage() {
                           {apt.doctor ? `${apt.doctor.firstName} ${apt.doctor.lastName}` : ''}{apt.chiefComplaint ? ` · ${apt.chiefComplaint}` : ''}
                         </p>
                       </div>
-                      <span className={cn(
-                        'shrink-0 text-xs px-2 py-0.5 rounded-full font-medium',
-                        apt.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
-                        apt.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
-                        apt.status === 'CHECKED_IN' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-600'
-                      )}>
-                        {STATUS_LABELS[apt.status as keyof typeof STATUS_LABELS] ?? apt.status}
-                      </span>
+                      {(() => {
+                        const isOngoing = new Date(apt.startsAt) <= now
+                        if (isOngoing) {
+                          return (
+                            <span className="shrink-0 text-xs px-2 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse inline-block" />
+                              En curso
+                            </span>
+                          )
+                        }
+                        return (
+                          <span className={cn(
+                            'shrink-0 text-xs px-2 py-0.5 rounded-full font-medium',
+                            apt.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
+                            apt.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                            apt.status === 'CHECKED_IN' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-gray-100 text-gray-600'
+                          )}>
+                            {STATUS_LABELS[apt.status as keyof typeof STATUS_LABELS] ?? apt.status}
+                          </span>
+                        )
+                      })()}
                     </button>
                   ))}
                 </div>
