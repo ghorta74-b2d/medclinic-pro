@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Header } from '@/components/layout/header'
-import { api, getUserRole, getOwnDoctorId } from '@/lib/api'
+import { api, getUserRole, getOwnDoctorId, sessionCache } from '@/lib/api'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { CreditCard, Plus, DollarSign, TrendingUp, Clock, Loader2, MessageSquare, Building2, Eye, ChevronDown } from 'lucide-react'
 import type { Invoice } from 'medclinic-shared'
@@ -140,33 +140,42 @@ export default function CobrosPage() {
   const [detailInvoiceId, setDetailInvoiceId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({})
 
-  // Role / doctor filter state
-  const [userRole, setUserRole] = useState<string | null>(null)
-  const [ownDoctorId, setOwnDoctorId] = useState<string | null>(null)
+  // Role / doctor filter state — bootstrapped from sessionStorage for instant return visits
+  const [userRole, setUserRole] = useState<string | null>(() => sessionCache.getRole())
+  const [ownDoctorId, setOwnDoctorId] = useState<string | null>(() => sessionCache.getDoctorId())
   const [doctors, setDoctors] = useState<Doctor[]>([])
-  const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL') // 'ALL' = toda la clínica
-  const [roleReady, setRoleReady] = useState(false)
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL')
+  const [roleReady, setRoleReady] = useState(() => !!sessionCache.getRole())
 
-  // Detect role and own doctorId on mount
   useEffect(() => {
+    // Load doctors list for ADMIN/STAFF — uses response cache after first call
+    const cachedRole = sessionCache.getRole()
+    if (cachedRole && cachedRole !== 'DOCTOR' && doctors.length === 0) {
+      api.configuracion.doctors().then((res: unknown) => {
+        setDoctors((res as { data: Doctor[] }).data ?? [])
+      }).catch(() => {})
+    }
+
+    // Already resolved from sessionStorage → no API calls needed
+    if (cachedRole) return
+
     async function initRole() {
       try {
         const role = await getUserRole()
+        if (role) sessionCache.setRole(role)
         setUserRole(role)
         if (role === 'DOCTOR') {
           const myId = await getOwnDoctorId()
-          if (myId) setOwnDoctorId(myId)
-          // DOCTOR never sees the selector — no doctors list needed
+          if (myId) { sessionCache.setDoctorId(myId); setOwnDoctorId(myId) }
         } else {
-          // ADMIN / STAFF: load doctors list for filter selector
           const res = await api.configuracion.doctors() as { data: Doctor[] }
           setDoctors(res.data ?? [])
         }
-      } catch { /* si falla, muestra vista global */ }
+      } catch {}
       finally { setRoleReady(true) }
     }
     initRole()
-  }, [])
+  }, [doctors.length])
 
   const load = useCallback(async () => {
     if (!roleReady) return

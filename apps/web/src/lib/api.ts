@@ -83,6 +83,48 @@ export async function getOwnDoctorId(): Promise<string | null> {
   }
 }
 
+// ── Session cache for role + doctorId ────────────────────────────────────────
+// Stored in sessionStorage so return-visits resolve role/doctorId in 0ms
+// (no API calls). Cleared automatically when the tab/session closes.
+const _SS_ROLE    = '_mc_role'
+const _SS_DOCTOR  = '_mc_did'
+const _SS_CLINIC  = '_mc_cid'
+
+function ssGet(key: string): string | null {
+  try { return typeof window !== 'undefined' ? sessionStorage.getItem(key) : null }
+  catch { return null }
+}
+function ssSet(key: string, val: string): void {
+  try { if (typeof window !== 'undefined') sessionStorage.setItem(key, val) }
+  catch {}
+}
+function ssClear(): void {
+  try {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(_SS_ROLE)
+      sessionStorage.removeItem(_SS_DOCTOR)
+      sessionStorage.removeItem(_SS_CLINIC)
+    }
+  } catch {}
+}
+
+export const sessionCache = {
+  getRole:     () => ssGet(_SS_ROLE),
+  getDoctorId: () => ssGet(_SS_DOCTOR),
+  getClinicId: () => ssGet(_SS_CLINIC),
+  setRole:     (v: string) => ssSet(_SS_ROLE, v),
+  setDoctorId: (v: string) => ssSet(_SS_DOCTOR, v),
+  setClinicId: (v: string) => ssSet(_SS_CLINIC, v),
+  clear:       () => ssClear(),
+}
+
+// Warm up the serverless API function — call this as early as possible
+// so that cold starts resolve before the user needs real data.
+export function warmupApi(): void {
+  const base = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+  fetch(`${base}/health`, { method: 'GET' }).catch(() => {})
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}

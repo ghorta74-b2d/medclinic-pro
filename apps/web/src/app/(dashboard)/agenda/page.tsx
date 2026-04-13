@@ -7,7 +7,7 @@ import { WeekView } from '@/components/agenda/week-view'
 import { MonthView } from '@/components/agenda/month-view'
 import { DayStats } from '@/components/agenda/day-stats'
 import { NewAppointmentDialog } from '@/components/agenda/new-appointment-dialog'
-import { api, getUserRole, getOwnDoctorId } from '@/lib/api'
+import { api, getUserRole, getOwnDoctorId, sessionCache } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -46,80 +46,98 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true)
   const [showNewDialog, setShowNewDialog] = useState(false)
   const [doctors, setDoctors] = useState<Doctor[]>([])
-  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null)
-  // userRole: null mientras carga, luego 'DOCTOR' | 'ADMIN' | 'STAFF' | etc.
-  const [userRole, setUserRole] = useState<string | null>(null)
-  // roleReady: true solo cuando role + doctorId están resueltos — evita flash de citas ajenas
-  const [roleReady, setRoleReady] = useState(false)
-  // isStaff: solo STAFF ve la agenda global con filtro de doctores
+
+  // Bootstrap role + doctorId from sessionStorage for instant return visits
+  const [userRole, setUserRole] = useState<string | null>(() => sessionCache.getRole())
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(() => sessionCache.getDoctorId())
+  // roleReady: true immediately if sessionStorage has the data (return visits)
+  const [roleReady, setRoleReady] = useState(() => !!sessionCache.getRole())
   const isStaff = userRole === 'STAFF'
 
   const dateStr = selectedDate.toLocaleDateString('sv-SE')
 
-  // Detecta rol y, para DOCTOR/ADMIN, auto-fija su propio doctorId
+  // Resolve role + doctorId on first visit — on return visits sessionStorage
+  // already has the data so this runs but skips API calls immediately.
   useEffect(() => {
+    // Already resolved from sessionStorage → nothing to do
+    if (sessionCache.getRole()) return
+
     async function initRole() {
       try {
         const role = await getUserRole()
+        if (role) sessionCache.setRole(role)
         setUserRole(role)
+
         if (role !== 'STAFF') {
-          // DOCTOR y ADMIN ven solo su propia agenda
-          const [ownId, schedRes] = await Promise.all([
-            getOwnDoctorId(),
-            api.configuracion.getSchedule() as Promise<{ data: { doctorId: string } }>,
-          ])
-          const myId = ownId ?? schedRes.data.doctorId
-          if (myId) setSelectedDoctorId(myId)
+          // doctorId is embedded in the JWT — no API call needed
+          const myId = await getOwnDoctorId()
+          if (myId) {
+            sessionCache.setDoctorId(myId)
+            setSelectedDoctorId(myId)
+          }
         } else {
-          // STAFF carga la lista de doctores para el filtro
           const res = await api.configuracion.doctors() as { data: Doctor[] }
           setDoctors(res.data ?? [])
         }
       } catch {
-        // Si falla, dejamos sin filtro (STAFF-like) para no bloquear la vista
+        // Fallback: show all appointments without doctor filter
       } finally {
-        // Solo después de resolver role + doctorId se permite el primer fetch
         setRoleReady(true)
       }
     }
     initRole()
   }, [])
 
+  // Load doctors list for STAFF on return visits (role already known)
+  useEffect(() => {
+    if (userRole === 'STAFF' && doctors.length === 0) {
+      api.configuracion.doctors().then((res: unknown) => {
+        setDoctors((res as { data: Doctor[] }).data ?? [])
+      }).catch(() => {})
+    }
+  }, [userRole, doctors.length])
+
   const loadAppointments = useCallback(async () => {
-    if (!roleReady) return  // Esperar hasta que role + doctorId estén resueltos
-    setLoading(true)
+    if (!roleReady) return
+
+    let from: Date, to: Date
+    if (viewMode === 'dia') {
+      from = new Date(selectedDate); from.setHours(0, 0, 0, 0)
+      to   = new Date(selectedDate); to.setHours(23, 59, 59, 999)
+    } else if (viewMode === 'semana') {
+      const range = getWeekRange(selectedDate); from = range.start; to = range.end
+    } else {
+      const range = getMonthRange(selectedDate); from = range.start; to = range.end
+    }
+
+    const params: Record<string, string> = { from: from.toISOString(), to: to.toISOString() }
+    if (selectedDoctorId) params['doctorId'] = selectedDoctorId
+
+    // ── Stale-while-revalidate ──────────────────────────────────────────────
+    // 1. Show cached data instantly (no loading spinner if cache is fresh)
+    const cacheKey = `_apt_${selectedDoctorId ?? 'all'}_${dateStr}_${viewMode}`
     try {
-      let from: Date, to: Date
-
-      if (viewMode === 'dia') {
-        from = new Date(selectedDate)
-        from.setHours(0, 0, 0, 0)
-        to = new Date(selectedDate)
-        to.setHours(23, 59, 59, 999)
-      } else if (viewMode === 'semana') {
-        const range = getWeekRange(selectedDate)
-        from = range.start
-        to = range.end
-      } else {
-        const range = getMonthRange(selectedDate)
-        from = range.start
-        to = range.end
+      const raw = sessionStorage.getItem(cacheKey)
+      if (raw) {
+        const { data, ts } = JSON.parse(raw) as { data: Appointment[]; ts: number }
+        if (Date.now() - ts < 3 * 60 * 1000) { // fresh within 3 min
+          setAppointments(data)
+          setLoading(false)
+        }
       }
+    } catch {}
 
-      const params: Record<string, string> = {
-        from: from.toISOString(),
-        to: to.toISOString(),
-      }
-      if (selectedDoctorId) params['doctorId'] = selectedDoctorId
-
+    // 2. Always fetch fresh data in background
+    try {
       const res = await api.appointments.list(params) as { data: Appointment[] }
       setAppointments(res.data)
+      try { sessionStorage.setItem(cacheKey, JSON.stringify({ data: res.data, ts: Date.now() })) } catch {}
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [selectedDate, viewMode, selectedDoctorId, roleReady])
+  }, [selectedDate, viewMode, selectedDoctorId, roleReady, dateStr])
 
   useEffect(() => {
     loadAppointments()

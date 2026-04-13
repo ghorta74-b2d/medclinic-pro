@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
-import { api, getUserRole, getOwnDoctorId } from '@/lib/api'
+import { api, getUserRole, getOwnDoctorId, sessionCache } from '@/lib/api'
 import { formatTime, formatCurrency, formatDate } from '@/lib/utils'
 import {
   Users, TrendingUp, Clock, Plus, UserPlus,
@@ -88,13 +88,16 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [showNewApt, setShowNewApt] = useState(false)
   const [showNewPat, setShowNewPat] = useState(false)
-  const [userRole, setUserRole] = useState<string | null>(null)
-  const [ownDoctorId, setOwnDoctorId] = useState<string | null>(null)
+  // Bootstrap from sessionStorage — instant on return visits (0 API calls)
+  const [userRole, setUserRole] = useState<string | null>(() => sessionCache.getRole())
+  const [ownDoctorId, setOwnDoctorId] = useState<string | null>(() => sessionCache.getDoctorId())
   // ADMIN only: lista de doctores + filtro seleccionado (null = clínica completa)
   const [doctors, setDoctors] = useState<{ id: string; firstName: string; lastName: string; specialty?: string | null }[]>([])
-  const [selectedFilterDoctorId, setSelectedFilterDoctorId] = useState<string | null>(null)
-  // roleReady: true solo cuando role + doctorId están resueltos — evita flash de citas ajenas
-  const [roleReady, setRoleReady] = useState(false)
+  const [selectedFilterDoctorId, setSelectedFilterDoctorId] = useState<string | null>(
+    () => sessionCache.getDoctorId() // default: own data
+  )
+  // roleReady: true immediately if sessionStorage has data (return visits)
+  const [roleReady, setRoleReady] = useState(() => !!sessionCache.getRole())
 
   const today = new Date()
 
@@ -138,38 +141,45 @@ export default function DashboardPage() {
     }
   }, [ownDoctorId, roleReady, userRole, selectedFilterDoctorId])
 
-  // Detecta rol y doctor propio — DOCTOR/ADMIN ven solo su propia agenda por default
+  // Resolve role + doctorId — skips all API calls on return visits via sessionStorage
   useEffect(() => {
+    // Load doctors list for ADMIN (uses response cache — fast after first call)
+    if (sessionCache.getRole() === 'ADMIN' && doctors.length === 0) {
+      api.configuracion.doctors().then((res: unknown) => {
+        setDoctors((res as { data: { id: string; firstName: string; lastName: string; specialty?: string | null }[] }).data ?? [])
+      }).catch(() => {})
+    }
+
+    // Already resolved from sessionStorage → no API calls needed
+    if (sessionCache.getRole()) return
+
     async function initRole() {
       try {
         const role = await getUserRole()
+        if (role) sessionCache.setRole(role)
         setUserRole(role)
+
         if (role !== 'STAFF') {
-          const [ownId, schedRes] = await Promise.allSettled([
-            getOwnDoctorId(),
-            api.configuracion.getSchedule() as Promise<{ data: { doctorId: string } }>,
-          ])
-          const fromJwt = ownId.status === 'fulfilled' ? ownId.value : null
-          const fromSched = schedRes.status === 'fulfilled' ? schedRes.value.data.doctorId : null
-          const myId = fromJwt ?? fromSched
+          // doctorId is in the JWT — no getSchedule() API call needed
+          const myId = await getOwnDoctorId()
           if (myId) {
+            sessionCache.setDoctorId(myId)
             setOwnDoctorId(myId)
-            // ADMIN: pre-selecciona sus propios datos + carga la lista de doctores
+            setSelectedFilterDoctorId(myId)
             if (role === 'ADMIN') {
-              setSelectedFilterDoctorId(myId)
               const docsRes = await api.configuracion.doctors() as { data: { id: string; firstName: string; lastName: string; specialty?: string | null }[] }
               setDoctors(docsRes.data ?? [])
             }
           }
         }
       } catch {
-        // Sin filtro si hay error — el usuario ve todo (safe fallback)
+        // Safe fallback: show all data without doctor filter
       } finally {
         setRoleReady(true)
       }
     }
     initRole()
-  }, [])
+  }, [doctors.length])
 
   useEffect(() => { load() }, [load])
 
