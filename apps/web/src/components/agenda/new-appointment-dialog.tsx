@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { api } from '@/lib/api'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { api, getUserRole, getOwnDoctorId } from '@/lib/api'
 import { X, UserPlus, Search, Clock, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Patient, Doctor } from 'medclinic-shared'
+
+// ── Doctor extendido con scheduleConfig (viene del API pero no está en el tipo compartido)
+type DoctorWithSchedule = Doctor & { scheduleConfig?: unknown }
 
 // ── Mini date picker en español ──────────────────────────────
 const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -13,14 +16,12 @@ function SpanishDatePicker({ value, min, onChange }: { value: string; min: strin
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  // Parse value as local date
   const [vy, vm, vd] = value.split('-').map(Number)
   const selected = value ? new Date(vy!, vm! - 1, vd!) : null
 
   const [viewYear, setViewYear]   = useState(() => selected?.getFullYear() ?? new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(() => selected?.getMonth()    ?? new Date().getMonth())
 
-  // Close on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
@@ -29,8 +30,7 @@ function SpanishDatePicker({ value, min, onChange }: { value: string; min: strin
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Build grid: Mon-first
-  const firstDow = new Date(viewYear, viewMonth, 1).getDay() // 0=Sun
+  const firstDow = new Date(viewYear, viewMonth, 1).getDay()
   const offset   = firstDow === 0 ? 6 : firstDow - 1
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
   const cells: (number | null)[] = [...Array(offset).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
@@ -62,17 +62,14 @@ function SpanishDatePicker({ value, min, onChange }: { value: string; min: strin
       </button>
       {open && (
         <div className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-3 w-72">
-          {/* Header */}
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={prevMonth} className="p-1 hover:bg-gray-100 rounded-lg"><ChevronLeft className="w-4 h-4" /></button>
             <span className="text-sm font-semibold text-gray-800">{MESES_ES[viewMonth]} {viewYear}</span>
             <button type="button" onClick={nextMonth} className="p-1 hover:bg-gray-100 rounded-lg"><ChevronRight className="w-4 h-4" /></button>
           </div>
-          {/* Day headers */}
           <div className="grid grid-cols-7 mb-1">
             {DIAS_ES.map(d => <p key={d} className="text-center text-xs font-medium text-gray-400 py-1">{d}</p>)}
           </div>
-          {/* Cells */}
           <div className="grid grid-cols-7 gap-y-0.5">
             {cells.map((day, i) => {
               if (!day) return <div key={i} />
@@ -87,7 +84,6 @@ function SpanishDatePicker({ value, min, onChange }: { value: string; min: strin
               )
             })}
           </div>
-          {/* Today shortcut */}
           <div className="border-t border-gray-100 mt-2 pt-2 flex justify-end">
             <button type="button" onClick={() => { const t = new Date(); select(t.getDate()); setViewYear(t.getFullYear()); setViewMonth(t.getMonth()) }}
               className="text-xs text-blue-600 hover:underline font-medium">Hoy</button>
@@ -98,67 +94,88 @@ function SpanishDatePicker({ value, min, onChange }: { value: string; min: strin
   )
 }
 
-// ── Horario por defecto (Lun-Vie 9-19, Sab 9-15) ─────────────
+// ── Horario por defecto: Lun-Vie 9-18, Sab 9-14 ──────────────
+// Domingo: sin horario (no incluido = día libre)
 const DEFAULT_SCHEDULE: Record<string, { start: string; end: string }[]> = {
-  mon: [{ start: '09:00', end: '19:00' }],
-  tue: [{ start: '09:00', end: '19:00' }],
-  wed: [{ start: '09:00', end: '19:00' }],
-  thu: [{ start: '09:00', end: '19:00' }],
-  fri: [{ start: '09:00', end: '19:00' }],
-  sat: [{ start: '09:00', end: '15:00' }],
+  mon: [{ start: '09:00', end: '18:00' }],
+  tue: [{ start: '09:00', end: '18:00' }],
+  wed: [{ start: '09:00', end: '18:00' }],
+  thu: [{ start: '09:00', end: '18:00' }],
+  fri: [{ start: '09:00', end: '18:00' }],
+  sat: [{ start: '09:00', end: '14:00' }],
 }
 
-// Normaliza formato viejo { monday:{start,end,enabled} } y nuevo { mon:[{start,end}] }
-// Siempre hace merge con DEFAULT_SCHEDULE para que días ausentes tengan fallback
+/**
+ * Normaliza scheduleConfig a formato canónico { mon:[{start,end}], ... }
+ *
+ * Soporta:
+ *   - Formato NUEVO (guardado por Configuración):
+ *       { mon: [{start:'09:00', end:'18:00'}], tue: [...], ... }
+ *       Los días deshabilitados NO aparecen en el objeto.
+ *
+ *   - Formato VIEJO (creado automáticamente al registrar doctor):
+ *       { monday: {start:'09:00', end:'18:00', enabled:true}, saturday: {..., enabled:false}, ... }
+ *
+ *   - null / undefined / vacío → usa DEFAULT_SCHEDULE completo
+ *
+ * Nunca sobre-escribe días con defaults si la config dice explícitamente
+ * que están habilitados — solo usa defaults para días que no existen en la config.
+ */
 function normalizeSchedule(cfg: unknown): Record<string, { start: string; end: string }[]> {
-  if (!cfg || typeof cfg !== 'object') return { ...DEFAULT_SCHEDULE }
-  const c = cfg as Record<string, unknown>
+  if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) {
+    return { ...DEFAULT_SCHEDULE }
+  }
 
+  const c = cfg as Record<string, unknown>
   const SHORT_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
   const LONG_TO_SHORT: Record<string, string> = {
     monday: 'mon', tuesday: 'tue', wednesday: 'wed',
     thursday: 'thu', friday: 'fri', saturday: 'sat', sunday: 'sun',
   }
 
-  // Detecta si hay al menos una clave corta con valor array (formato nuevo)
-  const hasNewFormat = SHORT_DAYS.some(k => Array.isArray(c[k]))
-  // Detecta si hay al menos una clave larga (formato viejo)
-  const hasOldFormat = Object.keys(LONG_TO_SHORT).some(k => c[k] && typeof c[k] === 'object' && !Array.isArray(c[k]))
+  // Detectar formato
+  const hasNewFormat = SHORT_DAYS.some(k => k in c)
+  const hasOldFormat = Object.keys(LONG_TO_SHORT).some(k => k in c)
 
+  if (!hasNewFormat && !hasOldFormat) {
+    // Formato desconocido → defaults
+    return { ...DEFAULT_SCHEDULE }
+  }
+
+  // Empezar desde DEFAULT y dejar que la config lo sobrescriba / quite días
   const out: Record<string, { start: string; end: string }[]> = { ...DEFAULT_SCHEDULE }
 
   if (hasNewFormat) {
-    // Formato nuevo: { mon:[{start,end}], ... } — sólo días explícitos, resto usa DEFAULT
+    // Formato nuevo: sólo los días que aparecen en la config importan
+    // Los días ausentes mantienen su valor de DEFAULT_SCHEDULE (o quedan sin horario si no están en DEFAULT)
     for (const day of SHORT_DAYS) {
+      if (!(day in c)) continue  // no mencionado → mantiene default (o sin horario si no en DEFAULT)
       const val = c[day]
-      if (Array.isArray(val)) {
-        if (val.length === 0) {
-          // Array vacío = día deshabilitado explícitamente
-          delete out[day]
-        } else {
-          out[day] = val as { start: string; end: string }[]
-        }
-      }
-      // Si no existe la clave → se mantiene el DEFAULT para ese día
-    }
-  } else if (hasOldFormat) {
-    // Formato viejo: { monday:{start,end,enabled}, ... }
-    for (const [long, short] of Object.entries(LONG_TO_SHORT)) {
-      const d = c[long] as { start?: string; end?: string; enabled?: boolean } | undefined
-      if (!d) continue
-      if (d.enabled === false) {
-        delete out[short]
+      if (Array.isArray(val) && val.length > 0) {
+        // Día habilitado con horario específico
+        out[day] = val as { start: string; end: string }[]
       } else {
-        out[short] = [{ start: d.start ?? '09:00', end: d.end ?? '19:00' }]
+        // Array vacío o null → día explícitamente deshabilitado
+        delete out[day]
+      }
+    }
+  } else {
+    // Formato viejo: long keys con objeto { start, end, enabled }
+    for (const [longKey, shortKey] of Object.entries(LONG_TO_SHORT)) {
+      if (!(longKey in c)) continue
+      const d = c[longKey] as { start?: string; end?: string; enabled?: boolean } | null
+      if (!d || d.enabled === false) {
+        delete out[shortKey]
+      } else {
+        out[shortKey] = [{ start: d.start ?? '09:00', end: d.end ?? '18:00' }]
       }
     }
   }
-  // Si no reconoce el formato, devuelve DEFAULT_SCHEDULE completo
 
   return out
 }
 
-// Slots dentro del horario laboral de un día dado (30 min cada uno)
+// ── Genera slots de 30 min dentro del horario laboral del día ──
 function buildScheduleSlots(schedule: Record<string, { start: string; end: string }[]>, date: string): string[] {
   const dayIdx = new Date(`${date}T12:00:00`).getDay()
   const dayName = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][dayIdx]!
@@ -169,7 +186,7 @@ function buildScheduleSlots(schedule: Record<string, { start: string; end: strin
     const [eh, em] = w.end.split(':').map(Number)
     if (sh === undefined) continue
     let h = sh, m = sm ?? 0
-    const endMins = (eh ?? 19) * 60 + (em ?? 0)
+    const endMins = (eh ?? 18) * 60 + (em ?? 0)
     while (h * 60 + m < endMins) {
       slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
       m += 30; if (m >= 60) { h++; m -= 60 }
@@ -178,9 +195,9 @@ function buildScheduleSlots(schedule: Record<string, { start: string; end: strin
   return slots
 }
 
-// ¿El slot ya pasó hoy?
+// ── ¿El slot ya pasó hoy? ─────────────────────────────────────
 function isPastSlot(slot: string, date: string): boolean {
-  const todayStr = new Date().toLocaleDateString('sv-SE') // YYYY-MM-DD en local
+  const todayStr = new Date().toLocaleDateString('sv-SE')
   if (date !== todayStr) return false
   const [sh, sm] = slot.split(':').map(Number)
   const now = new Date()
@@ -225,9 +242,25 @@ interface NewAppointmentDialogProps {
 }
 
 export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewAppointmentDialogProps) {
-  // Fecha local (no UTC) para que el día sea correcto en México
-  const todayLocal = new Date().toLocaleDateString('sv-SE')
+  const todayLocal       = new Date().toLocaleDateString('sv-SE')
   const defaultDateLocal = defaultDate.toLocaleDateString('sv-SE')
+
+  // ── Auth / rol ───────────────────────────────────────────────
+  // 'DOCTOR' | 'ADMIN' | 'STAFF' | null (cargando)
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  // ── Doctores ─────────────────────────────────────────────────
+  // Para ADMIN/STAFF: lista completa con scheduleConfig
+  // Para DOCTOR: vacía (no necesitan ver la lista)
+  const [doctors, setDoctors] = useState<DoctorWithSchedule[]>([])
+
+  // doctorId: para DOCTOR se auto-rellena con el suyo; para ADMIN lo elige el usuario
+  const [doctorId, setDoctorId] = useState('')
+
+  // Schedule del doctor seleccionado (normalizado, listo para buildScheduleSlots)
+  // Para DOCTOR: viene del endpoint /configuracion/schedule (fuente de verdad)
+  // Para ADMIN: viene de doc.scheduleConfig del listado de doctores
+  const [activeSchedule, setActiveSchedule] = useState<Record<string, { start: string; end: string }[]> | null>(null)
 
   // ── Paciente ─────────────────────────────────────────────────
   const [patientMode, setPatientMode] = useState<PatientMode>('search')
@@ -238,18 +271,16 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
   const [newPatient, setNewPatient] = useState({ firstName: '', lastName: '', phoneDigits: '' })
 
   // ── Cita ─────────────────────────────────────────────────────
-  const [doctors, setDoctors] = useState<Doctor[]>([])
-  const [doctorId, setDoctorId] = useState('')
   const [selectedDate, setSelectedDate] = useState(defaultDateLocal)
   const [selectedTime, setSelectedTime] = useState('')
   const [durationMins, setDurationMins] = useState(30)
   const [mode, setMode] = useState<'IN_PERSON' | 'TELEMEDICINE'>('IN_PERSON')
 
   // ── Disponibilidad ───────────────────────────────────────────
-  const [scheduleSlots, setScheduleSlots] = useState<string[]>([])   // slots en horario laboral
-  const [bookedSet, setBookedSet] = useState<Set<string>>(new Set()) // slots ocupados
+  const [scheduleSlots, setScheduleSlots] = useState<string[]>([])
+  const [bookedSet, setBookedSet] = useState<Set<string>>(new Set())
   const [loadingSlots, setLoadingSlots] = useState(false)
-  const [slotsLoaded, setSlotsLoaded] = useState(false)  // ¿ya intentamos cargar?
+  const [slotsReady, setSlotsReady] = useState(false)
 
   // ── Motivo ───────────────────────────────────────────────────
   const [complaint, setComplaint] = useState('')
@@ -259,46 +290,100 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
   // ── UI ───────────────────────────────────────────────────────
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [initDone, setInitDone] = useState(false)
 
-  useEffect(() => { loadDoctors() }, [])
-  useEffect(() => { loadDayAvailability() }, [selectedDate, doctorId, doctors])
+  // ── INICIALIZACIÓN: detecta rol y carga datos según corresponda ──
   useEffect(() => {
-    if (patientSearch.length >= 2 && patientMode === 'search') searchPatients()
-    else setPatients([])
-  }, [patientSearch, patientMode])
+    async function init() {
+      try {
+        const role = await getUserRole()
+        setUserRole(role)
 
-  async function loadDoctors() {
-    try {
-      const res = await api.configuracion.doctors() as { data: Doctor[] }
-      setDoctors(res.data)
-      if (res.data.length === 1) setDoctorId(res.data[0]!.id)
-    } catch {}
-  }
+        if (role === 'DOCTOR') {
+          // ► DOCTOR: obtenemos su propio ID y horario desde el endpoint autorizado.
+          //   Esto funciona independientemente de cuántos doctores haya en la clínica.
+          //   El endpoint siempre devuelve el schedule del doctor autenticado.
+          const [ownId, schedRes] = await Promise.all([
+            getOwnDoctorId(),
+            api.configuracion.getSchedule() as Promise<{
+              data: { doctorId: string; scheduleConfig: unknown; consultationDuration: number }
+            }>,
+          ])
+
+          // doctor_id del JWT como primera opción, fallback al id del endpoint
+          const myDoctorId = ownId ?? schedRes.data.doctorId
+          setDoctorId(myDoctorId)
+
+          // El backend ya aplica DEFAULT_SCHEDULE si el scheduleConfig está vacío
+          // Pero normalizamos igualmente para manejar el formato viejo (long keys)
+          setActiveSchedule(normalizeSchedule(schedRes.data.scheduleConfig))
+        } else {
+          // ► ADMIN / STAFF: cargamos todos los doctores activos de la clínica.
+          //   El doctor se debe seleccionar explícitamente antes de ver horarios.
+          const res = await api.configuracion.doctors() as { data: DoctorWithSchedule[] }
+          setDoctors(res.data)
+          // No pre-seleccionamos ningún doctor — el usuario debe elegir
+        }
+      } catch (e) {
+        console.error('Error al inicializar el dialog de cita:', e)
+      } finally {
+        setInitDone(true)
+      }
+    }
+    init()
+  }, [])
+
+  // ── Cuando ADMIN selecciona un doctor: carga su schedule ─────
+  useEffect(() => {
+    if (userRole === 'DOCTOR') return  // DOCTOR ya tiene su schedule desde init
+    if (!doctorId) {
+      setActiveSchedule(null)
+      setScheduleSlots([])
+      setSlotsReady(true)
+      return
+    }
+    const doc = doctors.find(d => d.id === doctorId)
+    if (doc) {
+      setActiveSchedule(normalizeSchedule(doc.scheduleConfig))
+    }
+  }, [doctorId, doctors, userRole])
+
+  // ── Cuando cambia fecha o schedule: recalcula slots ──────────
+  useEffect(() => {
+    if (!initDone) return
+    loadDayAvailability()
+  }, [selectedDate, activeSchedule, initDone])
 
   async function loadDayAvailability() {
-    const effectiveId = doctorId || (doctors.length === 1 ? doctors[0]!.id : '')
-    if (!effectiveId || !selectedDate) {
-      // Sin doctor seleccionado — limpiar slots pero marcar como "cargado" para mostrar mensaje correcto
+    // Sin schedule → no hay doctor seleccionado todavía (caso ADMIN)
+    if (!activeSchedule) {
       setScheduleSlots([])
-      setSlotsLoaded(true)
+      setSlotsReady(true)
+      return
+    }
+
+    const effectiveDoctorId = doctorId
+    if (!effectiveDoctorId || !selectedDate) {
+      setScheduleSlots([])
+      setSlotsReady(true)
       return
     }
 
     setLoadingSlots(true)
-    setSlotsLoaded(false)
+    setSlotsReady(false)
     try {
-      const doc = doctors.find(d => d.id === effectiveId)
-      const schedule = normalizeSchedule((doc as any)?.scheduleConfig)
-      const slots = buildScheduleSlots(schedule, selectedDate)
+      const slots = buildScheduleSlots(activeSchedule, selectedDate)
       setScheduleSlots(slots)
 
-      // Citas del día para marcar ocupados (parse como fecha local, no UTC)
+      // Citas ya ocupadas en ese día para ese doctor
       const [sy, sm, sd] = selectedDate.split('-').map(Number)
       const fromDate = new Date(sy!, sm! - 1, sd!, 0, 0, 0)
       const toDate   = new Date(sy!, sm! - 1, sd!, 23, 59, 59)
-      const from = fromDate.toISOString()
-      const to   = toDate.toISOString()
-      const res = await api.appointments.list({ doctorId: effectiveId, from, to }) as { data: any[] }
+      const res = await api.appointments.list({
+        doctorId: effectiveDoctorId,
+        from: fromDate.toISOString(),
+        to:   toDate.toISOString(),
+      }) as { data: any[] }
 
       const booked = new Set<string>()
       for (const appt of res.data) {
@@ -319,11 +404,19 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
         const stillOk = slots.includes(prev) && !booked.has(prev) && !isPastSlot(prev, selectedDate)
         return stillOk ? prev : (firstFree ?? '')
       })
-    } catch {} finally {
+    } catch (e) {
+      console.error('Error al cargar disponibilidad:', e)
+    } finally {
       setLoadingSlots(false)
-      setSlotsLoaded(true)
+      setSlotsReady(true)
     }
   }
+
+  // ── Búsqueda de pacientes ─────────────────────────────────────
+  useEffect(() => {
+    if (patientSearch.length >= 2 && patientMode === 'search') searchPatients()
+    else setPatients([])
+  }, [patientSearch, patientMode])
 
   async function searchPatients() {
     try {
@@ -334,7 +427,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
 
   const catalogComplaints = useMemo(() => {
     const doc = doctors.find(d => d.id === doctorId) ?? doctors[0]
-    return getComplaints((doc as any)?.specialty)
+    return getComplaints(doc?.specialty)
   }, [doctorId, doctors])
 
   function switchToNew() {
@@ -354,10 +447,30 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
     setSelectedPatientName('')
   }
 
+  // ── Clase visual de cada slot ─────────────────────────────────
+  function slotClass(slot: string): string {
+    const past   = isPastSlot(slot, selectedDate)
+    const booked = bookedSet.has(slot)
+    const sel    = selectedTime === slot
+    if (sel)    return 'bg-blue-600 text-white font-semibold border border-blue-600 shadow-sm'
+    if (booked) return 'bg-gray-100 text-gray-400 cursor-not-allowed line-through border border-gray-200'
+    if (past)   return 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100'
+    return 'bg-white text-gray-700 hover:bg-blue-50 hover:border-blue-400 border border-gray-200 cursor-pointer'
+  }
+
+  // ── Submit ───────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (!selectedTime) { setError('Selecciona un horario disponible'); return }
+
+    if (userRole !== 'DOCTOR' && !doctorId) {
+      setError('Selecciona un doctor para la cita')
+      return
+    }
+    if (!selectedTime) {
+      setError('Selecciona un horario disponible')
+      return
+    }
 
     const chiefComplaint = showCustom ? customComplaint.trim() : complaint
     let patientId = selectedPatientId
@@ -373,7 +486,6 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
       }
       setLoading(true)
       try {
-        // find-or-create por teléfono (idempotente)
         const res = await api.patients.create({
           firstName: newPatient.firstName.trim(),
           lastName:  newPatient.lastName.trim(),
@@ -410,16 +522,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
     }
   }
 
-  // ── Clase de cada slot ───────────────────────────────────────
-  function slotClass(slot: string): string {
-    const past   = isPastSlot(slot, selectedDate)
-    const booked = bookedSet.has(slot)
-    const sel    = selectedTime === slot
-    if (sel)    return 'bg-blue-600 text-white font-semibold border border-blue-600 shadow-sm'
-    if (booked) return 'bg-gray-100 text-gray-400 cursor-not-allowed line-through border border-gray-200'
-    if (past)   return 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100'
-    return 'bg-white text-gray-700 hover:bg-blue-50 hover:border-blue-400 border border-gray-200 cursor-pointer'
-  }
+  const isAdminRole = userRole === 'ADMIN' || userRole === 'STAFF'
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -525,26 +628,45 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
             )}
           </div>
 
-          {/* ── DOCTOR (solo si hay varios) ── */}
-          {doctors.length > 1 && (
+          {/* ── DOCTOR (solo ADMIN/STAFF — el DOCTOR siempre tiene el suyo pre-seleccionado) ── */}
+          {isAdminRole && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Doctor <span className="text-red-500">*</span></label>
-              <select value={doctorId} onChange={e => setDoctorId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Seleccionar doctor...</option>
-                {doctors.map(d => (
-                  <option key={d.id} value={d.id}>
-                    Dr. {d.firstName} {d.lastName}{(d as any).specialty ? ` — ${(d as any).specialty}` : ''}
-                  </option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Doctor <span className="text-red-500">*</span>
+              </label>
+              {!initDone ? (
+                <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Cargando doctores...
+                </div>
+              ) : (
+                <select
+                  value={doctorId}
+                  onChange={e => {
+                    setDoctorId(e.target.value)
+                    setSelectedTime('')
+                    setSlotsReady(false)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">— Seleccionar doctor —</option>
+                  {doctors.map(d => (
+                    <option key={d.id} value={d.id}>
+                      Dr. {d.firstName} {d.lastName}{d.specialty ? ` — ${d.specialty}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 
           {/* ── FECHA ── */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Fecha</label>
-            <SpanishDatePicker value={selectedDate} min={todayLocal} onChange={setSelectedDate} />
+            <SpanishDatePicker value={selectedDate} min={todayLocal} onChange={date => {
+              setSelectedDate(date)
+              setSelectedTime('')
+              setSlotsReady(false)
+            }} />
           </div>
 
           {/* ── HORARIOS ── */}
@@ -556,24 +678,23 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
               {loadingSlots && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
             </div>
 
-            {loadingSlots ? (
+            {!initDone || loadingSlots ? (
               <div className="grid grid-cols-6 gap-1">
                 {Array.from({ length: 20 }).map((_, i) => (
                   <div key={i} className="h-8 rounded-lg bg-gray-100 animate-pulse" />
                 ))}
               </div>
-            ) : !slotsLoaded ? null
-            : scheduleSlots.length === 0 && doctors.length > 1 && !doctorId ? (
+            ) : isAdminRole && !doctorId ? (
               <p className="text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg">
                 Selecciona un doctor para ver los horarios disponibles.
               </p>
-            ) : scheduleSlots.length === 0 ? (
+            ) : !slotsReady ? null
+            : scheduleSlots.length === 0 ? (
               <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
                 Sin horario laboral este día.
               </p>
             ) : (
               <>
-                {/* Leyenda */}
                 <div className="flex gap-4 mb-2 text-xs text-gray-500">
                   <span className="flex items-center gap-1">
                     <span className="w-3 h-3 rounded bg-white border border-gray-300 inline-block" /> Disponible
@@ -585,20 +706,15 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
                     <span className="w-3 h-3 rounded bg-gray-50 border border-gray-100 inline-block" /> Pasado
                   </span>
                 </div>
-                {/* Grid — solo slots del horario laboral */}
                 <div className="grid grid-cols-6 gap-1">
-                  {scheduleSlots.map(slot => {
-                    const past   = isPastSlot(slot, selectedDate)
-                    const booked = bookedSet.has(slot)
-                    return (
-                      <button key={slot} type="button"
-                        disabled={booked || past}
-                        onClick={() => setSelectedTime(slot)}
-                        className={`py-1.5 rounded-lg text-xs transition-colors ${slotClass(slot)}`}>
-                        {slot}
-                      </button>
-                    )
-                  })}
+                  {scheduleSlots.map(slot => (
+                    <button key={slot} type="button"
+                      disabled={bookedSet.has(slot) || isPastSlot(slot, selectedDate)}
+                      onClick={() => setSelectedTime(slot)}
+                      className={`py-1.5 rounded-lg text-xs transition-colors ${slotClass(slot)}`}>
+                      {slot}
+                    </button>
+                  ))}
                 </div>
               </>
             )}
@@ -672,7 +788,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
               className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
               Cancelar
             </button>
-            <button type="submit" disabled={loading || !selectedTime}
+            <button type="submit" disabled={loading || !selectedTime || (isAdminRole && !doctorId)}
               className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
               {loading
                 ? (patientMode === 'new' ? 'Registrando...' : 'Creando...')

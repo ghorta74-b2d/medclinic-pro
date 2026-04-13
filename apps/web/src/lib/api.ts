@@ -55,6 +55,18 @@ export async function getUserRole(): Promise<string | null> {
   }
 }
 
+// Decode own doctor_id from JWT metadata (set at invite time)
+export async function getOwnDoctorId(): Promise<string | null> {
+  const token = await getToken()
+  if (!token) return null
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]!))
+    return (payload?.user_metadata?.doctor_id as string) ?? null
+  } catch {
+    return null
+  }
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
