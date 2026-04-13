@@ -140,30 +140,30 @@ function DemoForm() {
     )
   }
 
-  const inputCls = "w-full bg-[#f5f5f7] text-[#1d1d1f] placeholder:text-[#6e6e73] text-[15px] px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[#0071e3] focus:bg-white transition-all"
+  const inputCls = "w-full bg-white text-[#1d1d1f] placeholder:text-[#aeaeb2] text-[15px] px-4 py-3 rounded-xl border border-[#d2d2d7] focus:outline-none focus:border-[#0071e3] focus:ring-[3px] focus:ring-[#0071e3]/12 transition-all"
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <input required type="text"  placeholder="Tu nombre completo *"       className={inputCls} value={form.nombre}   onChange={set('nombre')} />
-      <input required type="email" placeholder="Correo electrónico *"       className={inputCls} value={form.email}    onChange={set('email')} />
-      <input required type="tel"   placeholder="Teléfono *"                 className={inputCls} value={form.telefono} onChange={set('telefono')} />
+    <form onSubmit={handleSubmit} className="space-y-2.5">
+      <input required type="text"  placeholder="Tu nombre completo"          className={inputCls} value={form.nombre}   onChange={set('nombre')} />
+      <input required type="email" placeholder="Correo electrónico"          className={inputCls} value={form.email}    onChange={set('email')} />
+      <input required type="tel"   placeholder="Teléfono"                    className={inputCls} value={form.telefono} onChange={set('telefono')} />
       <input         type="text"   placeholder="Nombre de tu clínica (opcional)" className={inputCls} value={form.clinica}  onChange={set('clinica')} />
       <textarea      rows={3}      placeholder="¿Algo que quieras comentarnos?" className={`${inputCls} resize-none`}   value={form.mensaje}  onChange={set('mensaje')} />
 
       {status === 'error' && (
-        <p className="text-[13px] text-[#cc0000] text-center">Hubo un error. Intenta de nuevo o escríbenos a mediaclinic@b2d.mx</p>
+        <p className="text-[13px] text-[#cc0000]">Hubo un error. Intenta de nuevo o escríbenos a mediaclinic@b2d.mx</p>
       )}
 
       <button
         type="submit"
         disabled={status === 'loading'}
-        className="w-full flex items-center justify-center gap-2 bg-[#0071e3] text-white text-[17px] py-3.5 rounded-full hover:bg-[#0077ed] transition-colors disabled:opacity-60 mt-2"
+        className="w-full flex items-center justify-center gap-2 bg-[#0071e3] text-white text-[17px] py-3.5 rounded-full hover:bg-[#0077ed] transition-colors disabled:opacity-60 mt-1"
       >
         <Send className="w-4 h-4" />
         {status === 'loading' ? 'Enviando…' : 'Solicitar llamada'}
       </button>
 
-      <p className="text-center text-[12px] text-[#6e6e73] pt-1">
+      <p className="text-center text-[12px] text-[#aeaeb2] pt-1">
         Al enviar aceptas que te contactemos. Sin spam, sin compromiso.
       </p>
     </form>
@@ -663,9 +663,9 @@ export default function LandingPage() {
 
           {/* Right: form */}
           <FadeUp delay={100}>
-            <div className="bg-[#f5f5f7] rounded-2xl p-8">
-              <h3 className="text-[20px] font-semibold text-[#1d1d1f] mb-2">Agenda tu llamada gratuita</h3>
-              <p className="text-[15px] text-[#6e6e73] mb-7">Te contactamos en menos de 24 hrs.</p>
+            <div className="bg-white rounded-2xl p-8 border border-[#d2d2d7] shadow-[0_2px_20px_rgba(0,0,0,0.06)]">
+              <h3 className="text-[20px] font-semibold text-[#1d1d1f] mb-1">Agenda tu llamada gratuita</h3>
+              <p className="text-[15px] text-[#6e6e73] mb-6">Te contactamos en menos de 24 hrs.</p>
               <DemoForm />
             </div>
           </FadeUp>
