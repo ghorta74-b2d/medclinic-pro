@@ -4,7 +4,7 @@ import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import Link from 'next/link'
 import {
   ArrowRight, Check, ChevronRight, Menu, X,
-  Calendar, Users, Pill, CreditCard, Bot, Video,
+  Calendar, Users, Pill, CreditCard, Bot, Video, Send,
 } from 'lucide-react'
 
 /* ── Fade-up on scroll ── */
@@ -101,6 +101,75 @@ function WhatsAppDemo() {
   )
 }
 
+/* ── Demo form ── */
+function DemoForm() {
+  const [form, setForm] = useState({ nombre: '', email: '', telefono: '', clinica: '', mensaje: '' })
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(f => ({ ...f, [k]: e.target.value }))
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setStatus('loading')
+    try {
+      const res = await fetch('/api/demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (res.ok) {
+        setStatus('success')
+      } else {
+        setStatus('error')
+      }
+    } catch {
+      setStatus('error')
+    }
+  }
+
+  if (status === 'success') {
+    return (
+      <div className="text-center py-16 px-8">
+        <div className="w-14 h-14 rounded-full bg-[#dcfce7] flex items-center justify-center mx-auto mb-6">
+          <Check className="w-6 h-6 text-[#1a7f37]" />
+        </div>
+        <h3 className="text-[24px] font-semibold text-[#1d1d1f] mb-3">¡Listo, te contactamos pronto!</h3>
+        <p className="text-[17px] text-[#6e6e73]">Recibirás una respuesta en menos de 24 horas.</p>
+      </div>
+    )
+  }
+
+  const inputCls = "w-full bg-[#f5f5f7] text-[#1d1d1f] placeholder:text-[#6e6e73] text-[15px] px-4 py-3.5 rounded-xl border border-transparent focus:outline-none focus:border-[#0071e3] focus:bg-white transition-all"
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <input required type="text"  placeholder="Tu nombre completo *"       className={inputCls} value={form.nombre}   onChange={set('nombre')} />
+      <input required type="email" placeholder="Correo electrónico *"       className={inputCls} value={form.email}    onChange={set('email')} />
+      <input required type="tel"   placeholder="Teléfono *"                 className={inputCls} value={form.telefono} onChange={set('telefono')} />
+      <input         type="text"   placeholder="Nombre de tu clínica (opcional)" className={inputCls} value={form.clinica}  onChange={set('clinica')} />
+      <textarea      rows={3}      placeholder="¿Algo que quieras comentarnos?" className={`${inputCls} resize-none`}   value={form.mensaje}  onChange={set('mensaje')} />
+
+      {status === 'error' && (
+        <p className="text-[13px] text-[#cc0000] text-center">Hubo un error. Intenta de nuevo o escríbenos a mediaclinic@b2d.mx</p>
+      )}
+
+      <button
+        type="submit"
+        disabled={status === 'loading'}
+        className="w-full flex items-center justify-center gap-2 bg-[#0071e3] text-white text-[17px] py-3.5 rounded-full hover:bg-[#0077ed] transition-colors disabled:opacity-60 mt-2"
+      >
+        <Send className="w-4 h-4" />
+        {status === 'loading' ? 'Enviando…' : 'Solicitar llamada'}
+      </button>
+
+      <p className="text-center text-[12px] text-[#6e6e73] pt-1">
+        Al enviar aceptas que te contactemos. Sin spam, sin compromiso.
+      </p>
+    </form>
+  )
+}
+
 const PLANS = [
   { name: 'Esencial', monthly: 1299, annual: 1169, desc: 'Para médicos independientes que quieren crecer.', features: ['Agenda + confirmación WhatsApp', 'Expediente clínico completo', 'Recetas digitales', 'Hasta 2 usuarios'], hot: false },
   { name: 'Profesional', monthly: 2499, annual: 2249, desc: 'El preferido por clínicas que ya escalan.', features: ['Todo de Esencial', 'Cobros y 16 aseguradoras', 'Asistente IA 24/7', 'Hasta 5 usuarios', 'Analytics básico'], hot: true },
@@ -156,10 +225,10 @@ export default function LandingPage() {
             <Link href="/login" className={`text-sm font-medium transition-colors ${overHero ? 'text-white/80 hover:text-white' : 'text-black/60 hover:text-black'}`}>
               Iniciar sesión
             </Link>
-            <a href="#precios" className={`text-sm font-semibold px-5 py-2.5 rounded-full transition-all ${
-              overHero ? 'bg-white text-black hover:bg-white/90' : 'bg-black text-white hover:bg-black/80'
+            <a href="#demo" className={`text-sm font-semibold px-5 py-2.5 rounded-full transition-all ${
+              overHero ? 'bg-white text-black hover:bg-white/90' : 'bg-[#0071e3] text-white hover:bg-[#0077ed]'
             }`}>
-              Ver demo
+              Agendar demo
             </a>
           </div>
 
@@ -174,7 +243,7 @@ export default function LandingPage() {
               <a key={href} href={href} onClick={() => setMenuOpen(false)} className="block text-sm text-black/70">{label}</a>
             ))}
             <Link href="/login" onClick={() => setMenuOpen(false)} className="block text-sm text-black/70">Iniciar sesión</Link>
-            <a href="#precios" onClick={() => setMenuOpen(false)} className="block text-center text-sm bg-black text-white py-3 rounded-full font-semibold">Ver demo</a>
+            <a href="#demo" onClick={() => setMenuOpen(false)} className="block text-center text-sm bg-[#0071e3] text-white py-3 rounded-full font-semibold">Agendar demo</a>
           </div>
         )}
       </nav>
@@ -195,12 +264,12 @@ export default function LandingPage() {
             Gestión clínica impulsada por IA. Diseñada para médicos en Latinoamérica.
           </p>
           <div className="flex flex-wrap gap-3">
-            <a href="#plataforma" className="flex items-center gap-2 bg-white text-black px-7 py-3.5 rounded-full font-semibold text-sm hover:bg-white/90 transition-all hover:scale-[1.02]">
-              Descubrir la plataforma <ArrowRight className="w-4 h-4" />
+            <a href="#demo" className="flex items-center gap-2 bg-white text-black px-7 py-3.5 rounded-full font-semibold text-sm hover:bg-white/90 transition-all hover:scale-[1.02]">
+              Agendar demo gratis <ArrowRight className="w-4 h-4" />
             </a>
-            <Link href="/login" className="flex items-center gap-2 bg-white/12 backdrop-blur text-white px-7 py-3.5 rounded-full font-semibold text-sm border border-white/20 hover:bg-white/22 transition-all">
-              Iniciar sesión
-            </Link>
+            <a href="#plataforma" className="flex items-center gap-2 bg-white/12 backdrop-blur text-white px-7 py-3.5 rounded-full font-semibold text-sm border border-white/20 hover:bg-white/22 transition-all">
+              Ver la plataforma
+            </a>
           </div>
         </div>
       </section>
@@ -218,7 +287,7 @@ export default function LandingPage() {
             <p className="text-[#6e6e73] text-[17px] leading-[1.6] max-w-[580px] mx-auto mb-10">
               MediaClinic reúne agenda, expediente, recetas, cobros y telemedicina en una sola plataforma — potenciada por inteligencia artificial.
             </p>
-            <a href="#precios" className="inline-flex items-center gap-1.5 bg-[#0071e3] text-white text-[17px] px-6 py-3 rounded-full hover:bg-[#0077ed] transition-colors">
+            <a href="#demo" className="inline-flex items-center gap-1.5 bg-[#0071e3] text-white text-[17px] px-6 py-3 rounded-full hover:bg-[#0077ed] transition-colors">
               Ver planes <ChevronRight className="w-4 h-4" />
             </a>
           </FadeUp>
@@ -259,7 +328,7 @@ export default function LandingPage() {
             <p className="text-[#6e6e73] text-[17px] leading-[1.6] mb-7 max-w-[400px]">
               El asistente IA contacta a cada paciente por WhatsApp, confirma asistencia y gestiona reprogramaciones — sin que muevas un dedo.
             </p>
-            <a href="#precios" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
+            <a href="#demo" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
               Conocer más <ChevronRight className="w-4 h-4" />
             </a>
           </FadeUp>
@@ -332,7 +401,7 @@ export default function LandingPage() {
             <p className="text-[#6e6e73] text-[17px] leading-[1.6] mb-7 max-w-[400px]">
               Notas SOAP, diagnósticos CIE-10, alergias, signos vitales y medicamentos en un expediente digital que abre en segundos.
             </p>
-            <a href="#precios" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
+            <a href="#demo" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
               Conocer más <ChevronRight className="w-4 h-4" />
             </a>
           </FadeUp>
@@ -365,7 +434,7 @@ export default function LandingPage() {
                 </li>
               ))}
             </ul>
-            <a href="#precios" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
+            <a href="#demo" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
               Conocer más <ChevronRight className="w-4 h-4" />
             </a>
           </FadeUp>
@@ -413,7 +482,7 @@ export default function LandingPage() {
                     </div>
                   ))}
                 </div>
-                <a href="#precios" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
+                <a href="#demo" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
                   Conocer más <ChevronRight className="w-4 h-4" />
                 </a>
               </div>
@@ -441,7 +510,7 @@ export default function LandingPage() {
                     </div>
                   ))}
                 </div>
-                <a href="#precios" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
+                <a href="#demo" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
                   Conocer más <ChevronRight className="w-4 h-4" />
                 </a>
               </div>
@@ -563,25 +632,45 @@ export default function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════
-          CTA FINAL — #1d1d1f
+          DEMO FORM — white
       ══════════════════════════════════════════ */}
-      <section className="bg-[#1d1d1f] py-36 px-6 text-center">
-        <FadeUp className="max-w-[660px] mx-auto">
-          <h2 className="text-[clamp(2.4rem,5vw,3.5rem)] font-semibold text-white tracking-tight leading-[1.06] mb-6">
-            Moderniza tu clínica.<br />Empieza hoy.
-          </h2>
-          <p className="text-[17px] text-white/60 mb-10 leading-[1.6]">
-            Únete a miles de médicos en México y LATAM que ya gestionan su práctica con MediaClinic.
-          </p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <a href="mailto:demo@mediaclinic.mx" className="bg-[#0071e3] text-white text-[17px] px-8 py-3.5 rounded-full hover:bg-[#0077ed] transition-colors">
-              Agendar demo gratis
-            </a>
-            <Link href="/login" className="text-white text-[17px] px-8 py-3.5 rounded-full border border-white/20 hover:bg-white/8 transition-colors">
-              Iniciar sesión
-            </Link>
-          </div>
-        </FadeUp>
+      <section id="demo" className="bg-white py-20 lg:py-28 px-6 border-t border-[#d2d2d7]">
+        <div className="max-w-[980px] mx-auto grid lg:grid-cols-2 gap-16 items-start">
+
+          {/* Left: copy */}
+          <FadeUp>
+            <p className="text-[#6e6e73] text-[12px] uppercase tracking-wide font-medium mb-5">Agenda tu demo</p>
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold text-[#1d1d1f] tracking-tight leading-[1.07] mb-5">
+              Moderniza tu clínica.<br />Empieza hoy.
+            </h2>
+            <p className="text-[#6e6e73] text-[17px] leading-[1.6] mb-10 max-w-[380px]">
+              Completa el formulario y un especialista te contacta en menos de 24 horas para mostrarte la plataforma en vivo.
+            </p>
+            <ul className="space-y-4">
+              {[
+                'Demo personalizada sin compromiso',
+                'Configuración a medida de tu consultorio',
+                '14 días de prueba gratuita incluidos',
+                'Soporte en español todo el tiempo',
+              ].map(f => (
+                <li key={f} className="flex items-start gap-3 text-[15px] text-[#1d1d1f]">
+                  <Check className="w-4 h-4 text-[#0071e3] shrink-0 mt-0.5" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </FadeUp>
+
+          {/* Right: form */}
+          <FadeUp delay={100}>
+            <div className="bg-[#f5f5f7] rounded-2xl p-8">
+              <h3 className="text-[20px] font-semibold text-[#1d1d1f] mb-2">Agenda tu llamada gratuita</h3>
+              <p className="text-[15px] text-[#6e6e73] mb-7">Te contactamos en menos de 24 hrs.</p>
+              <DemoForm />
+            </div>
+          </FadeUp>
+
+        </div>
       </section>
 
       {/* ══════════════════════════════════════════
