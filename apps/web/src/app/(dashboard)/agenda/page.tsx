@@ -49,6 +49,8 @@ export default function AgendaPage() {
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null)
   // userRole: null mientras carga, luego 'DOCTOR' | 'ADMIN' | 'STAFF' | etc.
   const [userRole, setUserRole] = useState<string | null>(null)
+  // roleReady: true solo cuando role + doctorId están resueltos — evita flash de citas ajenas
+  const [roleReady, setRoleReady] = useState(false)
   // isStaff: solo STAFF ve la agenda global con filtro de doctores
   const isStaff = userRole === 'STAFF'
 
@@ -75,12 +77,16 @@ export default function AgendaPage() {
         }
       } catch {
         // Si falla, dejamos sin filtro (STAFF-like) para no bloquear la vista
+      } finally {
+        // Solo después de resolver role + doctorId se permite el primer fetch
+        setRoleReady(true)
       }
     }
     initRole()
   }, [])
 
   const loadAppointments = useCallback(async () => {
+    if (!roleReady) return  // Esperar hasta que role + doctorId estén resueltos
     setLoading(true)
     try {
       let from: Date, to: Date
@@ -113,7 +119,7 @@ export default function AgendaPage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedDate, viewMode, selectedDoctorId])
+  }, [selectedDate, viewMode, selectedDoctorId, roleReady])
 
   useEffect(() => {
     loadAppointments()

@@ -91,10 +91,13 @@ export default function DashboardPage() {
   const [userRole, setUserRole] = useState<string | null>(null)
   // ownDoctorId: seteado solo para DOCTOR/ADMIN — filtra su propia agenda
   const [ownDoctorId, setOwnDoctorId] = useState<string | null>(null)
+  // roleReady: true solo cuando role + doctorId están resueltos — evita flash de citas ajenas
+  const [roleReady, setRoleReady] = useState(false)
 
   const today = new Date()
 
   const load = useCallback(async () => {
+    if (!roleReady) return  // Esperar hasta que role + doctorId estén resueltos
     setLoading(true)
     try {
       const from = new Date(today)
@@ -125,7 +128,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [ownDoctorId])
+  }, [ownDoctorId, roleReady])
 
   // Detecta rol y doctor propio — DOCTOR/ADMIN ven solo su propia agenda
   useEffect(() => {
@@ -146,6 +149,9 @@ export default function DashboardPage() {
         }
       } catch {
         // Sin filtro si hay error — el usuario ve todo (safe fallback)
+      } finally {
+        // Solo después de resolver role + doctorId se permite el primer fetch
+        setRoleReady(true)
       }
     }
     initRole()
