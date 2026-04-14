@@ -472,13 +472,19 @@ function ConsultasTab({
   patient,
   notes,
   onRefresh,
+  autoOpen,
 }: {
   patientId: string
   patient: PatientWithCount
   notes: ClinicalNote[]
   onRefresh: () => void
+  autoOpen?: boolean
 }) {
-  const [newConsulta, setNewConsulta] = useState(false)
+  const [newConsulta, setNewConsulta] = useState(() => autoOpen === true)
+
+  useEffect(() => {
+    if (autoOpen) setNewConsulta(true)
+  }, [autoOpen])
 
   const sorted = [...notes].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
@@ -1184,6 +1190,7 @@ export default function PatientDetailPage() {
   const [showProfile, setShowProfile] = useState(false)
   const [labEditMode, setLabEditMode] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [autoOpenConsulta, setAutoOpenConsulta] = useState(false)
 
   // Only STAFF ("Administrativo") is restricted — ADMIN is the clinic owner/doctor and has full access
   const isReadOnly = userRole === 'STAFF'
@@ -1192,6 +1199,13 @@ export default function PatientDetailPage() {
     loadPatient()
     loadTimeline()
     getUserRole().then(role => setUserRole(role))
+    // Check if we arrived here from "Iniciar consulta" in the agenda
+    const flag = sessionStorage.getItem('_open_new_consulta')
+    if (flag) {
+      sessionStorage.removeItem('_open_new_consulta')
+      setActiveTab('consultas')
+      setAutoOpenConsulta(true)
+    }
   }, [id])
 
   // Restrict tab to recetas for admin roles once role is known
@@ -1350,6 +1364,7 @@ export default function PatientDetailPage() {
               patient={patient}
               notes={timeline?.notes ?? []}
               onRefresh={loadTimeline}
+              autoOpen={autoOpenConsulta}
             />
           )}
           {activeTab === 'recetas' && (

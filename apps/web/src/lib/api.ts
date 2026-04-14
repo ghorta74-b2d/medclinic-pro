@@ -355,6 +355,13 @@ export const api = {
       request('/api/configuracion/schedule', { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
+  notifications: {
+    list: () => request('/api/notifications'),
+    unreadCount: () => request('/api/notifications/unread-count'),
+    markAllRead: () => request('/api/notifications/read-all', { method: 'PATCH' }),
+    markRead: (id: string) => request(`/api/notifications/${id}/read`, { method: 'PATCH' }),
+  },
+
   superadmin: {
     stats: () => request('/api/superadmin/stats'),
 

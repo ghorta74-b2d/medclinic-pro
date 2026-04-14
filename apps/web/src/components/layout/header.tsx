@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, Search, X, Loader2, Mail, Phone, Save } from 'lucide-react'
+import { Bell, Search, X, Loader2, Mail, Phone, Save, RefreshCw, CheckCheck } from 'lucide-react'
 import { api } from '@/lib/api'
 import { calculateAge, getInitials } from '@/lib/utils'
 import type { Patient, Appointment } from 'medclinic-shared'
+import { cn } from '@/lib/utils'
 
 interface HeaderProps {
   title: string
@@ -252,6 +253,172 @@ function ProfileModal({ profile, onClose }: { profile: UserProfile; onClose: () 
   )
 }
 
+// ── NotificationCenter ─────────────────────────────────────────────────────────
+interface AppNotification {
+  id: string
+  type: string
+  title: string
+  message: string
+  resourceType?: string
+  resourceId?: string
+  read: boolean
+  createdAt: string
+}
+
+const NOTIF_ICON_COLOR: Record<string, string> = {
+  APPOINTMENT_TAKEOVER:        'bg-orange-100 text-orange-600',
+  APPOINTMENT_REASSIGNED_FROM: 'bg-yellow-100 text-yellow-700',
+  APPOINTMENT_REASSIGNED_TO:   'bg-blue-100 text-blue-600',
+}
+
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60_000)
+  if (mins < 1) return 'Ahora mismo'
+  if (mins < 60) return `Hace ${mins} min`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `Hace ${hrs} h`
+  return `Hace ${Math.floor(hrs / 24)} días`
+}
+
+function NotificationCenter() {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Poll unread count every 30s
+  const fetchCount = useCallback(async () => {
+    try {
+      const res = await api.notifications.unreadCount() as { data: { count: number } }
+      setUnreadCount(res.data.count)
+    } catch { /* ignore */ }
+  }, [])
+
+  useEffect(() => {
+    fetchCount()
+    const interval = setInterval(fetchCount, 30_000)
+    return () => clearInterval(interval)
+  }, [fetchCount])
+
+  // Load full list when opened
+  useEffect(() => {
+    if (!open) return
+    setLoading(true)
+    api.notifications.list()
+      .then((res: unknown) => {
+        setNotifications((res as { data: AppNotification[] }).data ?? [])
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [open])
+
+  // Close on outside click
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [])
+
+  async function markAllRead() {
+    await api.notifications.markAllRead().catch(() => {})
+    setNotifications(n => n.map(x => ({ ...x, read: true })))
+    setUnreadCount(0)
+  }
+
+  async function handleClick(notif: AppNotification) {
+    if (!notif.read) {
+      await api.notifications.markRead(notif.id).catch(() => {})
+      setNotifications(n => n.map(x => x.id === notif.id ? { ...x, read: true } : x))
+      setUnreadCount(c => Math.max(0, c - 1))
+    }
+    if (notif.resourceType === 'Appointment' && notif.resourceId) {
+      setOpen(false)
+      router.push(`/agenda/${notif.resourceId}`)
+    }
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+        <Bell className="w-5 h-5" />
+        {unreadCount > 0 && (
+          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-semibold text-gray-900">Notificaciones</span>
+              {unreadCount > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>
+              )}
+            </div>
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllRead}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium">
+                <CheckCheck className="w-3.5 h-3.5" />
+                Marcar leídas
+              </button>
+            )}
+          </div>
+
+          {/* List */}
+          <div className="max-h-80 overflow-y-auto">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="text-center py-10">
+                <Bell className="w-8 h-8 mx-auto mb-2 text-gray-200" />
+                <p className="text-xs text-gray-400">Sin notificaciones</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {notifications.map(n => (
+                  <button
+                    key={n.id}
+                    onClick={() => handleClick(n)}
+                    className={cn(
+                      'w-full px-4 py-3 text-left flex items-start gap-3 hover:bg-gray-50 transition-colors',
+                      !n.read && 'bg-blue-50/50'
+                    )}>
+                    <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5', NOTIF_ICON_COLOR[n.type] ?? 'bg-gray-100 text-gray-500')}>
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn('text-xs font-semibold text-gray-900 truncate', !n.read && 'text-blue-900')}>
+                        {n.title}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{n.message}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">{relativeTime(n.createdAt)}</p>
+                    </div>
+                    {!n.read && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function UserAvatar() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [showProfile, setShowProfile] = useState(false)
@@ -308,9 +475,7 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
       <div className="flex items-center gap-3 shrink-0">
         <GlobalSearch />
         {actions}
-        <button className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-          <Bell className="w-5 h-5" />
-        </button>
+        <NotificationCenter />
         <UserAvatar />
       </div>
     </header>

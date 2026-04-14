@@ -705,3 +705,25 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+// ============================================================
+// NOTIFICATIONS (in-app alerts for doctors / admins)
+// ============================================================
+
+model Notification {
+  id           String   @id @default(cuid())
+  clinicId     String
+  userId       String   // authUserId of recipient
+  type         String   // APPOINTMENT_TAKEOVER | APPOINTMENT_REASSIGNED_FROM | APPOINTMENT_REASSIGNED_TO
+  title        String
+  message      String
+  resourceType String?  // e.g. 'Appointment'
+  resourceId   String?
+  metadata     Json?
+  read         Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([clinicId])
+  @@map("notifications")
+}

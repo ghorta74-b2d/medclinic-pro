@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { api } from '@/lib/api'
+import { api, sessionCache, getOwnDoctorId, getUserRole } from '@/lib/api'
 import { formatDate, formatTime } from '@/lib/utils'
 import { Header } from '@/components/layout/header'
 import {
   ArrowLeft, User, Phone, Calendar, Clock, Stethoscope,
   MapPin, FileText, ReceiptText, CheckCircle2, XCircle,
-  Loader2, AlertTriangle, ClipboardList,
+  Loader2, AlertTriangle, ClipboardList, UserCheck, RefreshCw,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 // ── Tipos ────────────────────────────────────────────────────────
 type AppointmentStatus =
@@ -42,7 +43,6 @@ const MODE_LABEL: Record<string, string> = {
   HOME_VISIT:  'Visita a domicilio',
 }
 
-// ── Acciones disponibles por status ─────────────────────────────
 type Action = {
   label: string
   nextStatus: AppointmentStatus
@@ -77,6 +77,157 @@ function getActions(status: AppointmentStatus): Action[] {
   }
 }
 
+// ── Subcomponent: Reassign panel (ADMIN only) ───────────────────
+function ReassignPanel({
+  appt,
+  clinicDoctors,
+  onReassigned,
+}: {
+  appt: any
+  clinicDoctors: { id: string; firstName: string; lastName: string; specialty?: string | null }[]
+  onReassigned: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [newDoctorId, setNewDoctorId] = useState('')
+  const [newDate, setNewDate] = useState(new Date(appt.startsAt).toLocaleDateString('sv-SE'))
+  const [slots, setSlots] = useState<{ startsAt: string; endsAt: string; available: boolean }[]>([])
+  const [selectedSlot, setSelectedSlot] = useState<{ startsAt: string; endsAt: string } | null>(null)
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const otherDoctors = clinicDoctors.filter(d => d.id !== appt.doctorId)
+
+  async function loadSlots(doctorId: string, date: string) {
+    if (!doctorId || !date) return
+    setLoadingSlots(true)
+    setSlots([])
+    setSelectedSlot(null)
+    try {
+      const res = await api.appointments.availability(doctorId, date) as { data: typeof slots }
+      setSlots(res.data.filter(s => s.available))
+    } catch { setSlots([]) }
+    finally { setLoadingSlots(false) }
+  }
+
+  useEffect(() => {
+    if (newDoctorId && newDate) loadSlots(newDoctorId, newDate)
+  }, [newDoctorId, newDate])
+
+  async function handleReassign() {
+    if (!newDoctorId) { setError('Selecciona un médico'); return }
+    setSaving(true)
+    setError('')
+    try {
+      const body: Record<string, string> = { doctorId: newDoctorId }
+      if (selectedSlot) {
+        body['startsAt'] = selectedSlot.startsAt
+        body['endsAt'] = selectedSlot.endsAt
+      }
+      await api.appointments.update(appt.id, body)
+      setOpen(false)
+      onReassigned()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al reasignar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors">
+        <RefreshCw className="w-4 h-4" />
+        Reasignar cita
+      </button>
+    )
+  }
+
+  return (
+    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-gray-800">Reasignar a otro médico</p>
+        <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 text-xs">Cancelar</button>
+      </div>
+
+      {/* Doctor selector */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Médico</label>
+        <select
+          value={newDoctorId}
+          onChange={e => setNewDoctorId(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Seleccionar médico...</option>
+          {otherDoctors.map(d => (
+            <option key={d.id} value={d.id}>Dr. {d.firstName} {d.lastName}{d.specialty ? ` · ${d.specialty}` : ''}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Date for new slot */}
+      {newDoctorId && (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Fecha</label>
+          <input
+            type="date"
+            value={newDate}
+            onChange={e => setNewDate(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      )}
+
+      {/* Available slots */}
+      {newDoctorId && (
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-2">
+            Horario <span className="font-normal text-gray-400">(opcional — si no seleccionas, se mantiene el horario actual)</span>
+          </label>
+          {loadingSlots ? (
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando disponibilidad...
+            </div>
+          ) : slots.length === 0 ? (
+            <p className="text-xs text-gray-400">No hay slots disponibles para esa fecha</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+              {slots.map(s => {
+                const isSelected = selectedSlot?.startsAt === s.startsAt
+                return (
+                  <button
+                    key={s.startsAt}
+                    type="button"
+                    onClick={() => setSelectedSlot(isSelected ? null : s)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-lg text-xs font-medium border transition-all',
+                      isSelected
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                    )}>
+                    {formatTime(s.startsAt)}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+
+      <button
+        onClick={handleReassign}
+        disabled={!newDoctorId || saving}
+        className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors">
+        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+        {saving ? 'Reasignando...' : 'Confirmar reasignación'}
+      </button>
+    </div>
+  )
+}
+
 // ── Página ───────────────────────────────────────────────────────
 export default function AppointmentDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -87,9 +238,35 @@ export default function AppointmentDetailPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [showCancelForm, setShowCancelForm] = useState(false)
+  const [showTakeoverModal, setShowTakeoverModal] = useState(false)
+  const [takeoverLoading, setTakeoverLoading] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => { load() }, [id])
+  // Current user info (role-aware behavior)
+  const [userRole, setUserRole] = useState<string | null>(() => sessionCache.getRole())
+  const [ownDoctorId, setOwnDoctorId] = useState<string | null>(() => sessionCache.getDoctorId())
+  const [clinicDoctors, setClinicDoctors] = useState<{ id: string; firstName: string; lastName: string; specialty?: string | null }[]>([])
+
+  useEffect(() => {
+    load()
+    // Resolve role and doctorId (from sessionCache or fresh fetch)
+    if (!sessionCache.getRole()) {
+      getUserRole().then(r => { if (r) { sessionCache.setRole(r); setUserRole(r) } })
+    }
+    if (!sessionCache.getDoctorId()) {
+      getOwnDoctorId().then(myId => { if (myId) { sessionCache.setDoctorId(myId); setOwnDoctorId(myId) } })
+    }
+  }, [id])
+
+  // Load clinic doctors for ADMIN reassignment
+  useEffect(() => {
+    const role = sessionCache.getRole()
+    if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+      api.configuracion.doctors().then((res: unknown) => {
+        setClinicDoctors((res as { data: { id: string; firstName: string; lastName: string; specialty?: string | null }[] }).data ?? [])
+      }).catch(() => {})
+    }
+  }, [userRole])
 
   async function load() {
     setLoading(true)
@@ -108,6 +285,34 @@ export default function AppointmentDetailPage() {
       setShowCancelForm(true)
       return
     }
+
+    // Feature 1: Navigate to patient expediente with new consulta open on IN_PROGRESS
+    if (nextStatus === 'IN_PROGRESS') {
+      const isOwnAppt = appt?.doctorId === ownDoctorId
+      const role = userRole ?? sessionCache.getRole()
+
+      // Feature 2: Takeover — ADMIN viewing another doctor's appointment
+      if (!isOwnAppt && (role === 'ADMIN' || role === 'SUPER_ADMIN')) {
+        setShowTakeoverModal(true)
+        return
+      }
+
+      // Own appointment → start consultation + go to expediente
+      setActionLoading(nextStatus)
+      setError('')
+      try {
+        await api.appointments.update(id, { status: 'IN_PROGRESS' })
+        if (appt?.patient?.id) {
+          sessionStorage.setItem('_open_new_consulta', id)
+          router.push(`/pacientes/${appt.patient.id}`)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error al iniciar consulta')
+        setActionLoading(null)
+      }
+      return
+    }
+
     setActionLoading(nextStatus)
     setError('')
     try {
@@ -122,6 +327,24 @@ export default function AppointmentDetailPage() {
       setError(err instanceof Error ? err.message : 'Error al actualizar la cita')
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  async function handleTakeover() {
+    setTakeoverLoading(true)
+    setError('')
+    try {
+      await api.appointments.update(id, { takeover: true })
+      setShowTakeoverModal(false)
+      if (appt?.patient?.id) {
+        sessionStorage.setItem('_open_new_consulta', id)
+        router.push(`/pacientes/${appt.patient.id}`)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al tomar la cita')
+      setShowTakeoverModal(false)
+    } finally {
+      setTakeoverLoading(false)
     }
   }
 
@@ -160,6 +383,9 @@ export default function AppointmentDetailPage() {
   const durationMins = Math.round((end.getTime() - start.getTime()) / 60_000)
 
   const isFinal = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(status)
+  const role = userRole ?? sessionCache.getRole()
+  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
+  const isOwnAppt = appt.doctorId === ownDoctorId
 
   return (
     <>
@@ -167,6 +393,40 @@ export default function AppointmentDetailPage() {
         title="Detalle de cita"
         subtitle={patient ? `${patient.firstName} ${patient.lastName}` : ''}
       />
+
+      {/* Takeover modal */}
+      {showTakeoverModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-start gap-3 mb-5">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Cita de otro médico</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Esta cita está asignada a <strong>Dr. {doctor?.firstName} {doctor?.lastName}</strong>.
+                  Se notificará al doctor y quedará registrado en el log.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowTakeoverModal(false)}
+                className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+                Cancelar
+              </button>
+              <button
+                onClick={handleTakeover}
+                disabled={takeoverLoading}
+                className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors">
+                {takeoverLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+                Atender paciente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-2xl mx-auto space-y-4">
@@ -226,6 +486,9 @@ export default function AppointmentDetailPage() {
               <Detail icon={<Stethoscope className="w-4 h-4 text-blue-500" />} label="Doctor">
                 {doctor ? `Dr. ${doctor.firstName} ${doctor.lastName}` : '—'}
                 {doctor?.specialty && <span className="block text-xs text-gray-400">{doctor.specialty}</span>}
+                {isAdmin && !isOwnAppt && (
+                  <span className="block text-xs text-orange-500 font-medium mt-0.5">Asignado a otro médico</span>
+                )}
               </Detail>
               <Detail icon={<MapPin className="w-4 h-4 text-blue-500" />} label="Modalidad">
                 {MODE_LABEL[appt.mode] ?? appt.mode}
@@ -318,17 +581,48 @@ export default function AppointmentDetailPage() {
 
               {!showCancelForm && (
                 <div className="flex gap-2 flex-wrap">
-                  {actions.map(action => (
-                    <button key={action.nextStatus}
-                      onClick={() => handleAction(action.nextStatus)}
-                      disabled={!!actionLoading}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 ${action.style}`}>
-                      {actionLoading === action.nextStatus
-                        ? <Loader2 className="w-4 h-4 animate-spin" />
-                        : action.icon}
-                      {action.label}
-                    </button>
-                  ))}
+                  {/* For CHECKED_IN + ADMIN viewing another doctor's appointment: show takeover button */}
+                  {status === 'CHECKED_IN' && isAdmin && !isOwnAppt ? (
+                    <>
+                      <button
+                        onClick={() => setShowTakeoverModal(true)}
+                        disabled={!!actionLoading}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white transition-colors disabled:opacity-50">
+                        <UserCheck className="w-4 h-4" />
+                        Atender cita
+                      </button>
+                      <button
+                        onClick={() => handleAction('CANCELLED')}
+                        disabled={!!actionLoading}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-red-300 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50">
+                        <XCircle className="w-4 h-4" />
+                        Cancelar
+                      </button>
+                    </>
+                  ) : (
+                    actions.map(action => (
+                      <button key={action.nextStatus}
+                        onClick={() => handleAction(action.nextStatus)}
+                        disabled={!!actionLoading}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 ${action.style}`}>
+                        {actionLoading === action.nextStatus
+                          ? <Loader2 className="w-4 h-4 animate-spin" />
+                          : action.icon}
+                        {action.label}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Feature 3: ADMIN can reassign appointment */}
+              {isAdmin && !showCancelForm && (
+                <div className="pt-2 border-t border-gray-100">
+                  <ReassignPanel
+                    appt={appt}
+                    clinicDoctors={clinicDoctors}
+                    onReassigned={load}
+                  />
                 </div>
               )}
             </div>

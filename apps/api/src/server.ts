@@ -13,6 +13,7 @@ import { labResultsRoutes } from './routes/lab-results.js'
 import { billingRoutes } from './routes/billing.js'
 import { configuracionRoutes } from './routes/configuracion.js'
 import { superadminRoutes } from './routes/superadmin.js'
+import { notificationsRoutes } from './routes/notifications.js'
 import { webhookWhatsapp } from './routes/webhooks/whatsapp.js'
 import { webhookElevenLabs } from './routes/webhooks/elevenlabs.js'
 import { webhookStripe } from './routes/webhooks/stripe.js'
@@ -75,6 +76,7 @@ export async function buildServer() {
   await server.register(billingRoutes, { prefix: '/api/billing' })
   await server.register(configuracionRoutes, { prefix: '/api/configuracion' })
   await server.register(superadminRoutes, { prefix: '/api/superadmin' })
+  await server.register(notificationsRoutes, { prefix: '/api/notifications' })
 
   // ── Webhooks (no auth — verified by signature) ───────────
   await server.register(webhookWhatsapp, { prefix: '/api/webhooks/whatsapp' })
