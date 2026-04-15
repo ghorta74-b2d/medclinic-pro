@@ -109,13 +109,14 @@ function ssClear(): void {
 }
 
 export const sessionCache = {
-  getRole:     () => ssGet(_SS_ROLE),
-  getDoctorId: () => ssGet(_SS_DOCTOR),
-  getClinicId: () => ssGet(_SS_CLINIC),
-  setRole:     (v: string) => ssSet(_SS_ROLE, v),
-  setDoctorId: (v: string) => ssSet(_SS_DOCTOR, v),
-  setClinicId: (v: string) => ssSet(_SS_CLINIC, v),
-  clear:       () => ssClear(),
+  getRole:       () => ssGet(_SS_ROLE),
+  getDoctorId:   () => ssGet(_SS_DOCTOR),
+  getClinicId:   () => ssGet(_SS_CLINIC),
+  setRole:       (v: string) => ssSet(_SS_ROLE, v),
+  setDoctorId:   (v: string) => ssSet(_SS_DOCTOR, v),
+  setClinicId:   (v: string) => ssSet(_SS_CLINIC, v),
+  clearDoctorId: () => { try { if (typeof window !== 'undefined') sessionStorage.removeItem(_SS_DOCTOR) } catch {} },
+  clear:         () => ssClear(),
 }
 
 // Warm up the serverless API function — call this as early as possible

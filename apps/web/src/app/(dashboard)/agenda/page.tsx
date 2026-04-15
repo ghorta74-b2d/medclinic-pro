@@ -9,7 +9,7 @@ import { DayStats } from '@/components/agenda/day-stats'
 import { NewAppointmentDialog } from '@/components/agenda/new-appointment-dialog'
 import { api, getUserRole, getOwnDoctorId, sessionCache } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Appointment } from 'medclinic-shared'
 
@@ -46,6 +46,7 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true)
   const [showNewDialog, setShowNewDialog] = useState(false)
   const [doctors, setDoctors] = useState<Doctor[]>([])
+  const [doctorsLoading, setDoctorsLoading] = useState(false)
 
   // Bootstrap role + doctorId from sessionStorage for instant return visits.
   // Only DOCTOR filters by their own ID; ADMIN and STAFF see all doctors by default.
@@ -66,8 +67,12 @@ export default function AgendaPage() {
   useEffect(() => {
     if (sessionCache.getRole()) {
       // Return visit: ADMIN and STAFF always see all doctors — reset any stale filter
+      // Also clear any doctorId that may have been cached by older code versions
       const r = sessionCache.getRole()
-      if (r !== 'DOCTOR') setSelectedDoctorId(null)
+      if (r !== 'DOCTOR') {
+        setSelectedDoctorId(null)
+        sessionCache.clearDoctorId()
+      }
       return
     }
 
@@ -86,7 +91,10 @@ export default function AgendaPage() {
           }
         } else {
           // ADMIN and STAFF: show all clinic appointments, load doctor list for filter
+          // Clear any stale doctorId cached by older code versions
+          sessionCache.clearDoctorId()
           setSelectedDoctorId(null)
+          setDoctorsLoading(true)
           const res = await api.configuracion.doctors() as { data: Doctor[] }
           setDoctors(res.data ?? [])
         }
@@ -94,6 +102,7 @@ export default function AgendaPage() {
         // Fallback: show all appointments without doctor filter
       } finally {
         setRoleReady(true)
+        setDoctorsLoading(false)
       }
     }
     initRole()
@@ -102,9 +111,10 @@ export default function AgendaPage() {
   // Load doctors list for ADMIN/STAFF on return visits (role already known from sessionStorage)
   useEffect(() => {
     if ((userRole === 'STAFF' || userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && doctors.length === 0) {
+      setDoctorsLoading(true)
       api.configuracion.doctors().then((res: unknown) => {
         setDoctors((res as { data: Doctor[] }).data ?? [])
-      }).catch(() => {})
+      }).catch(() => {}).finally(() => setDoctorsLoading(false))
     }
   }, [userRole, doctors.length])
 
@@ -238,29 +248,41 @@ export default function AgendaPage() {
           </div>
 
           {/* Doctor filter — visible para ADMIN y STAFF (vista global de clínica) */}
-          {(isStaff || isAdmin) && doctors.length > 0 && (
+          {(isStaff || isAdmin) && (
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => setSelectedDoctorId(null)}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                  selectedDoctorId === null ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
-                )}
-              >
-                Todos
-              </button>
-              {doctors.map((doc) => (
-                <button
-                  key={doc.id}
-                  onClick={() => setSelectedDoctorId(doc.id)}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                    selectedDoctorId === doc.id ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
-                  )}
-                >
-                  Dr. {doc.lastName}
-                </button>
-              ))}
+              {doctorsLoading ? (
+                <span className="flex items-center gap-1.5 text-xs text-gray-400 px-2">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Cargando médicos...
+                </span>
+              ) : doctors.length > 0 ? (
+                <>
+                  <button
+                    onClick={() => setSelectedDoctorId(null)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                      selectedDoctorId === null ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
+                    )}
+                  >
+                    Todos
+                  </button>
+                  {doctors.map((doc) => (
+                    <button
+                      key={doc.id}
+                      onClick={() => setSelectedDoctorId(doc.id)}
+                      className={cn(
+                        'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                        selectedDoctorId === doc.id ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
+                      )}
+                    >
+                      Dr. {doc.lastName}
+                    </button>
+                  ))}
+                </>
+              ) : (
+                <span className="text-xs text-gray-400 px-2 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+                  Vista: clínica completa
+                </span>
+              )}
             </div>
           )}
         </div>

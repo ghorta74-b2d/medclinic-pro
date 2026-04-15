@@ -142,7 +142,10 @@ export default function CobrosPage() {
 
   // Role / doctor filter state — bootstrapped from sessionStorage for instant return visits
   const [userRole, setUserRole] = useState<string | null>(() => sessionCache.getRole())
-  const [ownDoctorId, setOwnDoctorId] = useState<string | null>(() => sessionCache.getDoctorId())
+  // ownDoctorId only used when role === 'DOCTOR' — for ADMIN/STAFF it's irrelevant
+  const [ownDoctorId, setOwnDoctorId] = useState<string | null>(() =>
+    sessionCache.getRole() === 'DOCTOR' ? sessionCache.getDoctorId() : null
+  )
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL')
   const [roleReady, setRoleReady] = useState(() => !!sessionCache.getRole())
@@ -207,7 +210,7 @@ export default function CobrosPage() {
 
     // Always fetch fresh data in background
     try {
-      const ivParams: Record<string, string> = { limit: '50' }
+      const ivParams: Record<string, string> = { limit: '200' }
       if (filter !== 'ALL') ivParams['status'] = filter
       if (effectiveDoctor) ivParams['doctorId'] = effectiveDoctor
 
