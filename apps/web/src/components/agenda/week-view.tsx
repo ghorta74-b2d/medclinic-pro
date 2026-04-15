@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { formatTime } from '@/lib/utils'
 import { STATUS_LABELS } from 'medclinic-shared'
@@ -39,6 +40,7 @@ function getWeekDays(ref: Date): Date[] {
 }
 
 export function WeekView({ appointments, loading, referenceDate, onDayClick }: WeekViewProps) {
+  const router = useRouter()
   const days = getWeekDays(referenceDate)
   const todayStr = new Date().toLocaleDateString('sv-SE')
 
@@ -109,9 +111,10 @@ export function WeekView({ appointments, loading, referenceDate, onDayClick }: W
                 const status = apt.status as AppointmentStatus
                 const typeColor = apt.appointmentType?.color ?? '#3B82F6'
                 return (
-                  <div
+                  <button
                     key={apt.id}
-                    className="rounded-lg p-2 text-left border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer"
+                    onClick={() => router.push(`/agenda/${apt.id}`)}
+                    className="w-full rounded-lg p-2 text-left border border-gray-100 hover:border-blue-300 hover:shadow-md hover:bg-blue-50/40 active:scale-[0.98] transition-all cursor-pointer"
                     style={{ borderLeftColor: typeColor, borderLeftWidth: 3 }}
                   >
                     <div className="flex items-center gap-1 mb-0.5">
@@ -124,7 +127,7 @@ export function WeekView({ appointments, loading, referenceDate, onDayClick }: W
                     {apt.appointmentType && (
                       <p className="text-xs text-gray-400 truncate">{apt.appointmentType.name}</p>
                     )}
-                  </div>
+                  </button>
                 )
               })}
             </div>

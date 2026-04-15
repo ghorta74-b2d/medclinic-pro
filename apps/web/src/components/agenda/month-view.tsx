@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import type { Appointment } from 'medclinic-shared'
 
@@ -38,6 +39,7 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 export function MonthView({ appointments, loading, referenceDate, onDayClick }: MonthViewProps) {
+  const router = useRouter()
   const grid = getMonthGrid(referenceDate)
   const todayStr = new Date().toLocaleDateString('sv-SE')
 
@@ -103,10 +105,11 @@ export function MonthView({ appointments, loading, referenceDate, onDayClick }: 
                   </span>
                   <div className="flex flex-wrap gap-1 flex-1">
                     {dayApts.slice(0, 3).map((apt) => (
-                      <div
+                      <button
                         key={apt.id}
+                        onClick={(e) => { e.stopPropagation(); router.push(`/agenda/${apt.id}`) }}
                         className={cn(
-                          'w-2 h-2 rounded-full',
+                          'w-2 h-2 rounded-full hover:scale-125 transition-transform',
                           STATUS_COLOR[apt.status] ?? 'bg-gray-300'
                         )}
                         title={apt.patient
