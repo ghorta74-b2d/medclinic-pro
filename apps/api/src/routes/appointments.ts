@@ -362,10 +362,10 @@ export async function appointmentsRoutes(server: FastifyInstance) {
       return reply.send({ data: updated })
     }
 
-    // ── REASSIGNMENT: ADMIN changes the doctor on an appointment ─────────────
+    // ── REASSIGNMENT: ADMIN / STAFF changes the doctor on an appointment ────
     const isReassignment = data.doctorId && data.doctorId !== existing.doctorId
     if (isReassignment) {
-      if (!['ADMIN', 'SUPER_ADMIN'].includes(role)) return Errors.FORBIDDEN(reply)
+      if (!['ADMIN', 'SUPER_ADMIN', 'STAFF'].includes(role)) return Errors.FORBIDDEN(reply)
 
       const newDoctor = await prisma.doctor.findFirst({
         where: { id: data.doctorId!, clinicId },

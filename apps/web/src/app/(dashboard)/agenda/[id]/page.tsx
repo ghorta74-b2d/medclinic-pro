@@ -272,16 +272,18 @@ export default function AppointmentDetailPage() {
     })
     getOwnDoctorId().then(myId => {
       if (myId) {
-        sessionCache.setDoctorId(myId)
+        // STAFF has no personal appointment ownership — don't pollute their cache
+        const role = sessionCache.getRole()
+        if (role !== 'STAFF') sessionCache.setDoctorId(myId)
         setOwnDoctorId(myId)
       }
     })
   }, [id])
 
-  // Load clinic doctors for ADMIN reassignment
+  // Load clinic doctors for ADMIN / STAFF reassignment
   useEffect(() => {
     const role = sessionCache.getRole()
-    if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+    if (role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'STAFF') {
       api.configuracion.doctors().then((res: unknown) => {
         setClinicDoctors((res as { data: { id: string; firstName: string; lastName: string; specialty?: string | null }[] }).data ?? [])
       }).catch(() => {})
@@ -405,7 +407,9 @@ export default function AppointmentDetailPage() {
   const isFinal = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(status)
   const role = userRole ?? sessionCache.getRole()
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
-  // Conservative: if ownDoctorId is null (SUPER_ADMIN or not yet loaded),
+  // STAFF can also reassign appointments (they manage the clinic schedule)
+  const canReassign = isAdmin || role === 'STAFF'
+  // Conservative: if ownDoctorId is null (SUPER_ADMIN/STAFF or not yet loaded),
   // this is never "your own" appointment — always require takeover confirmation.
   const isOwnAppt = ownDoctorId !== null && appt.doctorId === ownDoctorId
 
@@ -643,8 +647,8 @@ export default function AppointmentDetailPage() {
                 </div>
               )}
 
-              {/* Feature 3: ADMIN can reassign appointment */}
-              {isAdmin && !showCancelForm && (
+              {/* Feature 3: ADMIN / STAFF can reassign appointment */}
+              {canReassign && !showCancelForm && (
                 <div className="pt-2 border-t border-gray-100">
                   <ReassignPanel
                     appt={appt}

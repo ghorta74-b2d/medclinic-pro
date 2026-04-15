@@ -474,6 +474,44 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
     return { data: doctor }
   })
 
+  // ── PATCH /api/configuracion/users/:id/role ───────────────────────────────
+  // Promote DOCTOR → ADMIN or demote ADMIN → DOCTOR. Only clinic ADMIN can do this.
+  fastify.patch('/users/:id/role', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { clinicId, role: callerRole } = request.authUser
+    if (callerRole !== 'ADMIN') return Errors.FORBIDDEN(reply)
+
+    const body = request.body as { role: 'DOCTOR' | 'ADMIN' }
+    if (!['DOCTOR', 'ADMIN'].includes(body.role)) {
+      return Errors.VALIDATION(reply, { role: 'Must be DOCTOR or ADMIN' })
+    }
+
+    const existing = await prisma.doctor.findUnique({ where: { id } })
+    if (!existing || existing.clinicId !== clinicId) {
+      return Errors.NOT_FOUND(reply, 'Usuario')
+    }
+    // Can't change STAFF role from this endpoint
+    if (existing.role === 'STAFF') {
+      return Errors.VALIDATION(reply, { role: 'Use the invite system to change STAFF roles' })
+    }
+
+    // Update Doctor record role
+    const updated = await prisma.doctor.update({
+      where: { id },
+      data: { role: body.role as any },
+    })
+
+    // Sync Supabase user_metadata so the JWT reflects the new role
+    if (existing.authUserId) {
+      const supabaseAdmin = getSupabaseAdmin()
+      await supabaseAdmin.auth.admin.updateUserById(existing.authUserId, {
+        user_metadata: { role: body.role, doctor_id: existing.id, clinic_id: clinicId },
+      }).catch(console.error)
+    }
+
+    return { data: updated }
+  })
+
   // ── POST /api/configuracion/users/:id/resend-invite ───────────────────────
   // Works for both pending users (no authUserId) and existing users.
   // authUserId is set at invite-generation time (not at acceptance), so we

@@ -161,6 +161,21 @@ function UsuariosTab() {
     }
   }
 
+  async function handleChangeRole(user: any, newRole: 'DOCTOR' | 'ADMIN') {
+    const label = newRole === 'ADMIN' ? 'Administrador' : 'Médico'
+    if (!confirm(`¿Cambiar el rol de ${user.firstName} ${user.lastName} a ${label}?\n\nEl usuario deberá cerrar sesión y volver a entrar para ver los cambios.`)) return
+    setActionId(user.id + '_role')
+    setError('')
+    try {
+      await api.configuracion.changeUserRole(user.id, newRole)
+      load()
+    } catch (e: any) {
+      setError(e.message ?? 'Error al cambiar rol')
+    } finally {
+      setActionId(null)
+    }
+  }
+
   async function handleResend(user: any) {
     setActionId(user.id + '_resend')
     setError('')
@@ -330,12 +345,36 @@ function UsuariosTab() {
                               {actionId === user.id ? <Loader2 className="w-3 h-3 animate-spin inline" /> : user.isActive ? 'Desactivar' : 'Activar'}
                             </button>
                             {callerRole === 'ADMIN' && (
-                              <button onClick={() => handleDelete(user)} disabled={actionId === user.id + '_delete'}
-                                title="Eliminar usuario" className="text-gray-400 hover:text-red-600 p-1 rounded disabled:opacity-50">
-                                {actionId === user.id + '_delete' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                              </button>
+                              <>
+                                {/* Promote DOCTOR → ADMIN */}
+                                {user.role === 'DOCTOR' && (
+                                  <button
+                                    onClick={() => handleChangeRole(user, 'ADMIN')}
+                                    disabled={actionId === user.id + '_role'}
+                                    title="Promover a Administrador"
+                                    className="text-xs text-purple-600 hover:underline disabled:opacity-50 flex items-center gap-1">
+                                    {actionId === user.id + '_role' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
+                                    Hacer Admin
+                                  </button>
+                                )}
+                                <button onClick={() => handleDelete(user)} disabled={actionId === user.id + '_delete'}
+                                  title="Eliminar usuario" className="text-gray-400 hover:text-red-600 p-1 rounded disabled:opacity-50">
+                                  {actionId === user.id + '_delete' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                </button>
+                              </>
                             )}
                           </>
+                        )}
+                        {/* Demote ADMIN → DOCTOR (only by ADMIN caller, not self) */}
+                        {user.role === 'ADMIN' && callerRole === 'ADMIN' && (
+                          <button
+                            onClick={() => handleChangeRole(user, 'DOCTOR')}
+                            disabled={actionId === user.id + '_role'}
+                            title="Cambiar a Médico"
+                            className="text-xs text-gray-500 hover:text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1">
+                            {actionId === user.id + '_role' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Stethoscope className="w-3 h-3" />}
+                            Cambiar a Médico
+                          </button>
                         )}
                       </div>
                     )}

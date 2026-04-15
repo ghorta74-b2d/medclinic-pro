@@ -346,6 +346,11 @@ export const api = {
     },
     updateUser: (id: string, data: unknown) =>
       request(`/api/configuracion/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    changeUserRole: async (id: string, role: 'DOCTOR' | 'ADMIN') => {
+      const result = await request(`/api/configuracion/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) })
+      invalidateCacheFor('/api/configuracion/doctors')
+      return result
+    },
     resendInvite: (id: string) =>
       request(`/api/configuracion/users/${id}/resend-invite`, { method: 'POST' }),
     deleteUser: (id: string) =>

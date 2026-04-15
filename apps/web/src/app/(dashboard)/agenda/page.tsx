@@ -47,9 +47,13 @@ export default function AgendaPage() {
   const [showNewDialog, setShowNewDialog] = useState(false)
   const [doctors, setDoctors] = useState<Doctor[]>([])
 
-  // Bootstrap role + doctorId from sessionStorage for instant return visits
+  // Bootstrap role + doctorId from sessionStorage for instant return visits.
+  // STAFF always sees all doctors → never inherit a cached doctorId.
   const [userRole, setUserRole] = useState<string | null>(() => sessionCache.getRole())
-  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(() => sessionCache.getDoctorId())
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(() => {
+    const cachedRole = sessionCache.getRole()
+    return cachedRole === 'STAFF' ? null : sessionCache.getDoctorId()
+  })
   // roleReady: true immediately if sessionStorage has the data (return visits)
   const [roleReady, setRoleReady] = useState(() => !!sessionCache.getRole())
   const isStaff = userRole === 'STAFF'
@@ -59,8 +63,11 @@ export default function AgendaPage() {
   // Resolve role + doctorId on first visit — on return visits sessionStorage
   // already has the data so this runs but skips API calls immediately.
   useEffect(() => {
-    // Already resolved from sessionStorage → nothing to do
-    if (sessionCache.getRole()) return
+    if (sessionCache.getRole()) {
+      // Return visit: ensure STAFF never carries a stale doctorId filter
+      if (sessionCache.getRole() === 'STAFF') setSelectedDoctorId(null)
+      return
+    }
 
     async function initRole() {
       try {
@@ -76,6 +83,8 @@ export default function AgendaPage() {
             setSelectedDoctorId(myId)
           }
         } else {
+          // STAFF: load all clinic doctors, no personal doctorId
+          setSelectedDoctorId(null)
           const res = await api.configuracion.doctors() as { data: Doctor[] }
           setDoctors(res.data ?? [])
         }
