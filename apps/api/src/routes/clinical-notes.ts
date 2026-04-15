@@ -95,6 +95,8 @@ export async function clinicalNotesRoutes(server: FastifyInstance) {
       action: 'READ',
       resourceType: 'ClinicalNote',
       resourceId: id,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.send({ data: note })
@@ -161,6 +163,8 @@ export async function clinicalNotesRoutes(server: FastifyInstance) {
       resourceType: 'ClinicalNote',
       resourceId: note.id,
       newValue: note,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.status(201).send({ data: note })
@@ -220,6 +224,8 @@ export async function clinicalNotesRoutes(server: FastifyInstance) {
       resourceId: id,
       previousValue: existing,
       newValue: updated,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.send({ data: updated })
@@ -268,6 +274,8 @@ export async function clinicalNotesRoutes(server: FastifyInstance) {
         resourceType: 'ClinicalNote',
         resourceId: id,
         metadata: { signedAs: role, signingDoctorId: doctorId, noteOwnerId: existing.doctorId },
+        ip: request.ip,
+        userAgent: request.headers['user-agent'],
       })
 
       return reply.send({ data: signed })
@@ -286,6 +294,17 @@ export async function clinicalNotesRoutes(server: FastifyInstance) {
     if (!original) return Errors.NOT_FOUND(reply, 'Clinical note')
     if (original.status !== 'SIGNED') {
       return Errors.VALIDATION(reply, { message: 'Only signed notes can be amended' })
+    }
+
+    // NOM-004: block a new amendment if an unsigned draft amendment already exists
+    const existingDraftAmendment = await prisma.clinicalNote.findFirst({
+      where: { amendedFromId: id, status: { not: 'SIGNED' } },
+      select: { id: true },
+    })
+    if (existingDraftAmendment) {
+      return Errors.VALIDATION(reply, {
+        message: 'Ya existe una enmienda sin firmar. Firma la enmienda anterior antes de crear una nueva.',
+      })
     }
 
     const amendment = await prisma.clinicalNote.create({
@@ -310,6 +329,8 @@ export async function clinicalNotesRoutes(server: FastifyInstance) {
       resourceType: 'ClinicalNote',
       resourceId: amendment.id,
       metadata: { amendedFromId: id },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.status(201).send({ data: amendment })

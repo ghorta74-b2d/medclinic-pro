@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { createClient } from '@supabase/supabase-js'
 import { prisma } from '../lib/prisma.js'
 import { Errors } from '../lib/errors.js'
-import { authenticate } from '../middleware/auth.js'
+import { authenticate, requireAdmin } from '../middleware/auth.js'
 import type { Role } from '../../generated/index.js'
 
 // ── Supabase admin client (bypasses RLS, can invite users) ───────────────────
@@ -120,7 +120,7 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // ── PATCH /api/configuracion/clinic ───────────────────────────────────────
-  fastify.patch('/clinic', async (request, reply) => {
+  fastify.patch('/clinic', { preHandler: requireAdmin }, async (request, reply) => {
     const { clinicId } = request.authUser
     const body = request.body as {
       name?: string

@@ -5,6 +5,25 @@ import { authenticate, requireStaff } from '../middleware/auth.js'
 import { auditLog } from '../middleware/audit.js'
 import { Errors } from '../lib/errors.js'
 
+/**
+ * Validates a Mexican CURP using the official RENAPO check-digit algorithm.
+ * Returns false for malformed input; true only when format AND check digit match.
+ */
+function isValidCurp(curp: string): boolean {
+  const CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  const upper = curp.toUpperCase().trim()
+  // Format: 4 letters | 6 digits YYMMDD | H/M | 2-letter state | 3 consonants | 1 alphanumeric | 1 digit
+  if (!/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(upper)) return false
+  let sum = 0
+  for (let i = 0; i < 17; i++) {
+    const val = CHARS.indexOf(upper[i]!)
+    if (val === -1) return false
+    sum += val * (18 - i)
+  }
+  const expectedDigit = (10 - (sum % 10)) % 10
+  return parseInt(upper[17]!, 10) === expectedDigit
+}
+
 const CreatePatientSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
@@ -13,7 +32,9 @@ const CreatePatientSchema = z.object({
   dateOfBirth: z.string().datetime().optional(),
   gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
   bloodType: z.enum(['A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG', 'UNKNOWN']).optional(),
-  curp: z.string().length(18).optional(),
+  curp: z.string().length(18).refine(isValidCurp, {
+    message: 'CURP inválido — verifica el formato y el dígito verificador',
+  }).optional(),
   rfc: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
@@ -107,6 +128,8 @@ export async function patientsRoutes(server: FastifyInstance) {
       action: 'READ',
       resourceType: 'Patient',
       resourceId: id,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.send({ data: patient })
@@ -209,6 +232,8 @@ export async function patientsRoutes(server: FastifyInstance) {
       resourceType: 'Patient',
       resourceId: patient.id,
       newValue: patient,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.status(201).send({ data: patient })
@@ -256,6 +281,8 @@ export async function patientsRoutes(server: FastifyInstance) {
       resourceId: id,
       previousValue: existing,
       newValue: updated,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.send({ data: updated })
@@ -276,6 +303,8 @@ export async function patientsRoutes(server: FastifyInstance) {
       action: 'DELETE',
       resourceType: 'Patient',
       resourceId: id,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.status(204).send()

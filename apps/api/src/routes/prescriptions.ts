@@ -79,6 +79,8 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
       action: 'READ',
       resourceType: 'Prescription',
       resourceId: id,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.send({ data: prescription })
@@ -137,6 +139,8 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
       resourceType: 'Prescription',
       resourceId: prescription.id,
       newValue: { patientId: data.patientId, itemCount: data.items.length },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.status(201).send({ data: prescription })
@@ -210,6 +214,8 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
       resourceType: 'Prescription',
       resourceId: id,
       newValue: { itemCount: body.items?.length, status: body.status },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.send({ data: updated })
@@ -231,9 +237,17 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
           },
         },
         items: { include: { medication: true }, orderBy: { sortOrder: 'asc' } },
+        clinicalNote: { select: { id: true, status: true } },
       },
     })
     if (!prescription) return Errors.NOT_FOUND(reply, 'Prescription')
+
+    // NOM-004: prescription PDF requires an associated signed clinical note
+    if (prescription.clinicalNote && prescription.clinicalNote.status !== 'SIGNED') {
+      return Errors.VALIDATION(reply, {
+        message: 'La nota clínica debe estar firmada antes de generar el PDF de la receta.',
+      })
+    }
 
     const clinic = await prisma.clinic.findUnique({ where: { id: clinicId } })
 
@@ -251,6 +265,8 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
       resourceType: 'Prescription',
       resourceId: id,
       metadata: { action: 'pdf_generated' },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.send({ data: { pdfUrl: updated.pdfUrl } })
@@ -287,6 +303,8 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
       resourceType: 'Prescription',
       resourceId: id,
       metadata: { channel: 'whatsapp' },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.send({ success: true })

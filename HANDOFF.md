@@ -31,7 +31,7 @@
 | Paulina González | DOCTOR | DOCTOR | `cmnxdxb1v0001o52vmfj5tfmz` |
 | Martha López | STAFF | STAFF | `cmnt6otqv00011qlg9t6l09vw` ← tiene record Doctor pero no es médica |
 
-**SuperAdmin platform:** `ghorta74@gmail.com` / `21@Homero!` → `/superadmin`
+**SuperAdmin platform:** `ghorta74@gmail.com` (contraseña en gestor de contraseñas) → `/superadmin`
 
 ---
 

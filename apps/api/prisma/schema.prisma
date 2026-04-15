@@ -484,6 +484,10 @@ model LabResult {
   notifiedAt      DateTime?
   notes           String?           // Doctor's notes on the results
   llmSummary      String?           // AI-generated summary of the PDF
+  llmSummaryGeneratedAt DateTime?   // Timestamp when AI summary was generated
+  llmProvider     String?           // AI provider/model used (e.g. "anthropic/claude-sonnet-4-6")
+  // NOM-004 retention: soft delete — records must be kept for 5 years
+  deletedAt       DateTime?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 

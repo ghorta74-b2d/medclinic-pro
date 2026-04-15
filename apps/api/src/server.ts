@@ -64,6 +64,8 @@ export async function buildServer() {
   // ── Health check ─────────────────────────────────────────
   server.get('/health', async () => ({
     status: 'ok',
+    app: 'medclinic-pro-api',
+    version: '1.0.0',
     ts: new Date().toISOString(),
   }))
 

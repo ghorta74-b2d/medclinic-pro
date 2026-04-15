@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma.js'
 import { requireStaff } from '../middleware/auth.js'
 import { auditLog } from '../middleware/audit.js'
 import { Errors } from '../lib/errors.js'
-import { supabase } from '../lib/supabase.js'
+import { supabase, getSignedFileUrl, getSignedFileUrls } from '../lib/supabase.js'
 import { sendWhatsAppMessage } from '../services/whatsapp.js'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -36,7 +36,7 @@ export async function labResultsRoutes(server: FastifyInstance) {
     const page = parseInt(query.page ?? '1', 10)
     const limit = parseInt(query.limit ?? '20', 10)
 
-    const where: Record<string, unknown> = { clinicId }
+    const where: Record<string, unknown> = { clinicId, deletedAt: null }
     if (query.patientId) where['patientId'] = query.patientId
     if (query.status) where['status'] = query.status
     if (query.category) where['category'] = query.category
@@ -54,8 +54,16 @@ export async function labResultsRoutes(server: FastifyInstance) {
       prisma.labResult.count({ where }),
     ])
 
+    // Batch-sign any file URLs
+    const filePaths = results.map(r => r.fileUrl).filter((u): u is string => !!u)
+    const signedMap = await getSignedFileUrls(filePaths)
+    const data = results.map(r => ({
+      ...r,
+      fileUrl: r.fileUrl ? (signedMap.get(r.fileUrl) ?? r.fileUrl) : r.fileUrl,
+    }))
+
     return reply.send({
-      data: results,
+      data,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     })
   })
@@ -66,7 +74,7 @@ export async function labResultsRoutes(server: FastifyInstance) {
     const { clinicId, authUserId, role } = request.authUser
 
     const result = await prisma.labResult.findFirst({
-      where: { id, clinicId },
+      where: { id, clinicId, deletedAt: null },
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, phone: true } },
         clinicalNote: { select: { id: true } },
@@ -75,14 +83,19 @@ export async function labResultsRoutes(server: FastifyInstance) {
 
     if (!result) return Errors.NOT_FOUND(reply, 'Lab result')
 
+    // Generate signed URL for private bucket
+    const fileUrl = result.fileUrl ? await getSignedFileUrl(result.fileUrl) : result.fileUrl
+
     await auditLog({
       user: { authUserId, clinicId, role },
       action: 'READ',
       resourceType: 'LabResult',
       resourceId: id,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
-    return reply.send({ data: result })
+    return reply.send({ data: { ...result, fileUrl } })
   })
 
   // POST /api/lab-results (metadata only — file uploaded separately via /upload)
@@ -119,6 +132,8 @@ export async function labResultsRoutes(server: FastifyInstance) {
       resourceType: 'LabResult',
       resourceId: result.id,
       newValue: { patientId: data.patientId, title: data.title },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.status(201).send({ data: result })
@@ -147,18 +162,18 @@ export async function labResultsRoutes(server: FastifyInstance) {
 
     if (error) return Errors.INTERNAL(reply, error)
 
-    const { data: publicUrl } = supabase.storage
-      .from('clinical-files')
-      .getPublicUrl(uploaded.path)
-
+    // Store the bucket-relative path (not the full public URL) — bucket is private
     const updated = await prisma.labResult.update({
       where: { id },
       data: {
-        fileUrl: publicUrl.publicUrl,
+        fileUrl: uploaded.path,
         status: 'RECEIVED',
         reportedAt: new Date(),
       },
     })
+
+    // Return a signed URL so the client can access the file immediately
+    const signedFileUrl = await getSignedFileUrl(uploaded.path)
 
     await auditLog({
       user: { authUserId, clinicId, role },
@@ -166,9 +181,11 @@ export async function labResultsRoutes(server: FastifyInstance) {
       resourceType: 'LabResult',
       resourceId: id,
       metadata: { action: 'file_uploaded', fileName },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
-    return reply.send({ data: updated })
+    return reply.send({ data: { ...updated, fileUrl: signedFileUrl } })
   })
 
   // POST /api/lab-results/:id/notify — send WhatsApp notification to patient
@@ -203,6 +220,8 @@ export async function labResultsRoutes(server: FastifyInstance) {
       resourceType: 'LabResult',
       resourceId: id,
       metadata: { channel: 'whatsapp' },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.send({ success: true })
@@ -221,7 +240,9 @@ export async function labResultsRoutes(server: FastifyInstance) {
     if (!apiKey) return Errors.INTERNAL(reply, 'ANTHROPIC_API_KEY not configured')
 
     try {
-      const pdfResponse = await fetch(result.fileUrl)
+      // Generate a fresh signed URL to download from the private bucket
+      const downloadUrl = await getSignedFileUrl(result.fileUrl)
+      const pdfResponse = await fetch(downloadUrl)
       if (!pdfResponse.ok) return Errors.INTERNAL(reply, 'Could not download PDF')
       const arrayBuffer = await pdfResponse.arrayBuffer()
       const base64 = Buffer.from(arrayBuffer).toString('base64')
@@ -274,7 +295,13 @@ REGLAS: Usa exactamente los encabezados ##, tablas markdown con |, negritas **te
 
       const updated = await prisma.labResult.update({
         where: { id },
-        data: { llmSummary: summary, status: 'REVIEWED', reviewedAt: new Date() },
+        data: {
+          llmSummary: summary,
+          llmSummaryGeneratedAt: new Date(),
+          llmProvider: 'anthropic/claude-sonnet-4-6',
+          status: 'REVIEWED',
+          reviewedAt: new Date(),
+        },
       })
 
       await auditLog({
@@ -282,7 +309,9 @@ REGLAS: Usa exactamente los encabezados ##, tablas markdown con |, negritas **te
         action: 'UPDATE',
         resourceType: 'LabResult',
         resourceId: id,
-        metadata: { action: 'ai_summarized' },
+        metadata: { action: 'ai_summarized', llmProvider: 'anthropic/claude-sonnet-4-6' },
+        ip: request.ip,
+        userAgent: request.headers['user-agent'],
       })
 
       return reply.send({ data: updated })
@@ -333,32 +362,34 @@ REGLAS: Usa exactamente los encabezados ##, tablas markdown con |, negritas **te
       resourceType: 'LabResult',
       resourceId: id,
       metadata: { action: 'reviewed' },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.send({ data: updated })
   })
 
-  // DELETE /api/lab-results/:id
+  // DELETE /api/lab-results/:id — NOM-004: soft delete only, file retained for 5-year retention
   server.delete('/:id', { preHandler: requireStaff }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const { clinicId, authUserId, role } = request.authUser
 
-    const result = await prisma.labResult.findFirst({ where: { id, clinicId } })
+    const result = await prisma.labResult.findFirst({ where: { id, clinicId, deletedAt: null } })
     if (!result) return Errors.NOT_FOUND(reply, 'Lab result')
 
-    // Delete file from storage if exists
-    if (result.fileUrl) {
-      const path = result.fileUrl.split('/clinical-files/')[1]
-      if (path) await supabase.storage.from('clinical-files').remove([path])
-    }
-
-    await prisma.labResult.delete({ where: { id } })
+    // Soft delete: mark as deleted but retain record and file for NOM-004 5-year retention
+    await prisma.labResult.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    })
 
     await auditLog({
       user: { authUserId, clinicId, role },
       action: 'DELETE',
       resourceType: 'LabResult',
       resourceId: id,
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     return reply.send({ success: true })

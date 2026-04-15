@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { authenticate, requireStaff } from '../middleware/auth.js'
+import { auditLog } from '../middleware/audit.js'
 import { Errors } from '../lib/errors.js'
 import { scheduleReminders } from '../services/scheduling.js'
 import { sendWhatsAppMessage } from '../services/whatsapp.js'
@@ -206,7 +207,7 @@ export async function appointmentsRoutes(server: FastifyInstance) {
     const parsed = CreateAppointmentSchema.safeParse(request.body)
     if (!parsed.success) return Errors.VALIDATION(reply, parsed.error.format())
 
-    const { clinicId } = request.authUser
+    const { clinicId, authUserId, role } = request.authUser
     const data = parsed.data
 
     // Verify patient belongs to this clinic
@@ -255,6 +256,21 @@ export async function appointmentsRoutes(server: FastifyInstance) {
         doctor: { select: { id: true, firstName: true, lastName: true } },
         appointmentType: true,
       },
+    })
+
+    await auditLog({
+      user: { authUserId, clinicId, role },
+      action: 'CREATE',
+      resourceType: 'Appointment',
+      resourceId: appointment.id,
+      newValue: {
+        patientId: data.patientId,
+        doctorId: resolvedDoctorId,
+        startsAt: data.startsAt,
+        mode: data.mode,
+      },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     // Fire-and-forget: don't block the response waiting for external services
@@ -480,6 +496,17 @@ export async function appointmentsRoutes(server: FastifyInstance) {
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, phone: true } },
       },
+    })
+
+    await auditLog({
+      user: { authUserId, clinicId, role },
+      action: 'UPDATE',
+      resourceType: 'Appointment',
+      resourceId: id,
+      previousValue: { status: existing.status, doctorId: existing.doctorId },
+      newValue: { status: data.status, ...(isCancelling ? { cancelledBy: authUserId } : {}) },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
     })
 
     // Fire-and-forget: notify patient of cancellation
