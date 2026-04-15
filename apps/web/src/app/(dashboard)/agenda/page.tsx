@@ -48,15 +48,16 @@ export default function AgendaPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([])
 
   // Bootstrap role + doctorId from sessionStorage for instant return visits.
-  // STAFF always sees all doctors → never inherit a cached doctorId.
+  // Only DOCTOR filters by their own ID; ADMIN and STAFF see all doctors by default.
   const [userRole, setUserRole] = useState<string | null>(() => sessionCache.getRole())
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(() => {
     const cachedRole = sessionCache.getRole()
-    return cachedRole === 'STAFF' ? null : sessionCache.getDoctorId()
+    return cachedRole === 'DOCTOR' ? sessionCache.getDoctorId() : null
   })
   // roleReady: true immediately if sessionStorage has the data (return visits)
   const [roleReady, setRoleReady] = useState(() => !!sessionCache.getRole())
   const isStaff = userRole === 'STAFF'
+  const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
 
   const dateStr = selectedDate.toLocaleDateString('sv-SE')
 
@@ -64,8 +65,9 @@ export default function AgendaPage() {
   // already has the data so this runs but skips API calls immediately.
   useEffect(() => {
     if (sessionCache.getRole()) {
-      // Return visit: ensure STAFF never carries a stale doctorId filter
-      if (sessionCache.getRole() === 'STAFF') setSelectedDoctorId(null)
+      // Return visit: ADMIN and STAFF always see all doctors — reset any stale filter
+      const r = sessionCache.getRole()
+      if (r !== 'DOCTOR') setSelectedDoctorId(null)
       return
     }
 
@@ -75,15 +77,15 @@ export default function AgendaPage() {
         if (role) sessionCache.setRole(role)
         setUserRole(role)
 
-        if (role !== 'STAFF') {
-          // doctorId is embedded in the JWT — no API call needed
+        if (role === 'DOCTOR') {
+          // DOCTOR: filter by own doctorId (embedded in JWT — no API call needed)
           const myId = await getOwnDoctorId()
           if (myId) {
             sessionCache.setDoctorId(myId)
             setSelectedDoctorId(myId)
           }
         } else {
-          // STAFF: load all clinic doctors, no personal doctorId
+          // ADMIN and STAFF: show all clinic appointments, load doctor list for filter
           setSelectedDoctorId(null)
           const res = await api.configuracion.doctors() as { data: Doctor[] }
           setDoctors(res.data ?? [])
@@ -97,9 +99,9 @@ export default function AgendaPage() {
     initRole()
   }, [])
 
-  // Load doctors list for STAFF on return visits (role already known)
+  // Load doctors list for ADMIN/STAFF on return visits (role already known from sessionStorage)
   useEffect(() => {
-    if (userRole === 'STAFF' && doctors.length === 0) {
+    if ((userRole === 'STAFF' || userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && doctors.length === 0) {
       api.configuracion.doctors().then((res: unknown) => {
         setDoctors((res as { data: Doctor[] }).data ?? [])
       }).catch(() => {})
@@ -235,8 +237,8 @@ export default function AgendaPage() {
             ))}
           </div>
 
-          {/* Doctor filter — solo visible para STAFF (vista global) */}
-          {isStaff && doctors.length > 0 && (
+          {/* Doctor filter — visible para ADMIN y STAFF (vista global de clínica) */}
+          {(isStaff || isAdmin) && doctors.length > 0 && (
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setSelectedDoctorId(null)}
