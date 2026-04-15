@@ -140,45 +140,42 @@ export default function CobrosPage() {
   const [detailInvoiceId, setDetailInvoiceId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({})
 
-  // Role / doctor filter state — bootstrapped from sessionStorage for instant return visits
-  const [userRole, setUserRole] = useState<string | null>(() => sessionCache.getRole())
-  // ownDoctorId only used when role === 'DOCTOR' — for ADMIN/STAFF it's irrelevant
-  const [ownDoctorId, setOwnDoctorId] = useState<string | null>(() =>
-    sessionCache.getRole() === 'DOCTOR' ? sessionCache.getDoctorId() : null
-  )
+  // Role state — NEVER bootstrapped from sessionStorage.
+  // Always verified from JWT on mount to prevent stale data when users
+  // switch accounts in the same browser without clearing sessionStorage.
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [ownDoctorId, setOwnDoctorId] = useState<string | null>(null)
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL')
-  const [roleReady, setRoleReady] = useState(() => !!sessionCache.getRole())
+  const [roleReady, setRoleReady] = useState(false)
 
   useEffect(() => {
-    // Load doctors list for ADMIN/STAFF — uses response cache after first call
-    const cachedRole = sessionCache.getRole()
-    if (cachedRole && cachedRole !== 'DOCTOR' && doctors.length === 0) {
-      api.configuracion.doctors().then((res: unknown) => {
-        setDoctors((res as { data: Doctor[] }).data ?? [])
-      }).catch(() => {})
-    }
-
-    // Already resolved from sessionStorage → no API calls needed
-    if (cachedRole) return
-
-    async function initRole() {
+    async function init() {
       try {
         const role = await getUserRole()
-        if (role) sessionCache.setRole(role)
+        if (!role) return
+
+        // If cached role differs from JWT → user switched accounts → clear stale data
+        const cachedRole = sessionCache.getRole()
+        if (cachedRole && cachedRole !== role) sessionCache.clear()
+
+        sessionCache.setRole(role)
         setUserRole(role)
+
         if (role === 'DOCTOR') {
           const myId = await getOwnDoctorId()
           if (myId) { sessionCache.setDoctorId(myId); setOwnDoctorId(myId) }
         } else {
+          // ADMIN / STAFF: global clinic view, load doctor list for filter
+          sessionCache.clearDoctorId()
           const res = await api.configuracion.doctors() as { data: Doctor[] }
           setDoctors(res.data ?? [])
         }
       } catch {}
       finally { setRoleReady(true) }
     }
-    initRole()
-  }, [doctors.length])
+    init()
+  }, [])
 
   const load = useCallback(async () => {
     if (!roleReady) return

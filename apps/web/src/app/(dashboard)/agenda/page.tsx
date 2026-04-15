@@ -48,75 +48,54 @@ export default function AgendaPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [doctorsLoading, setDoctorsLoading] = useState(false)
 
-  // Bootstrap role + doctorId from sessionStorage for instant return visits.
-  // Only DOCTOR filters by their own ID; ADMIN and STAFF see all doctors by default.
-  const [userRole, setUserRole] = useState<string | null>(() => sessionCache.getRole())
-  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(() => {
-    const cachedRole = sessionCache.getRole()
-    return cachedRole === 'DOCTOR' ? sessionCache.getDoctorId() : null
-  })
-  // roleReady: true immediately if sessionStorage has the data (return visits)
-  const [roleReady, setRoleReady] = useState(() => !!sessionCache.getRole())
+  // Role state — NEVER bootstrapped from sessionStorage.
+  // Always verified from JWT on mount to prevent stale data when users
+  // switch accounts in the same browser without clearing sessionStorage.
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null)
+  const [roleReady, setRoleReady] = useState(false)
+
   const isStaff = userRole === 'STAFF'
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
 
   const dateStr = selectedDate.toLocaleDateString('sv-SE')
 
-  // Resolve role + doctorId on first visit — on return visits sessionStorage
-  // already has the data so this runs but skips API calls immediately.
+  // Always re-verify role from JWT on mount.
+  // Detects account switches (clears stale sessionStorage from previous users).
   useEffect(() => {
-    if (sessionCache.getRole()) {
-      // Return visit: ADMIN and STAFF always see all doctors — reset any stale filter
-      // Also clear any doctorId that may have been cached by older code versions
-      const r = sessionCache.getRole()
-      if (r !== 'DOCTOR') {
-        setSelectedDoctorId(null)
-        sessionCache.clearDoctorId()
-      }
-      return
-    }
-
-    async function initRole() {
+    async function init() {
       try {
         const role = await getUserRole()
-        if (role) sessionCache.setRole(role)
+        if (!role) return
+
+        // If cached role differs from JWT → user switched accounts → clear stale data
+        const cachedRole = sessionCache.getRole()
+        if (cachedRole && cachedRole !== role) sessionCache.clear()
+
+        sessionCache.setRole(role)
         setUserRole(role)
 
         if (role === 'DOCTOR') {
-          // DOCTOR: filter by own doctorId (embedded in JWT — no API call needed)
           const myId = await getOwnDoctorId()
-          if (myId) {
-            sessionCache.setDoctorId(myId)
-            setSelectedDoctorId(myId)
-          }
+          if (myId) { sessionCache.setDoctorId(myId); setSelectedDoctorId(myId) }
         } else {
-          // ADMIN and STAFF: show all clinic appointments, load doctor list for filter
-          // Clear any stale doctorId cached by older code versions
+          // ADMIN / STAFF: global clinic view, load doctor list for filter
           sessionCache.clearDoctorId()
           setSelectedDoctorId(null)
           setDoctorsLoading(true)
-          const res = await api.configuracion.doctors() as { data: Doctor[] }
-          setDoctors(res.data ?? [])
+          api.configuracion.doctors()
+            .then(res => setDoctors((res as { data: Doctor[] }).data ?? []))
+            .catch(() => {})
+            .finally(() => setDoctorsLoading(false))
         }
       } catch {
-        // Fallback: show all appointments without doctor filter
+        // Fallback: show all without filter
       } finally {
         setRoleReady(true)
-        setDoctorsLoading(false)
       }
     }
-    initRole()
+    init()
   }, [])
-
-  // Load doctors list for ADMIN/STAFF on return visits (role already known from sessionStorage)
-  useEffect(() => {
-    if ((userRole === 'STAFF' || userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && doctors.length === 0) {
-      setDoctorsLoading(true)
-      api.configuracion.doctors().then((res: unknown) => {
-        setDoctors((res as { data: Doctor[] }).data ?? [])
-      }).catch(() => {}).finally(() => setDoctorsLoading(false))
-    }
-  }, [userRole, doctors.length])
 
   const loadAppointments = useCallback(async () => {
     if (!roleReady) return
