@@ -473,12 +473,14 @@ function ConsultasTab({
   notes,
   onRefresh,
   autoOpen,
+  autoOpenAppointmentId,
 }: {
   patientId: string
   patient: PatientWithCount
   notes: ClinicalNote[]
   onRefresh: () => void
   autoOpen?: boolean
+  autoOpenAppointmentId?: string
 }) {
   const [newConsulta, setNewConsulta] = useState(() => autoOpen === true)
 
@@ -552,6 +554,7 @@ function ConsultasTab({
             <ClinicalNoteEditor
               patientId={patientId}
               patient={patient}
+              appointmentId={autoOpenAppointmentId}
               onSaved={() => {
                 setNewConsulta(false)
                 onRefresh()
@@ -1191,6 +1194,7 @@ export default function PatientDetailPage() {
   const [labEditMode, setLabEditMode] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [autoOpenConsulta, setAutoOpenConsulta] = useState(false)
+  const [autoOpenAppointmentId, setAutoOpenAppointmentId] = useState<string | undefined>(undefined)
 
   // Only STAFF ("Administrativo") is restricted — ADMIN is the clinic owner/doctor and has full access
   const isReadOnly = userRole === 'STAFF'
@@ -1199,12 +1203,14 @@ export default function PatientDetailPage() {
     loadPatient()
     loadTimeline()
     getUserRole().then(role => setUserRole(role))
-    // Check if we arrived here from "Iniciar consulta" in the agenda
-    const flag = sessionStorage.getItem('_open_new_consulta')
-    if (flag) {
+    // Check if we arrived here from "Iniciar consulta" / takeover in the agenda
+    // Value is the appointment ID (used both as flag and to link the new note)
+    const aptId = sessionStorage.getItem('_open_new_consulta')
+    if (aptId) {
       sessionStorage.removeItem('_open_new_consulta')
       setActiveTab('consultas')
       setAutoOpenConsulta(true)
+      setAutoOpenAppointmentId(aptId)
     }
   }, [id])
 
@@ -1365,6 +1371,7 @@ export default function PatientDetailPage() {
               notes={timeline?.notes ?? []}
               onRefresh={loadTimeline}
               autoOpen={autoOpenConsulta}
+              autoOpenAppointmentId={autoOpenAppointmentId}
             />
           )}
           {activeTab === 'recetas' && (

@@ -231,39 +231,49 @@ export async function clinicalNotesRoutes(server: FastifyInstance) {
     const { clinicId, authUserId, role, doctorId } = request.authUser
     if (!doctorId) return Errors.FORBIDDEN(reply)
 
-    const existing = await prisma.clinicalNote.findFirst({
-      where: { id, clinicId, doctorId },
-    })
-    if (!existing) return Errors.NOT_FOUND(reply, 'Clinical note')
-    if (existing.status === 'SIGNED') {
-      return Errors.VALIDATION(reply, { message: 'Note already signed' })
+    try {
+      // Strict lookup: doctor can only sign their own notes.
+      // ADMIN can also sign any note in their clinic (covers takeover scenario).
+      const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
+      const existing = await prisma.clinicalNote.findFirst({
+        where: isAdmin
+          ? { id, clinicId }          // ADMIN: any note in clinic
+          : { id, clinicId, doctorId }, // DOCTOR: only their own notes
+      })
+      if (!existing) return Errors.NOT_FOUND(reply, 'Clinical note')
+      if (existing.status === 'SIGNED') {
+        return Errors.VALIDATION(reply, { message: 'Note already signed' })
+      }
+
+      const signed = await prisma.clinicalNote.update({
+        where: { id },
+        data: {
+          status: 'SIGNED',
+          signedAt: new Date(),
+          signedBy: doctorId,
+        },
+      })
+
+      // Mark appointment complete if linked
+      if (signed.appointmentId) {
+        await prisma.appointment.update({
+          where: { id: signed.appointmentId },
+          data: { status: 'COMPLETED' },
+        }).catch(() => null)
+      }
+
+      await auditLog({
+        user: { authUserId, clinicId, role },
+        action: 'SIGN',
+        resourceType: 'ClinicalNote',
+        resourceId: id,
+        metadata: { signedAs: role, signingDoctorId: doctorId, noteOwnerId: existing.doctorId },
+      })
+
+      return reply.send({ data: signed })
+    } catch (err) {
+      return Errors.INTERNAL(reply, err)
     }
-
-    const signed = await prisma.clinicalNote.update({
-      where: { id },
-      data: {
-        status: 'SIGNED',
-        signedAt: new Date(),
-        signedBy: doctorId,
-      },
-    })
-
-    // Mark appointment complete if linked
-    if (signed.appointmentId) {
-      await prisma.appointment.update({
-        where: { id: signed.appointmentId },
-        data: { status: 'COMPLETED' },
-      }).catch(() => null)
-    }
-
-    await auditLog({
-      user: { authUserId, clinicId, role },
-      action: 'SIGN',
-      resourceType: 'ClinicalNote',
-      resourceId: id,
-    })
-
-    return reply.send({ data: signed })
   })
 
   // POST /api/clinical-notes/:id/amend — create amendment (NOM-004)

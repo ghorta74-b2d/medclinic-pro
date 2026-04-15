@@ -245,17 +245,37 @@ export default function AppointmentDetailPage() {
   // Current user info (role-aware behavior)
   const [userRole, setUserRole] = useState<string | null>(() => sessionCache.getRole())
   const [ownDoctorId, setOwnDoctorId] = useState<string | null>(() => sessionCache.getDoctorId())
+  const [roleReady, setRoleReady] = useState<boolean>(() => !!sessionCache.getRole())
   const [clinicDoctors, setClinicDoctors] = useState<{ id: string; firstName: string; lastName: string; specialty?: string | null }[]>([])
 
   useEffect(() => {
     load()
-    // Resolve role and doctorId (from sessionCache or fresh fetch)
-    if (!sessionCache.getRole()) {
-      getUserRole().then(r => { if (r) { sessionCache.setRole(r); setUserRole(r) } })
+    // Resolve role and doctorId synchronously from cache, then async from JWT
+    const cachedRole = sessionCache.getRole()
+    const cachedDid  = sessionCache.getDoctorId()
+
+    if (cachedRole) {
+      setUserRole(cachedRole)
+      setRoleReady(true)
     }
-    if (!sessionCache.getDoctorId()) {
-      getOwnDoctorId().then(myId => { if (myId) { sessionCache.setDoctorId(myId); setOwnDoctorId(myId) } })
+    if (cachedDid) {
+      setOwnDoctorId(cachedDid)
     }
+
+    // Always re-derive from JWT in background to keep cache warm
+    getUserRole().then(r => {
+      if (r) {
+        sessionCache.setRole(r)
+        setUserRole(r)
+        setRoleReady(true)
+      }
+    })
+    getOwnDoctorId().then(myId => {
+      if (myId) {
+        sessionCache.setDoctorId(myId)
+        setOwnDoctorId(myId)
+      }
+    })
   }, [id])
 
   // Load clinic doctors for ADMIN reassignment
@@ -385,7 +405,9 @@ export default function AppointmentDetailPage() {
   const isFinal = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(status)
   const role = userRole ?? sessionCache.getRole()
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
-  const isOwnAppt = appt.doctorId === ownDoctorId
+  // Conservative: if ownDoctorId is null (SUPER_ADMIN or not yet loaded),
+  // this is never "your own" appointment — always require takeover confirmation.
+  const isOwnAppt = ownDoctorId !== null && appt.doctorId === ownDoctorId
 
   return (
     <>
@@ -581,8 +603,14 @@ export default function AppointmentDetailPage() {
 
               {!showCancelForm && (
                 <div className="flex gap-2 flex-wrap">
-                  {/* For CHECKED_IN + ADMIN viewing another doctor's appointment: show takeover button */}
-                  {status === 'CHECKED_IN' && isAdmin && !isOwnAppt ? (
+                  {/* Wait for role to load before rendering sensitive action buttons */}
+                  {!roleReady ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Cargando...
+                    </div>
+                  ) : status === 'CHECKED_IN' && isAdmin && !isOwnAppt ? (
+                    /* ADMIN/SUPER_ADMIN viewing another doctor's CHECKED_IN appointment */
                     <>
                       <button
                         onClick={() => setShowTakeoverModal(true)}
