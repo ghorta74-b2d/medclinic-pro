@@ -361,6 +361,13 @@ export const api = {
       request('/api/configuracion/schedule', { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
+  catalogs: {
+    cie10: (q: string) =>
+      request(`/api/catalogs/cie10?q=${encodeURIComponent(q)}`),
+    cum: (q: string) =>
+      request(`/api/catalogs/cum?q=${encodeURIComponent(q)}`),
+  },
+
   notifications: {
     list: () => request('/api/notifications'),
     unreadCount: () => request('/api/notifications/unread-count'),

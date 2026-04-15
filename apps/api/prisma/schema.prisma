@@ -445,12 +445,30 @@ model Medication {
   concentration   String?  // "500mg", "10mg/5ml"
   controlled      Boolean  @default(false)
   category        String?  // ATC category
+  cumKey          String?  // Clave CUM (COFEPRIS Catálogo Universal de Medicamentos)
   createdAt       DateTime @default(now())
 
   prescriptionItems PrescriptionItem[]
 
   @@index([name])
   @@map("medications")
+}
+
+// ============================================================
+// REGULATORY CATALOGS (NOM-024-SSA3-2012)
+// ============================================================
+
+model Cie10Code {
+  id          String  @id @default(cuid())
+  code        String  @unique  // e.g. "A00.0"
+  description String           // e.g. "Cólera debida a Vibrio cholerae"
+  chapter     String?          // e.g. "I"
+  block       String?          // e.g. "A00-A09"
+  isActive    Boolean @default(true)
+
+  @@index([code])
+  @@index([description])
+  @@map("cie10_codes")
 }
 
 // ============================================================

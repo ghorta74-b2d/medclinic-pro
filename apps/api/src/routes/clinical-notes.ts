@@ -14,13 +14,13 @@ const DiagnosisSchema = z.object({
 const VitalSignsSchema = z.object({
   weightKg: z.number().positive().optional(),
   heightCm: z.number().positive().optional(),
-  systolicBp: z.number().int().optional(),
-  diastolicBp: z.number().int().optional(),
-  heartRateBpm: z.number().int().optional(),
-  temperatureC: z.number().optional(),
+  systolicBp: z.number().int().min(60).max(250).optional(),
+  diastolicBp: z.number().int().min(40).max(150).optional(),
+  heartRateBpm: z.number().int().min(20).max(300).optional(),
+  temperatureC: z.number().min(34).max(42).optional(),
   spo2Percent: z.number().int().min(0).max(100).optional(),
-  respiratoryRate: z.number().int().optional(),
-  glucoseMgDl: z.number().int().optional(),
+  respiratoryRate: z.number().int().min(5).max(60).optional(),
+  glucoseMgDl: z.number().int().min(20).max(600).optional(),
 })
 
 const CreateNoteSchema = z.object({

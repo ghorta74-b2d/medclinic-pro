@@ -1,11 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { api } from '@/lib/api'
-import { searchCie10, type Cie10Entry } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
-import { Plus, X, Search, CheckCircle2, Loader2 } from 'lucide-react'
+import { X, Search, CheckCircle2, Loader2 } from 'lucide-react'
 import type { Patient } from 'medclinic-shared'
+
+interface Cie10Result {
+  code: string
+  description: string
+  chapter?: string
+  block?: string
+}
 
 interface VitalSignsForm {
   weightKg: string
@@ -43,7 +49,9 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
   const [physicalExam, setPhysicalExam] = useState('')
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([])
   const [diagSearch, setDiagSearch] = useState('')
-  const [diagResults, setDiagResults] = useState<Cie10Entry[]>([])
+  const [diagResults, setDiagResults] = useState<Cie10Result[]>([])
+  const [diagSearching, setDiagSearching] = useState(false)
+  const diagDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [treatmentPlan, setTreatmentPlan] = useState('')
   const [evolutionNotes, setEvolutionNotes] = useState('')
   const [vitals, setVitals] = useState<VitalSignsForm>({
@@ -53,14 +61,26 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
 
   function handleDiagSearch(q: string) {
     setDiagSearch(q)
-    if (q.length >= 2) {
-      setDiagResults(searchCie10(q))
-    } else {
+    if (diagDebounceRef.current) clearTimeout(diagDebounceRef.current)
+    if (q.length < 2) {
       setDiagResults([])
+      setDiagSearching(false)
+      return
     }
+    setDiagSearching(true)
+    diagDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await api.catalogs.cie10(q) as { data: Cie10Result[] }
+        setDiagResults(res.data ?? [])
+      } catch {
+        setDiagResults([])
+      } finally {
+        setDiagSearching(false)
+      }
+    }, 300)
   }
 
-  function addDiagnosis(entry: Cie10Entry) {
+  function addDiagnosis(entry: Cie10Result) {
     if (diagnoses.some((d) => d.code === entry.code)) return
     const type: Diagnosis['type'] = diagnoses.length === 0 ? 'PRIMARY' : 'SECONDARY'
     setDiagnoses([...diagnoses, { code: entry.code, description: entry.description, type }])
@@ -237,7 +257,10 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          {diagSearching
+            ? <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 animate-spin" />
+            : <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          }
           <input
             type="text"
             placeholder="Buscar código CIE-10 o descripción..."
