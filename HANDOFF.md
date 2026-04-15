@@ -1,436 +1,273 @@
 # MedClinic Pro — Handoff Completo
-> Actualizado: 2026-04-13 | Rama: `main` | Último commit: `4c7a3ad`
+**Última actualización:** 2026-04-15 | **Branch:** `main` | **Último commit:** `1715e67`
 
 ---
 
-## 1. Repositorio y acceso rápido
+## Stack y Repositorio
 
-```
-Monorepo: /Users/gerardohorta/Library/Mobile Documents/com~apple~CloudDocs/B2D Automation/CLAUDE/CLINIC/medclinic-pro
-GitHub:   https://github.com/ghorta74-b2d/medclinic-pro
-Web prod: https://medclinic-web.vercel.app
-API prod: https://medclinic-api.vercel.app
-DB:       Supabase project gzojhcjymqtjswxqgkgk (sa-east-1)
-```
-
-**Deploy:** `git push origin main` → auto-deploy en Vercel (ambos apps).
-
----
-
-## 2. Stack
-
-| Capa | Tech |
-|------|------|
-| Frontend | Next.js 14 App Router, Tailwind, `apps/web` |
-| Backend | Fastify + Prisma, `apps/api`, serverless en Vercel |
-| DB | Supabase Postgres (`gzojhcjymqtjswxqgkgk`) |
+| Elemento | Valor |
+|---|---|
+| Monorepo | `/Users/gerardohorta/Library/Mobile Documents/com~apple~CloudDocs/B2D Automation/CLAUDE/CLINIC/medclinic-pro` |
+| GitHub | `https://github.com/ghorta74-b2d/medclinic-pro` |
+| Web (Next.js 14) | `apps/web` → `medclinic-web.vercel.app` |
+| API (Fastify + Prisma) | `apps/api` → `medclinic-api.vercel.app` |
+| DB | Supabase `gzojhcjymqtjswxqgkgk` (sa-east-1) |
 | Auth | Supabase Auth — roles en `user_metadata.role` |
-| Email | Resend, dominio `glasshaus.mx`, sender `medclinic@glasshaus.mx` |
-| Shared types | `packages/medclinic-shared` |
+| Email | Resend, sender `medclinic@glasshaus.mx` |
+
+**Vercel:**
+- Team: `team_5b8HfRA7B0605D5MRa2BQ6qA`
+- Web project: `prj_Sg1JAPtfDrtTxAlmBcxle48x5u7W`
+- API project: `prj_n6FzzeQYAsdUyEt12UNSC9kYQbqa`
+- Deploy: `git push` → Vercel auto-deploya ambos proyectos
 
 ---
 
-## 3. Credenciales
+## Usuarios de Prueba (clínica `cmnr49xsl00004ev0ziey0sk2`)
 
-| Cuenta | Email | Pass | Rol |
-|--------|-------|------|-----|
-| SuperAdmin | `ghorta74@gmail.com` | `21@Homero!` | `SUPER_ADMIN` |
+| Nombre | Rol JWT | Rol DB | doctor_id |
+|---|---|---|---|
+| Gerardo Horta | ADMIN | DOCTOR | `cmnr49y8g00024ev0so8uwvv6` |
+| Paulina González | DOCTOR | DOCTOR | `cmnxdxb1v0001o52vmfj5tfmz` |
+| Martha López | STAFF | STAFF | `cmnt6otqv00011qlg9t6l09vw` ← tiene record Doctor pero no es médica |
 
-**Vercel Team:** `team_5b8HfRA7B0605D5MRa2BQ6qA`  
-**Web project:** `prj_Sg1JAPtfDrtTxAlmBcxle48x5u7W`  
-**API project:** `prj_n6FzzeQYAsdUyEt12UNSC9kYQbqa`  
-**DB password:** `hyQxCpXt26SH99Kb`  
-**Supabase MCP project_id:** `gzojhcjymqtjswxqgkgk`
+**SuperAdmin platform:** `ghorta74@gmail.com` / `21@Homero!` → `/superadmin`
 
 ---
 
-## 4. Roles y permisos
+## Modelo de Roles — Fuente de Verdad
 
-```
-SUPER_ADMIN → /superadmin        (panel de todas las clínicas)
-ADMIN       → /dashboard          (dueño/médico principal — VE SOLO SU PROPIA AGENDA)
-DOCTOR      → /agenda             (médico — VE SOLO SU PROPIA AGENDA)
-STAFF       → /dashboard          (recepcionista/admin — VE AGENDA GLOBAL DE TODOS)
-```
-
-### DOCTOR / ADMIN — agenda propia
-- **Agenda page:** auto-filtra a su propio `doctorId` (via JWT — sin llamada extra)
-- **Dashboard:** "Próximas consultas" filtra por su propio `doctorId`
-- **Nueva cita:** sin selector de doctor — usa siempre el suyo propio
-
-### STAFF — acceso global (para control administrativo)
-- **Agenda page:** ve todas las citas + filtro de doctores visible
-- **Dashboard:** ve todas las citas del día de todos los doctores
-- **Nueva cita:** muestra selector de doctor para elegir a quién agendar
-- **Pacientes/[id]:** solo tab Recetas (ver/imprimir, NO crear/editar)
-- **Configuración:** solo tabs Horarios y Catálogo
-
-### Patrón correcto de checks
-```typescript
-// Agenda / nueva cita — solo STAFF ve vista global
-const isStaffRole = userRole === 'STAFF'
-
-// Expediente paciente — restringir solo STAFF
-const isReadOnly = userRole === 'STAFF'
-
-// Dashboard layout — ambos ADMIN y STAFF van al panel admin
-const isAdmin = userRole === 'ADMIN' || userRole === 'STAFF'
-```
+| Funcionalidad | DOCTOR | ADMIN | STAFF |
+|---|---|---|---|
+| Agenda — vista por defecto | Solo sus citas | Toda la clínica | Toda la clínica |
+| Agenda — filtro de médico | ❌ fijo en sus citas | ✅ Todos / Dr. X | ✅ Todos / Dr. X |
+| Cobros — vista por defecto | Solo sus facturas | Toda la clínica | Toda la clínica |
+| Cobros — filtro de médico | ❌ | ✅ dropdown | ✅ dropdown |
+| Crear cita / factura | ✅ | ✅ | ✅ |
+| Atender cita (consulta) | ✅ solo propias | ✅ propias + tomar otras | ❌ |
+| Reasignar cita | ❌ | ✅ | ✅ |
+| Firmar nota clínica | ✅ solo propias | ✅ cualquiera en clínica | ❌ |
+| Ver expediente clínico | ✅ sus pacientes | ✅ toda la clínica | ✅ solo lectura |
+| Configuración clínica | ❌ | ✅ | ❌ |
+| Gestión usuarios / roles | ❌ | ✅ | ❌ |
 
 ---
 
-## 5. Archivos críticos
+## ⚠️ PATRÓN CRÍTICO DE ROLES — Cambio Importante (2026-04-15)
 
-### Frontend `apps/web/src/`
+### El bug que se resolvió
 
-| Archivo | Qué hace |
-|---------|----------|
-| `lib/api.ts` | Cliente API + `getUserRole()` + `getOwnDoctorId()` + `sessionCache` + `readCache/writeCache` + in-memory response cache |
-| `app/(dashboard)/layout.tsx` | **'use client'** — llama `warmupApi()` al montar para pre-calentar serverless |
-| `app/(auth)/login/page.tsx` | Login — redirect por rol, supabase singleton a nivel módulo |
-| `app/auth/invite/page.tsx` | Activación cuenta — supabase singleton a nivel módulo (crítico) |
-| `app/(dashboard)/dashboard/page.tsx` | KPIs + próximas consultas **filtradas por doctorId propio** + stale-while-revalidate |
-| `app/(dashboard)/agenda/page.tsx` | Agenda **rol-aware** + sessionCache + stale-while-revalidate |
-| `app/(dashboard)/pacientes/page.tsx` | Lista pacientes + stale-while-revalidate |
-| `app/(dashboard)/pacientes/[id]/page.tsx` | Expediente — roles, tabs, audit trail, LabResultCard clickable header |
-| `app/(dashboard)/cobros/page.tsx` | Facturación Día/Semana/Mes + stale-while-revalidate |
-| `app/(dashboard)/configuracion/page.tsx` | Config — tabs filtradas por rol |
-| `app/(dashboard)/recetas/[id]/page.tsx` | Impresión de receta |
-| `components/agenda/new-appointment-dialog.tsx` | **Rol-aware**: STAFF elige doctor, DOCTOR/ADMIN usan el suyo |
-| `components/layout/sidebar.tsx` | `h-screen sticky` — Cerrar sesión siempre visible |
+Cuando un usuario cambiaba de cuenta en el mismo navegador, `sessionStorage` quedaba con los datos del usuario anterior (`_mc_role`, `_mc_did`). El código anterior retornaba temprano si había datos en cache sin verificar el JWT real. Resultado: Gerardo (ADMIN) veía la agenda y cobros de Paulina (DOCTOR).
 
-### Backend `apps/api/src/`
+### Patrón CORRECTO (vigente)
 
-| Archivo | Qué hace |
-|---------|----------|
-| `routes/billing.ts` | insurerName, recordedByName, O(1) invoice numbering, parallel DB queries |
-| `routes/prescriptions.ts` | GET / y /:id usan `requireStaff` (STAFF puede ver/imprimir) |
-| `routes/patients.ts` | PATCH guarda lastModifiedByName + lastModifiedAt, parallel lookups |
-| `routes/configuracion.ts` | Invite flow, lista doctores (sin Supabase listUsers), schedule |
-| `routes/appointments.ts` | WhatsApp + reminders fire-and-forget (no `await`) |
-| `middleware/auth.ts` | requireDoctor=DOCTOR+ADMIN+SUPER_ADMIN / requireStaff=+STAFF |
-| `prisma/schema.prisma` | Schema fuente de verdad + 6 nuevos índices DB |
+`agenda/page.tsx` y `cobros/page.tsx` usan este patrón:
 
----
-
-## 6. Arquitectura de performance (CRÍTICO — no romper)
-
-### Problema original
-Cada navegación tomaba 8-10 segundos porque:
-1. Serverless Vercel se "congela" tras ~5 min de inactividad (cold start 3-8s)
-2. Cada página reiniciaba `roleReady = false`
-3. `initRole()` hacía 2 llamadas API en cadena: `getUserRole()` → `getSchedule()` → solo entonces cargaba datos
-4. Sin caché — misma cascada en cada visita
-
-### Solución implementada (capas)
-
-#### Capa 1: Warm-up ping en layout
 ```typescript
-// apps/web/src/app/(dashboard)/layout.tsx — 'use client'
-useEffect(() => { warmupApi() }, [])  // Ping /health al entrar al dashboard
-```
-Inicia el warm-up del serverless mientras el usuario ve la UI.
+// Estado inicia en null/false — NUNCA bootstrapped desde sessionStorage
+const [userRole, setUserRole] = useState<string | null>(null)
+const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null)
+const [roleReady, setRoleReady] = useState(false)
 
-#### Capa 2: sessionStorage para role + doctorId
-```typescript
-// api.ts
-export const sessionCache = {
-  getRole: () => ssGet('_mc_role'),
-  getDoctorId: () => ssGet('_mc_did'),
-  setRole: (v: string) => ssSet('_mc_role', v),
-  setDoctorId: (v: string) => ssSet('_mc_did', v),
-  clear: () => ssClear(),  // llamar en logout
-}
-```
-
-#### Capa 3: Bootstrap instantáneo del estado inicial
-```typescript
-// En cada página con roles:
-const [userRole, setUserRole] = useState<string | null>(() => sessionCache.getRole())
-const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(() => sessionCache.getDoctorId())
-const [roleReady, setRoleReady] = useState(() => !!sessionCache.getRole())
-// roleReady = true inmediatamente en visitas de retorno → datos cargan sin esperar
-```
-
-#### Capa 4: initRole solo en primera visita
-```typescript
 useEffect(() => {
-  if (sessionCache.getRole()) return  // Skip en visitas de retorno — 0ms
+  async function init() {
+    try {
+      const role = await getUserRole()   // Decodifica JWT — rápido, sin red
+      if (!role) return
 
-  async function initRole() {
-    const role = await getUserRole()
-    if (role) sessionCache.setRole(role)
-    setUserRole(role)
+      // Detecta cambio de cuenta → limpia sessionStorage del usuario anterior
+      const cachedRole = sessionCache.getRole()
+      if (cachedRole && cachedRole !== role) sessionCache.clear()
 
-    if (role !== 'STAFF') {
-      const myId = await getOwnDoctorId()  // Lee del JWT — SIN API call
-      if (myId) { sessionCache.setDoctorId(myId); setSelectedDoctorId(myId) }
-    } else {
-      const res = await api.configuracion.doctors()  // Solo STAFF necesita lista
-      setDoctors(res.data ?? [])
-    }
-    setRoleReady(true)
+      sessionCache.setRole(role)
+      setUserRole(role)
+
+      if (role === 'DOCTOR') {
+        const myId = await getOwnDoctorId()  // Lee del JWT — sin red
+        if (myId) { sessionCache.setDoctorId(myId); setSelectedDoctorId(myId) }
+      } else {
+        // ADMIN / STAFF: vista global de clínica
+        sessionCache.clearDoctorId()
+        setSelectedDoctorId(null)
+        api.configuracion.doctors().then(res => setDoctors(res.data ?? []))
+      }
+    } catch {}
+    finally { setRoleReady(true) }
   }
-  initRole()
+  init()
 }, [])
 ```
 
-⚠️ **NUNCA** usar `getSchedule()` para obtener el `doctorId` propio — es una llamada API innecesaria.  
-`getOwnDoctorId()` lee `doctor_id` de `user_metadata` en el JWT → 0ms.
+### Patrón OBSOLETO — NO usar
 
-#### Capa 5: Stale-while-revalidate en todas las páginas
 ```typescript
-// Patrón aplicado en: agenda, dashboard, cobros, pacientes
-const cacheKey = `_apt_${selectedDoctorId ?? 'all'}_${dateStr}_${viewMode}`
+// ❌ NO USAR — este patrón era el bug
+const [userRole] = useState(() => sessionCache.getRole())   // ← stale data
+const [roleReady] = useState(() => !!sessionCache.getRole()) // ← stale data
+if (sessionCache.getRole()) return  // ← retorna sin verificar JWT
+```
 
-// 1. Mostrar cache inmediatamente (0ms de percepción)
-const raw = sessionStorage.getItem(cacheKey)
-if (raw) {
-  const { data, ts } = JSON.parse(raw)
-  if (Date.now() - ts < 3 * 60 * 1000) {  // Fresco si < 3 min
-    setData(data)
-    setLoading(false)
-  }
+### sessionCache — API completa
+
+```typescript
+import { sessionCache } from '@/lib/api'
+
+sessionCache.getRole()        // Lee _mc_role de sessionStorage
+sessionCache.setRole(v)       // Escribe _mc_role
+sessionCache.getDoctorId()    // Lee _mc_did
+sessionCache.setDoctorId(v)   // Escribe _mc_did
+sessionCache.clearDoctorId()  // Elimina _mc_did
+sessionCache.getClinicId()    // Lee _mc_cid
+sessionCache.setClinicId(v)
+sessionCache.clear()          // Borra todo (role + doctorId + clinicId)
+```
+
+---
+
+## Archivos Clave
+
+### Frontend (`apps/web/src/`)
+
+| Archivo | Responsabilidad |
+|---|---|
+| `lib/api.ts` | Cliente API, `getUserRole()`, `getOwnDoctorId()`, `sessionCache`, `readCache/writeCache` |
+| `app/(dashboard)/agenda/page.tsx` | Lista citas — filtro por médico para ADMIN/STAFF |
+| `app/(dashboard)/agenda/[id]/page.tsx` | Detalle cita — atender, reasignar, takeover modal |
+| `app/(dashboard)/cobros/page.tsx` | Facturas e ingresos — filtro médico para ADMIN/STAFF |
+| `app/(dashboard)/configuracion/page.tsx` | Configuración clínica — gestión usuarios y roles |
+| `app/(dashboard)/pacientes/[id]/page.tsx` | Expediente paciente — consultas, recetas, labs |
+| `components/agenda/week-view.tsx` | Vista semana — click navega a detalle de cita |
+| `components/agenda/month-view.tsx` | Vista mes — click navega a detalle de cita |
+
+### Backend (`apps/api/src/routes/`)
+
+| Archivo | Rutas clave |
+|---|---|
+| `appointments.ts` | `GET /api/appointments?from&to&doctorId` — filtra por clinicId siempre |
+| `billing.ts` | `GET /api/billing/invoices` — DOCTOR forzado a su ID; ADMIN/STAFF ven todo |
+| `configuracion.ts` | `GET /api/configuracion/doctors` — excluye STAFF; `PATCH /users/:id/role` |
+| `clinical-notes.ts` | `POST /sign` — ADMIN puede firmar cualquier nota de la clínica |
+
+### Middleware de Auth
+
+```typescript
+// request.authUser se puebla desde el JWT en cada request
+request.authUser = {
+  clinicId,   // user_metadata.clinic_id
+  role,       // user_metadata.role
+  doctorId,   // user_metadata.doctor_id
 }
-
-// 2. Siempre refrescar en background (silenciosamente)
-const res = await api.appointments.list(params)
-setData(res.data)
-sessionStorage.setItem(cacheKey, JSON.stringify({ data: res.data, ts: Date.now() }))
-```
-
-Cache keys por sección:
-- Agenda: `_apt_{doctorId|'all'}_{date}_{viewMode}`
-- Dashboard: `_dash_{doctorId|'all'}_{todayStr}`
-- Cobros: `_cobros_{doctorId|'all'}_{viewMode}_{filter}`
-- Pacientes: `_pts_{page}_{search}`
-
-#### Capa 6: Cache in-memory en api.ts para endpoints estáticos
-```typescript
-// En api.ts — para /doctors, /services, /types
-const _responseCache = new Map<string, { data: unknown; ts: number }>()
-const CACHE_TTL = 5 * 60 * 1000  // 5 min
-
-// Invalidar al mutar:
-invalidateCacheFor('doctors', 'services')
-```
-
-#### Capa 7: Optimizaciones API (backend)
-- **GET /doctors:** eliminada llamada `supabaseAdmin.auth.admin.listUsers()` (~500ms) → solo Prisma con `role: { not: 'STAFF' }` filter
-- **Invoice numbering:** `count()` O(n) → `findFirst(orderBy: createdAt desc)` O(1) con índice
-- **Appointments:** WhatsApp + scheduleReminders → fire-and-forget (sin `await`)
-- **billing.ts payment-link:** 2 `invoice.update()` → 1 merged
-- **Múltiples rutas:** `Promise.all()` para queries paralelas en lugar de secuenciales
-
----
-
-## 7. Índices DB agregados
-
-Migración aplicada vía Supabase MCP SQL (no CONCURRENTLY — no funciona en transacciones):
-
-```sql
--- Invoice
-CREATE INDEX IF NOT EXISTS idx_invoice_clinic_issued ON "Invoice" ("clinicId", "issuedAt");
-CREATE INDEX IF NOT EXISTS idx_invoice_clinic_doctor ON "Invoice" ("clinicId", "doctorId");
-CREATE INDEX IF NOT EXISTS idx_invoice_created ON "Invoice" ("createdAt");
-
--- PaymentRecord
-CREATE INDEX IF NOT EXISTS idx_payment_invoice ON "PaymentRecord" ("invoiceId");
-CREATE INDEX IF NOT EXISTS idx_payment_paid ON "PaymentRecord" ("paidAt");
-
--- Doctor
-CREATE INDEX IF NOT EXISTS idx_doctor_clinic_active ON "Doctor" ("clinicId", "isActive");
 ```
 
 ---
 
-## 8. DB — columnas agregadas con SQL directo
+## Estado de la DB (Supabase `gzojhcjymqtjswxqgkgk`)
 
-No hay `_prisma_migrations`. Los cambios de schema se hacen con:
-1. Editar `apps/api/prisma/schema.prisma`
-2. Ejecutar SQL en Supabase MCP
+### Facturas (`invoices`)
+
+```
+INV-001 a INV-006  →  doctorId = Gerardo Horta    (ADMIN)   ← estaban "desaparecidas" por el bug
+INV-007 a INV-009  →  doctorId = Paulina González (DOCTOR)
+INV-010            →  doctorId = Gerardo Horta    (ADMIN)
+```
+Todas con `clinicId: cmnr49xsl00004ev0ziey0sk2`. ADMIN debe ver las 10 tras el fix.
+
+### Columnas añadidas directamente con SQL (fuera de Prisma migrations)
 
 ```sql
--- Audit trail en pacientes
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS "lastModifiedByName" TEXT;
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS "lastModifiedAt" TIMESTAMPTZ;
-
--- Registro de quién cobró y con qué aseguradora
 ALTER TABLE payment_records ADD COLUMN IF NOT EXISTS "recordedByName" TEXT;
 ALTER TABLE payment_records ADD COLUMN IF NOT EXISTS "insurerName" TEXT;
 ```
 
 ---
 
-## 9. Patrones críticos — NO romper
+## Commits Esta Sesión (2026-04-15)
 
-### A. Supabase client singleton
-```typescript
-// SIEMPRE a nivel módulo, NUNCA dentro de un componente/función
-const supabase = createBrowserClient(URL, KEY)
-// Si está adentro del componente → nueva instancia cada render → pierde sesión
 ```
-
-### B. getOwnDoctorId() — JWT, sin API call
-```typescript
-// CORRECTO — Lee doctor_id de user_metadata en el JWT cacheado
-const myId = await getOwnDoctorId()
-
-// INCORRECTO — llamada API innecesaria, eliminar donde aparezca
-const schedRes = await api.configuracion.getSchedule()  // NO USAR para obtener doctorId
-```
-
-### C. Token cache
-```typescript
-let _tokenCache: { token: string; expiresAt: number } | null = null
-// Invalida en 401 responses automáticamente
-// TTL = JWT expiry - 60s (nunca envía token expirado)
-```
-
-### D. Reenviar invitación (configuracion.ts)
-```typescript
-// Sin authUserId → usuario NUEVO → type:'invite' + guardar authUserId
-// Con authUserId → usuario EXISTENTE → type:'recovery' (password reset)
-// Ambos redirigen a /auth/invite
-```
-
-### E. PDF en Vercel
-```
-NO: @react-pdf/renderer → crashea yoga-layout en serverless
-SÍ: página /recetas/[id] con CSS print + window.print()
-```
-
-### F. @fastify/compress — NO USAR
-```
-Incompatible con el entry point de Vercel serverless:
-app.server.emit('request', req, res)  ← no funciona con streaming de gzip
-Vercel CDN ya maneja gzip/Brotli automáticamente en el edge.
-```
-
-### G. Teléfono
-```
-Formato DB: +52XXXXXXXXXX (prefijo fijo México, 10 dígitos)
-```
-
-### H. sessionCache.clear() en logout
-```typescript
-// En el handler de cerrar sesión — SIEMPRE limpiar sessionStorage
-sessionCache.clear()
-await supabase.auth.signOut()
+1715e67  fix(roles): eliminar confianza ciega en sessionStorage — siempre verificar JWT  ← HEAD
+a92aa77  fix(roles): ADMIN/STAFF — filtro confiable, limit cobros 200, limpiar doctorId viejo
+0828342  fix(agenda): ADMIN ve toda la clínica por defecto, dropdown de médico visible
+0fdc767  fix: STAFF role — full clinic visibility, reassignment rights, and role management
+d98ad85  fix: agenda week/month view — clicking an appointment now navigates to detail
+42388f1  fix: takeover modal race condition, missing appointmentId link, and sign endpoint robustness
+9ce1da0  feat: iniciar consulta abre expediente, takeover, reasignación y centro de notificaciones
 ```
 
 ---
 
-## 10. Funcionalidades completas ✅
+## Bugs Resueltos Esta Sesión
 
-- Auth completa con roles, redirect por rol, invite, reenviar invite
-- Expediente paciente: tabs por rol, modal "Ver perfil completo", audit trail, VitalsStrip
-- Facturación: Día/Semana/Mes, badge "Registrado por", 16 aseguradoras MX, concepto real
-- Sidebar: h-screen sticky — Cerrar sesión/Configuración siempre visibles
-- Configuración: tabs restringidos para STAFF
-- Recetas: STAFF puede ver/imprimir
-- Laboratorio: upload PDF + análisis IA + delete múltiple + header clickable (navy cuando expandido)
-- Agenda: DOCTOR/ADMIN ven su propia agenda; STAFF ve global con filtro
-- Nueva cita: sin selector para DOCTOR/ADMIN; con selector para STAFF
-- Dashboard: "Próximas consultas" filtrada por doctorId propio
-- **Performance:** stale-while-revalidate en todas las secciones → carga instantánea en retorno
-
----
-
-## 11. BUG PENDIENTE — Martha Lopez como doctor ⚠️
-
-### El problema
-Cuando se invita un usuario con rol STAFF, `POST /api/configuracion/doctors`
-**SIEMPRE crea un registro en la tabla `doctors`** — incluso si el rol es STAFF.
-
-Aparece en: selector de doctor en Nueva Cita + filtro de doctores en Agenda.
-
-### Fix OPCIÓN A (más limpio) — filtrar en GET /doctors
-```typescript
-// configuracion.ts GET /doctors — filtrar por role en Prisma (ya implementado en parte)
-const doctors = await prisma.doctor.findMany({
-  where: { clinicId, isActive: true, role: { not: 'STAFF' } },
-  orderBy: { createdAt: 'asc' },
-})
-return { data: doctors }
-```
-> Requiere que el campo `role` en la tabla `Doctor` se mantenga actualizado al momento del invite.
-
-### Fix OPCIÓN B (más robusto) — no crear Doctor record para STAFF
-En `POST /api/configuracion/doctors`, si `body.role === 'STAFF'`:
-- No crear registro `Doctor`
-- Hacer solo el invite de Supabase Auth con role=STAFF
-- Martha Lopez existente: `UPDATE "Doctor" SET "isActive" = false WHERE id = '...'`
+| Bug | Causa raíz | Fix aplicado |
+|---|---|---|
+| ADMIN veía agenda/cobros del doctor equivocado | sessionStorage stale del usuario anterior | `init()` siempre verifica JWT; detecta cambio de cuenta y limpia cache |
+| Facturas 1-6 desaparecieron | sessionStorage tenía `role=DOCTOR` + `doctor_id=Paulina` de sesión anterior | Mismo fix |
+| Filtro de médicos no aparecía en ADMIN | Condición `isStaff &&` excluía ADMIN | Cambiado a `(isStaff \|\| isAdmin) &&` + spinner de carga |
+| Click en cita (semana/mes) no navegaba | `div` con `cursor-pointer` sin `onClick` | Convertido a `button` con `router.push('/agenda/[id]')` |
+| Takeover modal no aparecía para ADMIN | `userRole` null al hacer click | `roleReady` state — botones esperan a que el rol resuelva |
+| HTTP 500 al firmar nota clínica | Sin try/catch en endpoint sign | Try/catch + ADMIN puede firmar cualquier nota de la clínica |
+| `appointmentId` no se vinculaba a nota | No se propagaba desde sessionStorage al editor | Propagado a través del árbol de componentes |
+| Reasignación para STAFF bloqueada | Backend no permitía rol STAFF | Añadido `'STAFF'` a roles permitidos en `PATCH /appointments/:id` |
 
 ---
 
-## 12. Pendientes / bugs conocidos
+## Pendientes
 
-| # | Descripción | Prioridad |
-|---|-------------|-----------|
-| 1 | **Martha Lopez como doctor** — ver §11 arriba para fix | **ALTA** |
-| 2 | **RecordPaymentDialog** no tiene campo insurerName (solo NewInvoiceDialog tiene) | Media |
-| 3 | **sessionCache.clear()** en logout — no implementado todavía | Media |
-| 4 | **WhatsApp PDF** — pdfUrl se invalida al editar receta | Baja |
-| 5 | **Dashboard clínica** — nombre de clínica no se muestra en header | Baja |
-| 6 | **Asistente IA KPIs** — datos de ejemplo, no conectados a BD real | Baja |
-| 7 | **pdf.ts línea 114** — error TypeScript pre-existente `} | null` en interfaz (no bloquea build) | Técnica |
-| 8 | **Prisma migrations** — BD sin historial de migrations | Técnica |
+### Alta prioridad
+1. **Verificar en producción** que el fix del JWT funciona. Tras el deploy, hacer `Cmd+Shift+R` para limpiar sessionStorage viejo antes de probar con los 3 usuarios.
+2. **`sessionCache.clear()` en logout** — Si el usuario hace logout y login con otra cuenta en la misma pestaña el fix de detección de cambio de cuenta lo cubre, pero implementarlo en el handler de logout del layout es buena práctica.
 
----
+### Media prioridad
+3. **Paginación en cobros** — Límite actual `200`. Agregar botón "Cargar más" si la clínica crece.
+4. **Nombre de clínica en header dashboard** — Pendiente desde sesiones anteriores.
 
-## 13. Catálogos incluidos
-
-### Aseguradoras México (gastos médicos)
-```
-AXA Seguros, GNP Seguros, Mapfre, MetLife, BBVA Seguros,
-Seguros Monterrey NY Life, Allianz, Zurich, Cigna, Bupa,
-SURA, HDI Seguros, Banorte Seguros, Inbursa Seguros,
-Seguros Atlas, Otro
-```
-Ubicación: `apps/web/src/components/billing/new-invoice-dialog.tsx`
+### Baja prioridad
+5. **WhatsApp PDF se invalida al editar receta** — Bug cosmético, poca urgencia.
+6. **Asistente IA KPIs** — No conectados a BD real.
+7. **pdf.ts línea 114** — Error TypeScript pre-existente, no bloquea build.
 
 ---
 
-## 14. Comandos útiles
+## Cómo Depurar Problemas de Rol
 
-```bash
-# Dev local
-cd "apps/web" && pnpm dev     # localhost:3000
-cd "apps/api" && pnpm dev     # localhost:3001
+Si un usuario ve datos de otro usuario:
 
-# Deploy
-git push origin main          # auto-deploy ambos en Vercel
+1. DevTools → Application → Session Storage → revisar `_mc_role` y `_mc_did`
+2. Si los valores no corresponden al usuario logueado → `Cmd+Shift+R` (hard refresh)
+3. Si persiste tras reload → verificar que en `agenda/page.tsx` y `cobros/page.tsx` el `useEffect` init **no** tenga `if (sessionCache.getRole()) return` (ese era el bug central)
+4. Consultar DB directamente (Supabase MCP project `gzojhcjymqtjswxqgkgk`):
 
-# Regenerar Prisma client
-cd apps/api && npx prisma generate
+```sql
+-- Verificar roles en DB
+SELECT id, "firstName", "lastName", role, "clinicId" FROM doctors ORDER BY "createdAt";
 
-# TypeScript check
-npx tsc --noEmit -p apps/web/tsconfig.json
-npx tsc --noEmit -p apps/api/tsconfig.json
+-- Ver todas las facturas y a qué doctor pertenecen
+SELECT "invoiceNumber", "doctorId", "status", "total", "issuedAt"
+FROM invoices ORDER BY "issuedAt";
+
+-- Ver citas recientes
+SELECT id, "doctorId", "status", "startsAt"
+FROM appointments ORDER BY "startsAt" DESC LIMIT 20;
 ```
 
 ---
 
-## 15. Contexto de negocio
+## Reglas Críticas — No Romper
 
-- **Mercado:** LATAM, enfoque México (CURP, SPEI, aseguradoras locales, WhatsApp)
-- **Modelo:** SaaS — un SuperAdmin gestiona múltiples clínicas independientes
-- **Usuarios tipo clínica:** ADMIN (dueño médico) + DOCTORs + STAFF (recepcionista)
-- **Canal pacientes:** WhatsApp (principal), email
-- **Flujo típico:** STAFF agenda cita + registra cobro → DOCTOR atiende + firma nota → STAFF imprime receta
-- **Proyecto separado NO tocar:** `doctor-calendar` (github.com/ghorta74-b2d/doctor-calendar)
+1. **NO `@fastify/compress`** — incompatible con Vercel serverless
+2. **NO bootstrapear rol desde sessionStorage** — siempre verificar JWT en `init()` al mount
+3. **NO `api.configuracion.getSchedule()`** para obtener doctorId — usar `getOwnDoctorId()` del JWT
+4. **Supabase client:** singleton en `lib/api.ts`, nunca instanciar dentro de un componente
+5. **Martha López:** tiene Doctor record en DB — no borrar, tiene citas históricas asignadas
+6. **Cobros limit:** `200` facturas — no bajar a 50 (las primeras 6 facturas desaparecían con el límite anterior)
 
 ---
 
-## 16. Historia de decisiones arquitectónicas
+## Performance — Arquitectura Vigente
 
-| Decisión | Razón |
-|----------|-------|
-| NO `@fastify/compress` | Incompatible con `app.server.emit('request')` en Vercel serverless; CDN ya comprime |
-| NO `getSchedule()` para doctorId | `doctor_id` está en el JWT (`user_metadata`) — `getOwnDoctorId()` lo lee sin API call |
-| sessionStorage para role/doctorId | Persiste en la sesión del browser → 0ms en retorno, elimina el waterfall de 2 API calls |
-| `findFirst(orderBy: createdAt desc)` para invoice numbering | `count()` es O(n) y crece con la tabla; `findFirst` es O(1) con índice |
-| Fire-and-forget en WhatsApp y reminders | Estos son side-effects — no deben bloquear la respuesta al usuario |
-| SQL directo en Supabase (no migrations) | El schema de Prisma ya existía sin historial — se optó por consistencia con el patrón existente |
-| `role: { not: 'STAFF' }` en GET /doctors | Elimina llamada a `supabaseAdmin.auth.admin.listUsers()` que tomaba ~500ms |
+1. `layout.tsx` → `warmupApi()` al montar (pre-calienta serverless en Vercel)
+2. `sessionCache` → rol + doctorId guardados después de verificar JWT (0ms lectura, ~100ms verificación en mount)
+3. `readCache/writeCache` → datos de listas en sessionStorage con TTL 3 min
+4. In-memory cache para `/doctors`, `/services`, `/types` (TTL 5-10 min) en `CACHE_TTL` en `api.ts`
+5. Backend: queries paralelas con `Promise.all()`, fire-and-forget para WhatsApp/email
