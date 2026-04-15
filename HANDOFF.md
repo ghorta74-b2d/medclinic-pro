@@ -1,5 +1,5 @@
 # MedClinic Pro — Handoff Completo
-**Última actualización:** 2026-04-15 | **Branch:** `main` | **Último commit:** `1715e67`
+**Última actualización:** 2026-04-15 | **Branch:** `main` | **Último commit:** `066ba7c`
 
 ---
 
@@ -19,7 +19,7 @@
 - Team: `team_5b8HfRA7B0605D5MRa2BQ6qA`
 - Web project: `prj_Sg1JAPtfDrtTxAlmBcxle48x5u7W`
 - API project: `prj_n6FzzeQYAsdUyEt12UNSC9kYQbqa`
-- Deploy: `git push` → Vercel auto-deploya ambos proyectos
+- Deploy: `git push origin main` → Vercel auto-deploya ambos proyectos
 
 ---
 
@@ -53,40 +53,28 @@
 
 ---
 
-## ⚠️ PATRÓN CRÍTICO DE ROLES — Cambio Importante (2026-04-15)
+## ⚠️ PATRÓN CRÍTICO DE ROLES (vigente desde 2026-04-15)
 
-### El bug que se resolvió
-
-Cuando un usuario cambiaba de cuenta en el mismo navegador, `sessionStorage` quedaba con los datos del usuario anterior (`_mc_role`, `_mc_did`). El código anterior retornaba temprano si había datos en cache sin verificar el JWT real. Resultado: Gerardo (ADMIN) veía la agenda y cobros de Paulina (DOCTOR).
-
-### Patrón CORRECTO (vigente)
-
-`agenda/page.tsx` y `cobros/page.tsx` usan este patrón:
+`agenda/page.tsx` y `cobros/page.tsx` siempre verifican JWT en mount. **Nunca** bootstrapear rol desde sessionStorage.
 
 ```typescript
 // Estado inicia en null/false — NUNCA bootstrapped desde sessionStorage
 const [userRole, setUserRole] = useState<string | null>(null)
-const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null)
 const [roleReady, setRoleReady] = useState(false)
 
 useEffect(() => {
   async function init() {
     try {
-      const role = await getUserRole()   // Decodifica JWT — rápido, sin red
+      const role = await getUserRole()   // Decodifica JWT — sin red
       if (!role) return
-
-      // Detecta cambio de cuenta → limpia sessionStorage del usuario anterior
       const cachedRole = sessionCache.getRole()
       if (cachedRole && cachedRole !== role) sessionCache.clear()
-
       sessionCache.setRole(role)
       setUserRole(role)
-
       if (role === 'DOCTOR') {
-        const myId = await getOwnDoctorId()  // Lee del JWT — sin red
+        const myId = await getOwnDoctorId()
         if (myId) { sessionCache.setDoctorId(myId); setSelectedDoctorId(myId) }
       } else {
-        // ADMIN / STAFF: vista global de clínica
         sessionCache.clearDoctorId()
         setSelectedDoctorId(null)
         api.configuracion.doctors().then(res => setDoctors(res.data ?? []))
@@ -98,169 +86,226 @@ useEffect(() => {
 }, [])
 ```
 
-### Patrón OBSOLETO — NO usar
-
+**OBSOLETO — NO usar:**
 ```typescript
-// ❌ NO USAR — este patrón era el bug
-const [userRole] = useState(() => sessionCache.getRole())   // ← stale data
-const [roleReady] = useState(() => !!sessionCache.getRole()) // ← stale data
-if (sessionCache.getRole()) return  // ← retorna sin verificar JWT
-```
-
-### sessionCache — API completa
-
-```typescript
-import { sessionCache } from '@/lib/api'
-
-sessionCache.getRole()        // Lee _mc_role de sessionStorage
-sessionCache.setRole(v)       // Escribe _mc_role
-sessionCache.getDoctorId()    // Lee _mc_did
-sessionCache.setDoctorId(v)   // Escribe _mc_did
-sessionCache.clearDoctorId()  // Elimina _mc_did
-sessionCache.getClinicId()    // Lee _mc_cid
-sessionCache.setClinicId(v)
-sessionCache.clear()          // Borra todo (role + doctorId + clinicId)
+// ❌ este patrón era el bug (datos cruzados entre usuarios)
+const [userRole] = useState(() => sessionCache.getRole())
+if (sessionCache.getRole()) return
 ```
 
 ---
 
+## Estado de Cumplimiento NOM-004 / NOM-024
+
+### ✅ Completado (commit `066ba7c`, 2026-04-15)
+
+| Item | Descripción | Archivos |
+|---|---|---|
+| **Bucket privado** | `clinical-files` → `public: false` en Supabase. Todos los archivos clínicos requieren signed URL (1h). Upload guarda path relativo, no URL pública. | `lib/supabase.ts`, `lab-results.ts` |
+| **Soft delete LabResult** | `deletedAt TIMESTAMPTZ` — retención 5 años NOM-004. El archivo en Storage NO se borra. | `schema.prisma`, `lab-results.ts` |
+| **requireAdmin en PATCH /clinic** | Solo ADMIN/SUPER_ADMIN pueden modificar datos de la clínica. | `configuracion.ts` |
+| **auditLog en appointments** | `POST /appointments` y `PATCH /:id` normal ahora generan registro de auditoría. | `appointments.ts` |
+| **IP + User-Agent en auditoría** | Todos los `auditLog()` capturan `request.ip` y `user-agent`. | `audit.ts` + 5 rutas |
+| **Hard fail en auditLog** | Si el log de auditoría falla, la operación lanza error (no silencio). Operaciones fire-and-forget usan `.catch()` explícito. | `audit.ts` |
+| **Validación CURP algorítmica** | Dígito verificador RENAPO — no solo `length(18)`. | `patients.ts` |
+| **PDF receta → nota FIRMADA** | `POST /generate-pdf` verifica `clinicalNote.status === 'SIGNED'` antes de generar. | `prescriptions.ts` |
+| **Enmienda → firmar antes de segunda** | `POST /:id/amend` bloquea nueva enmienda si ya existe una en DRAFT sin firmar. | `clinical-notes.ts` |
+| **Etiqueta IA en llmSummary** | Guarda `llmSummaryGeneratedAt` y `llmProvider` al crear resumen con Claude. | `lab-results.ts` |
+| **Versión semántica** | `package.json v1.0.0` + `GET /health` expone `version` y `app`. | `server.ts`, `package.json` |
+| **Credenciales fuera del repo** | Contraseña SuperAdmin eliminada de HANDOFF.md. `.gitignore` cubre `apps/**/.env`. | `HANDOFF.md`, `.gitignore` |
+
+### 🔲 Fase 2 — Próxima sesión (Catálogos Regulatorios)
+
+| Item | Descripción | Complejidad |
+|---|---|---|
+| **2.1 CIE-10 completo** | Importar ~70,000 códigos SSA a tabla `CIE10Code`. Endpoint `GET /api/catalogs/cie10?q=`. Reemplazar array estático en frontend. | Alta |
+| **2.2 CUM** | Importar catálogo COFEPRIS a tabla `CUMMedication`. Endpoint `GET /api/catalogs/cum?q=`. Usado en `PrescriptionItem`. | Alta |
+| **2.3 Validaciones vitales** | Rangos de alerta clínica en signos vitales: PA sistólica 60-250, diastólica 40-150, temp 34-42, FC 20-300, FR 5-60. | Baja |
+
+### 🔲 Fase 3 — Privacidad y Consentimiento
+
+| Item | Descripción |
+|---|---|
+| **3.1 UI aviso de privacidad** | Modal al registrar paciente: texto de aviso + checkbox + timestamp en `privacyConsentAt`/`dataConsentAt`. |
+| **3.2 Módulo ARCO básico** | `GET /api/patients/:id/data-export` (Acceso), `PATCH` para Rectificación/Cancelación. |
+| **3.3 MFA** | Habilitar TOTP en Supabase Auth para ADMIN/DOCTOR. |
+
+### 🔲 Fase 4 — Infraestructura
+
+| Item | Descripción |
+|---|---|
+| **4.1 CI/CD** | GitHub Actions: lint + typecheck en cada PR. |
+| **4.2 Tests de integración** | Rutas críticas: sign, soft delete, requireAdmin. |
+| **4.3 Staging** | Proyecto Vercel + Supabase branch separados. |
+| **4.4 sessionCache.clear() en logout** | Layout: limpiar cache al hacer sign out. |
+
+### 🔲 Fase 5 — Interoperabilidad (no bloquea certificación v1)
+
+FHIR R4: `Patient`, `Encounter`, `MedicationRequest`. WhatsApp audit trail. ARCO completo.
+
+---
+
 ## Archivos Clave
+
+### Backend (`apps/api/src/`)
+
+| Archivo | Responsabilidad |
+|---|---|
+| `middleware/auth.ts` | `authenticate()`, `requireRoles()`, `requireDoctor`, `requireStaff`, `requireAdmin` |
+| `middleware/audit.ts` | `auditLog(params)` — append-only, hard fail, captura IP+UA en metadata |
+| `lib/supabase.ts` | `supabase` client, `verifySupabaseToken()`, `getSignedFileUrl()`, `getSignedFileUrls()` |
+| `lib/prisma.ts` | Singleton Prisma client |
+| `routes/appointments.ts` | CRUD citas, takeover, reasignación, availability — con auditLog completo |
+| `routes/patients.ts` | CRUD pacientes, CURP validado algorítmicamente, soft delete |
+| `routes/clinical-notes.ts` | SOAP notes, firma electrónica, enmiendas NOM-004 |
+| `routes/prescriptions.ts` | Recetas, PDF (requiere nota FIRMADA), WhatsApp |
+| `routes/lab-results.ts` | Resultados lab, upload a Storage privado, signed URLs, soft delete, AI summary |
+| `routes/billing.ts` | Facturas e ingresos — filtro por rol |
+| `routes/configuracion.ts` | Config clínica (PATCH requiere ADMIN), médicos, horarios, usuarios |
+| `prisma/schema.prisma` | Schema completo — ver sección DB más abajo |
 
 ### Frontend (`apps/web/src/`)
 
 | Archivo | Responsabilidad |
 |---|---|
 | `lib/api.ts` | Cliente API, `getUserRole()`, `getOwnDoctorId()`, `sessionCache`, `readCache/writeCache` |
-| `app/(dashboard)/agenda/page.tsx` | Lista citas — filtro por médico para ADMIN/STAFF |
-| `app/(dashboard)/agenda/[id]/page.tsx` | Detalle cita — atender, reasignar, takeover modal |
-| `app/(dashboard)/cobros/page.tsx` | Facturas e ingresos — filtro médico para ADMIN/STAFF |
-| `app/(dashboard)/configuracion/page.tsx` | Configuración clínica — gestión usuarios y roles |
-| `app/(dashboard)/pacientes/[id]/page.tsx` | Expediente paciente — consultas, recetas, labs |
-| `components/agenda/week-view.tsx` | Vista semana — click navega a detalle de cita |
-| `components/agenda/month-view.tsx` | Vista mes — click navega a detalle de cita |
-
-### Backend (`apps/api/src/routes/`)
-
-| Archivo | Rutas clave |
-|---|---|
-| `appointments.ts` | `GET /api/appointments?from&to&doctorId` — filtra por clinicId siempre |
-| `billing.ts` | `GET /api/billing/invoices` — DOCTOR forzado a su ID; ADMIN/STAFF ven todo |
-| `configuracion.ts` | `GET /api/configuracion/doctors` — excluye STAFF; `PATCH /users/:id/role` |
-| `clinical-notes.ts` | `POST /sign` — ADMIN puede firmar cualquier nota de la clínica |
-
-### Middleware de Auth
-
-```typescript
-// request.authUser se puebla desde el JWT en cada request
-request.authUser = {
-  clinicId,   // user_metadata.clinic_id
-  role,       // user_metadata.role
-  doctorId,   // user_metadata.doctor_id
-}
-```
+| `app/(dashboard)/agenda/page.tsx` | Lista citas — patrón JWT-first correcto |
+| `app/(dashboard)/cobros/page.tsx` | Facturas — patrón JWT-first correcto |
+| `app/(dashboard)/configuracion/page.tsx` | Configuración clínica — tabs por rol |
+| `app/(dashboard)/pacientes/[id]/page.tsx` | Expediente paciente |
 
 ---
 
 ## Estado de la DB (Supabase `gzojhcjymqtjswxqgkgk`)
 
-### Facturas (`invoices`)
-
-```
-INV-001 a INV-006  →  doctorId = Gerardo Horta    (ADMIN)   ← estaban "desaparecidas" por el bug
-INV-007 a INV-009  →  doctorId = Paulina González (DOCTOR)
-INV-010            →  doctorId = Gerardo Horta    (ADMIN)
-```
-Todas con `clinicId: cmnr49xsl00004ev0ziey0sk2`. ADMIN debe ver las 10 tras el fix.
-
-### Columnas añadidas directamente con SQL (fuera de Prisma migrations)
+### Columnas agregadas con SQL (fuera de Prisma migrations)
 
 ```sql
+-- patients
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS "lastModifiedByName" TEXT;
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS "lastModifiedAt" TIMESTAMPTZ;
+
+-- payment_records
 ALTER TABLE payment_records ADD COLUMN IF NOT EXISTS "recordedByName" TEXT;
 ALTER TABLE payment_records ADD COLUMN IF NOT EXISTS "insurerName" TEXT;
+
+-- lab_results (migración: lab_results_nom004_compliance, 2026-04-15)
+ALTER TABLE lab_results ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMPTZ;
+ALTER TABLE lab_results ADD COLUMN IF NOT EXISTS "llmSummaryGeneratedAt" TIMESTAMPTZ;
+ALTER TABLE lab_results ADD COLUMN IF NOT EXISTS "llmProvider" TEXT;
+CREATE INDEX IF NOT EXISTS idx_lab_results_not_deleted
+  ON lab_results ("clinicId", "patientId") WHERE "deletedAt" IS NULL;
+```
+
+### Índices existentes
+```sql
+CREATE INDEX IF NOT EXISTS idx_invoice_clinic_issued ON "Invoice" ("clinicId", "issuedAt");
+CREATE INDEX IF NOT EXISTS idx_invoice_clinic_doctor ON "Invoice" ("clinicId", "doctorId");
+CREATE INDEX IF NOT EXISTS idx_invoice_created ON "Invoice" ("createdAt");
+CREATE INDEX IF NOT EXISTS idx_payment_invoice ON "PaymentRecord" ("invoiceId");
+CREATE INDEX IF NOT EXISTS idx_payment_paid ON "PaymentRecord" ("paidAt");
+CREATE INDEX IF NOT EXISTS idx_doctor_clinic_active ON "Doctor" ("clinicId", "isActive");
+```
+
+### Storage
+- Bucket `clinical-files`: **privado** (`public: false`) desde 2026-04-15.
+- Archivos se suben con path relativo (ej. `lab-results/clinicId/id/ts-file.pdf`).
+- Los GETs generan signed URLs de 1 hora vía `getSignedFileUrl()` / `getSignedFileUrls()`.
+- Registros previos con URL completa (`https://...`) también se manejan por la función `toStoragePath()`.
+
+### Facturas de prueba
+```
+INV-001 a INV-006  →  Gerardo Horta (ADMIN)
+INV-007 a INV-009  →  Paulina González (DOCTOR)
+INV-010            →  Gerardo Horta (ADMIN)
 ```
 
 ---
 
-## Commits Esta Sesión (2026-04-15)
+## Commits Recientes
 
 ```
-1715e67  fix(roles): eliminar confianza ciega en sessionStorage — siempre verificar JWT  ← HEAD
+066ba7c  feat(compliance): NOM-004/NOM-024 — Fase 0 + Fase 1 completa  ← HEAD
+1715e67  fix(roles): eliminar confianza ciega en sessionStorage — siempre verificar JWT
 a92aa77  fix(roles): ADMIN/STAFF — filtro confiable, limit cobros 200, limpiar doctorId viejo
 0828342  fix(agenda): ADMIN ve toda la clínica por defecto, dropdown de médico visible
 0fdc767  fix: STAFF role — full clinic visibility, reassignment rights, and role management
-d98ad85  fix: agenda week/month view — clicking an appointment now navigates to detail
-42388f1  fix: takeover modal race condition, missing appointmentId link, and sign endpoint robustness
-9ce1da0  feat: iniciar consulta abre expediente, takeover, reasignación y centro de notificaciones
-```
-
----
-
-## Bugs Resueltos Esta Sesión
-
-| Bug | Causa raíz | Fix aplicado |
-|---|---|---|
-| ADMIN veía agenda/cobros del doctor equivocado | sessionStorage stale del usuario anterior | `init()` siempre verifica JWT; detecta cambio de cuenta y limpia cache |
-| Facturas 1-6 desaparecieron | sessionStorage tenía `role=DOCTOR` + `doctor_id=Paulina` de sesión anterior | Mismo fix |
-| Filtro de médicos no aparecía en ADMIN | Condición `isStaff &&` excluía ADMIN | Cambiado a `(isStaff \|\| isAdmin) &&` + spinner de carga |
-| Click en cita (semana/mes) no navegaba | `div` con `cursor-pointer` sin `onClick` | Convertido a `button` con `router.push('/agenda/[id]')` |
-| Takeover modal no aparecía para ADMIN | `userRole` null al hacer click | `roleReady` state — botones esperan a que el rol resuelva |
-| HTTP 500 al firmar nota clínica | Sin try/catch en endpoint sign | Try/catch + ADMIN puede firmar cualquier nota de la clínica |
-| `appointmentId` no se vinculaba a nota | No se propagaba desde sessionStorage al editor | Propagado a través del árbol de componentes |
-| Reasignación para STAFF bloqueada | Backend no permitía rol STAFF | Añadido `'STAFF'` a roles permitidos en `PATCH /appointments/:id` |
-
----
-
-## Pendientes
-
-### Alta prioridad
-1. **Verificar en producción** que el fix del JWT funciona. Tras el deploy, hacer `Cmd+Shift+R` para limpiar sessionStorage viejo antes de probar con los 3 usuarios.
-2. **`sessionCache.clear()` en logout** — Si el usuario hace logout y login con otra cuenta en la misma pestaña el fix de detección de cambio de cuenta lo cubre, pero implementarlo en el handler de logout del layout es buena práctica.
-
-### Media prioridad
-3. **Paginación en cobros** — Límite actual `200`. Agregar botón "Cargar más" si la clínica crece.
-4. **Nombre de clínica en header dashboard** — Pendiente desde sesiones anteriores.
-
-### Baja prioridad
-5. **WhatsApp PDF se invalida al editar receta** — Bug cosmético, poca urgencia.
-6. **Asistente IA KPIs** — No conectados a BD real.
-7. **pdf.ts línea 114** — Error TypeScript pre-existente, no bloquea build.
-
----
-
-## Cómo Depurar Problemas de Rol
-
-Si un usuario ve datos de otro usuario:
-
-1. DevTools → Application → Session Storage → revisar `_mc_role` y `_mc_did`
-2. Si los valores no corresponden al usuario logueado → `Cmd+Shift+R` (hard refresh)
-3. Si persiste tras reload → verificar que en `agenda/page.tsx` y `cobros/page.tsx` el `useEffect` init **no** tenga `if (sessionCache.getRole()) return` (ese era el bug central)
-4. Consultar DB directamente (Supabase MCP project `gzojhcjymqtjswxqgkgk`):
-
-```sql
--- Verificar roles en DB
-SELECT id, "firstName", "lastName", role, "clinicId" FROM doctors ORDER BY "createdAt";
-
--- Ver todas las facturas y a qué doctor pertenecen
-SELECT "invoiceNumber", "doctorId", "status", "total", "issuedAt"
-FROM invoices ORDER BY "issuedAt";
-
--- Ver citas recientes
-SELECT id, "doctorId", "status", "startsAt"
-FROM appointments ORDER BY "startsAt" DESC LIMIT 20;
 ```
 
 ---
 
 ## Reglas Críticas — No Romper
 
-1. **NO `@fastify/compress`** — incompatible con Vercel serverless
+1. **NO `@fastify/compress`** — incompatible con Vercel serverless (streaming zlib)
 2. **NO bootstrapear rol desde sessionStorage** — siempre verificar JWT en `init()` al mount
-3. **NO `api.configuracion.getSchedule()`** para obtener doctorId — usar `getOwnDoctorId()` del JWT
-4. **Supabase client:** singleton en `lib/api.ts`, nunca instanciar dentro de un componente
+3. **NO `getSchedule()`** para obtener doctorId — usar `getOwnDoctorId()` del JWT
+4. **Supabase client:** singleton en `lib/api.ts` (frontend) y `lib/supabase.ts` (backend) — nunca instanciar dentro de un componente
 5. **Martha López:** tiene Doctor record en DB — no borrar, tiene citas históricas asignadas
-6. **Cobros limit:** `200` facturas — no bajar a 50 (las primeras 6 facturas desaparecían con el límite anterior)
+6. **Cobros limit:** `200` facturas — no bajar a 50 (las primeras 6 facturas desaparecían con límite anterior)
+7. **LabResult delete:** SIEMPRE soft delete (`deletedAt`) — nunca `prisma.labResult.delete()` — retención NOM-004 5 años
+8. **Bucket `clinical-files`:** privado — nunca volver a `public: true`. Usar `getSignedFileUrl()` para servir archivos.
+9. **auditLog():** ahora lanza en lugar de silenciar — llamadas fire-and-forget deben usar `.catch(console.error)` explícito
+
+---
+
+## Inicio de la Fase 2 — Guía para el próximo chat
+
+### Objetivo
+Implementar los catálogos regulatorios requeridos por NOM-024-SSA3-2012 y NOM-004-SSA3-2012:
+1. **CIE-10 completo** (~70,000 códigos SSA)
+2. **CUM** (Catálogo Universal de Medicamentos COFEPRAC)
+3. **Validaciones clínicas en signos vitales**
+
+### Tarea 2.1 — CIE-10 completo
+
+**Estado actual:** El archivo `packages/shared/src/constants/cie10.ts` tiene solo ~50 diagnósticos hardcodeados como array estático. El schema `ClinicalNote.diagnoses` es `Json[]` que almacena `{ code, description, type }`.
+
+**Qué construir:**
+1. Nuevo modelo en `schema.prisma`:
+```prisma
+model Cie10Code {
+  id          String @id @default(cuid())
+  code        String @unique  // e.g. "A00.0"
+  description String           // e.g. "Cólera debida a Vibrio cholerae"
+  chapter     String?          // e.g. "I"
+  block       String?          // e.g. "A00-A09"
+  isActive    Boolean @default(true)
+
+  @@index([code])
+  @@index([description])
+  @@map("cie10_codes")
+}
+```
+2. Script de seed/import que lea el CSV oficial SSA y poblar la tabla (CSV disponible en el portal DGIS).
+3. Endpoint nuevo: `GET /api/catalogs/cie10?q=tuberculosis` → búsqueda por código o descripción, devuelve máximo 20 resultados.
+4. Registrar la ruta en `server.ts`.
+5. Frontend: reemplazar el array estático en el componente de diagnósticos por una búsqueda en tiempo real al endpoint.
+
+**Fuente del catálogo:** El CSV de CIE-10 versión SSA México está disponible públicamente. Contiene ~70,000 códigos en español. Buscar "CIE-10 OPS catálogo descarga" o usar la fuente de PAHO/OPS.
+
+### Tarea 2.2 — CUM (Catálogo Universal de Medicamentos)
+
+**Estado actual:** `Medication` en schema.prisma existe pero está vacío en producción. `PrescriptionItem` tiene fallback de texto libre.
+
+**Qué construir:**
+1. Poblar la tabla `Medication` con el catálogo COFEPRAC (CUM). CSV descargable desde el portal COFEPRAC.
+2. Agregar campo `cumKey String?` al modelo `Medication` para el identificador oficial.
+3. Endpoint `GET /api/catalogs/cum?q=amoxicilina` → busca en `Medication` por nombre/marca.
+4. Frontend: el buscador de medicamentos en recetas ya existe (`GET /api/prescriptions/medications/search`) — solo hay que poblar la tabla.
+
+### Tarea 2.3 — Validaciones clínicas en signos vitales
+
+**Estado actual:** `VitalSignsSchema` en `clinical-notes.ts` solo tiene `spo2Percent` con `min(0)/max(100)`. Los demás campos no tienen validación clínica.
+
+**Qué agregar en `VitalSignsSchema`:**
+```typescript
+systolicBp:    z.number().int().min(60).max(250).optional(),
+diastolicBp:   z.number().int().min(40).max(150).optional(),
+heartRateBpm:  z.number().int().min(20).max(300).optional(),
+temperatureC:  z.number().min(34).max(42).optional(),
+respiratoryRate: z.number().int().min(5).max(60).optional(),
+glucoseMgDl:   z.number().int().min(20).max(600).optional(),
+```
 
 ---
 
@@ -269,5 +314,34 @@ FROM appointments ORDER BY "startsAt" DESC LIMIT 20;
 1. `layout.tsx` → `warmupApi()` al montar (pre-calienta serverless en Vercel)
 2. `sessionCache` → rol + doctorId guardados después de verificar JWT (0ms lectura, ~100ms verificación en mount)
 3. `readCache/writeCache` → datos de listas en sessionStorage con TTL 3 min
-4. In-memory cache para `/doctors`, `/services`, `/types` (TTL 5-10 min) en `CACHE_TTL` en `api.ts`
+4. In-memory cache para `/doctors`, `/services`, `/types` (TTL 5-10 min) en `api.ts`
 5. Backend: queries paralelas con `Promise.all()`, fire-and-forget para WhatsApp/email
+6. `getSignedFileUrls()` usa batch `createSignedUrls()` de Supabase para minimizar round-trips en listas
+
+---
+
+## Cómo Depurar Problemas de Rol
+
+1. DevTools → Application → Session Storage → revisar `_mc_role` y `_mc_did`
+2. Si no corresponden al usuario → `Cmd+Shift+R` (hard refresh)
+3. Si persiste → verificar que `agenda/page.tsx` y `cobros/page.tsx` NO tengan `if (sessionCache.getRole()) return`
+4. Supabase MCP project `gzojhcjymqtjswxqgkgk`:
+
+```sql
+SELECT id, "firstName", "lastName", role, "clinicId" FROM doctors ORDER BY "createdAt";
+SELECT "invoiceNumber", "doctorId", "status", "total", "issuedAt" FROM invoices ORDER BY "issuedAt";
+SELECT id, "doctorId", "status", "startsAt" FROM appointments ORDER BY "startsAt" DESC LIMIT 20;
+-- Verificar soft-deleted lab results
+SELECT id, title, "deletedAt" FROM lab_results WHERE "deletedAt" IS NOT NULL;
+```
+
+---
+
+## Pendientes de Baja Prioridad
+
+- `sessionCache.clear()` en logout (cubierto por detección de cambio de cuenta)
+- Paginación en cobros (límite actual 200)
+- WhatsApp PDF se invalida al editar receta
+- Nombre de clínica en header dashboard
+- Asistente IA KPIs no conectados a BD
+- `pdf.ts` línea 114 — error TypeScript pre-existente (no bloquea build ni deploy)
