@@ -1,5 +1,5 @@
 # MedClinic Pro — Handoff Completo
-**Última actualización:** 2026-04-15 | **Branch:** `main` | **Último commit:** `066ba7c`
+**Última actualización:** 2026-04-16 | **Branch:** `main` | **Último commit:** `ba2d0dc`
 
 ---
 
@@ -97,7 +97,7 @@ if (sessionCache.getRole()) return
 
 ## Estado de Cumplimiento NOM-004 / NOM-024
 
-### ✅ Completado (commit `066ba7c`, 2026-04-15)
+### ✅ Completado — Fase 0 + Fase 1 (commit `066ba7c`, 2026-04-15)
 
 | Item | Descripción | Archivos |
 |---|---|---|
@@ -114,15 +114,21 @@ if (sessionCache.getRole()) return
 | **Versión semántica** | `package.json v1.0.0` + `GET /health` expone `version` y `app`. | `server.ts`, `package.json` |
 | **Credenciales fuera del repo** | Contraseña SuperAdmin eliminada de HANDOFF.md. `.gitignore` cubre `apps/**/.env`. | `HANDOFF.md`, `.gitignore` |
 
-### 🔲 Fase 2 — Próxima sesión (Catálogos Regulatorios)
+### ✅ Fase 2 — Completada (commit `ba2d0dc`, 2026-04-16)
 
-| Item | Descripción | Complejidad |
+| Item | Descripción | Estado |
 |---|---|---|
-| **2.1 CIE-10 completo** | Importar ~70,000 códigos SSA a tabla `CIE10Code`. Endpoint `GET /api/catalogs/cie10?q=`. Reemplazar array estático en frontend. | Alta |
-| **2.2 CUM** | Importar catálogo COFEPRIS a tabla `CUMMedication`. Endpoint `GET /api/catalogs/cum?q=`. Usado en `PrescriptionItem`. | Alta |
-| **2.3 Validaciones vitales** | Rangos de alerta clínica en signos vitales: PA sistólica 60-250, diastólica 40-150, temp 34-42, FC 20-300, FR 5-60. | Baja |
+| **2.1 CIE-10 completo** | Tabla `cie10_codes` + 247 códigos SSA en prod. `GET /api/catalogs/cie10?q=`. `note-editor.tsx` usa búsqueda async con debounce 300ms. `seed-catalogs.ts` soporta `--csv=` para los ~70k completos. | ✅ |
+| **2.2 CUM** | Campo `cumKey` en `medications`. 112 medicamentos COFEPRIS en prod. `GET /api/catalogs/cum?q=`. | ✅ |
+| **2.3 Validaciones vitales** | `VitalSignsSchema`: sistólica 60-250, diastólica 40-150, FC 20-300, temp 34-42°C, FR 5-60, glucosa 20-600. | ✅ |
 
-### 🔲 Fase 3 — Privacidad y Consentimiento
+**Para cargar CIE-10 completo (~70k):**
+```bash
+cd apps/api && npx tsx prisma/seed-catalogs.ts --csv=/ruta/CIE10_SSA.csv
+# CSV: https://www.paho.org/es/clasificacion-internacional-enfermedades
+```
+
+### 🔲 Fase 3 — Privacidad y Consentimiento (próxima)
 
 | Item | Descripción |
 |---|---|
@@ -225,11 +231,11 @@ INV-010            →  Gerardo Horta (ADMIN)
 ## Commits Recientes
 
 ```
-066ba7c  feat(compliance): NOM-004/NOM-024 — Fase 0 + Fase 1 completa  ← HEAD
+ba2d0dc  feat(compliance): Fase 2 — Catálogos Regulatorios NOM-024/NOM-004  ← HEAD
+066ba7c  feat(compliance): NOM-004/NOM-024 — Fase 0 + Fase 1 completa
 1715e67  fix(roles): eliminar confianza ciega en sessionStorage — siempre verificar JWT
 a92aa77  fix(roles): ADMIN/STAFF — filtro confiable, limit cobros 200, limpiar doctorId viejo
 0828342  fix(agenda): ADMIN ve toda la clínica por defecto, dropdown de médico visible
-0fdc767  fix: STAFF role — full clinic visibility, reassignment rights, and role management
 ```
 
 ---
@@ -248,64 +254,46 @@ a92aa77  fix(roles): ADMIN/STAFF — filtro confiable, limit cobros 200, limpiar
 
 ---
 
-## Inicio de la Fase 2 — Guía para el próximo chat
+## Inicio de la Fase 3 — Guía para el próximo chat
 
 ### Objetivo
-Implementar los catálogos regulatorios requeridos por NOM-024-SSA3-2012 y NOM-004-SSA3-2012:
-1. **CIE-10 completo** (~70,000 códigos SSA)
-2. **CUM** (Catálogo Universal de Medicamentos COFEPRAC)
-3. **Validaciones clínicas en signos vitales**
+Implementar los requisitos de privacidad LFPDPPP y acceso seguro:
+1. **UI aviso de privacidad** al registrar paciente
+2. **Módulo ARCO básico** (export, rectificación, cancelación)
+3. **MFA** Supabase Auth para ADMIN/DOCTOR
 
-### Tarea 2.1 — CIE-10 completo
+### Tarea 3.1 — UI Aviso de Privacidad
 
-**Estado actual:** El archivo `packages/shared/src/constants/cie10.ts` tiene solo ~50 diagnósticos hardcodeados como array estático. El schema `ClinicalNote.diagnoses` es `Json[]` que almacena `{ code, description, type }`.
-
-**Qué construir:**
-1. Nuevo modelo en `schema.prisma`:
-```prisma
-model Cie10Code {
-  id          String @id @default(cuid())
-  code        String @unique  // e.g. "A00.0"
-  description String           // e.g. "Cólera debida a Vibrio cholerae"
-  chapter     String?          // e.g. "I"
-  block       String?          // e.g. "A00-A09"
-  isActive    Boolean @default(true)
-
-  @@index([code])
-  @@index([description])
-  @@map("cie10_codes")
-}
-```
-2. Script de seed/import que lea el CSV oficial SSA y poblar la tabla (CSV disponible en el portal DGIS).
-3. Endpoint nuevo: `GET /api/catalogs/cie10?q=tuberculosis` → búsqueda por código o descripción, devuelve máximo 20 resultados.
-4. Registrar la ruta en `server.ts`.
-5. Frontend: reemplazar el array estático en el componente de diagnósticos por una búsqueda en tiempo real al endpoint.
-
-**Fuente del catálogo:** El CSV de CIE-10 versión SSA México está disponible públicamente. Contiene ~70,000 códigos en español. Buscar "CIE-10 OPS catálogo descarga" o usar la fuente de PAHO/OPS.
-
-### Tarea 2.2 — CUM (Catálogo Universal de Medicamentos)
-
-**Estado actual:** `Medication` en schema.prisma existe pero está vacío en producción. `PrescriptionItem` tiene fallback de texto libre.
+**Estado actual:** Los campos `privacyConsentAt` y `dataConsentAt` existen en `Patient` pero no hay UI que los capture. El registro de paciente es el formulario en `apps/web/src/app/(dashboard)/pacientes/`.
 
 **Qué construir:**
-1. Poblar la tabla `Medication` con el catálogo COFEPRAC (CUM). CSV descargable desde el portal COFEPRAC.
-2. Agregar campo `cumKey String?` al modelo `Medication` para el identificador oficial.
-3. Endpoint `GET /api/catalogs/cum?q=amoxicilina` → busca en `Medication` por nombre/marca.
-4. Frontend: el buscador de medicamentos en recetas ya existe (`GET /api/prescriptions/medications/search`) — solo hay que poblar la tabla.
+1. Modal en el formulario de registro de paciente (nuevo y edición) con:
+   - Texto del aviso de privacidad simplificado (LFPDPPP)
+   - Checkbox "He leído y acepto el aviso de privacidad"
+   - Checkbox "Acepto el tratamiento de mis datos para fines médicos"
+   - Timestamp de consentimiento → `privacyConsentAt` y `dataConsentAt`
+2. Validación: no se puede crear paciente sin ambos checkboxes marcados
+3. El `PATCH /api/patients/:id` ya acepta estos campos
 
-### Tarea 2.3 — Validaciones clínicas en signos vitales
+### Tarea 3.2 — Módulo ARCO básico
 
-**Estado actual:** `VitalSignsSchema` en `clinical-notes.ts` solo tiene `spo2Percent` con `min(0)/max(100)`. Los demás campos no tienen validación clínica.
+**Qué construir:**
+1. `GET /api/patients/:id/data-export` → devuelve JSON con todo el expediente del paciente (datos personales, notas, recetas, resultados de laboratorio). Solo ADMIN/DOCTOR de la misma clínica.
+2. `PATCH /api/patients/:id` ya permite Rectificación (campos del perfil).
+3. Cancelación: `PATCH /api/patients/:id` con `{ isActive: false }` + `deletedReason` (campo nuevo).
+4. Frontend: tab "Privacidad" en la configuración o en el expediente del paciente.
 
-**Qué agregar en `VitalSignsSchema`:**
-```typescript
-systolicBp:    z.number().int().min(60).max(250).optional(),
-diastolicBp:   z.number().int().min(40).max(150).optional(),
-heartRateBpm:  z.number().int().min(20).max(300).optional(),
-temperatureC:  z.number().min(34).max(42).optional(),
-respiratoryRate: z.number().int().min(5).max(60).optional(),
-glucoseMgDl:   z.number().int().min(20).max(600).optional(),
-```
+### Tarea 3.3 — MFA Supabase Auth
+
+**Qué construir:**
+1. Habilitar TOTP en Supabase Auth (Auth → MFA en el dashboard de Supabase — proyecto `gzojhcjymqtjswxqgkgk`)
+2. Frontend: pantalla de enrolamiento MFA al primer login de ADMIN/DOCTOR
+3. Verificar en `apps/web/src/middleware.ts` (si existe) o en el layout protegido
+
+**Archivos relevantes Fase 3:**
+- `apps/web/src/app/(dashboard)/pacientes/` → formulario de paciente
+- `apps/api/src/routes/patients.ts` → agregar endpoint ARCO
+- `apps/web/src/lib/api.ts` → agregar `api.patients.dataExport(id)`
 
 ---
 

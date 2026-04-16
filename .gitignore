@@ -18,6 +18,7 @@ packages/**/.env
 
 # Prisma
 prisma/migrations/
+apps/api/generated/
 
 # Vercel
 .vercel/
