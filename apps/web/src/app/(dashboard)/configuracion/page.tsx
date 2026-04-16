@@ -218,26 +218,50 @@ function UsuariosTab() {
           </span>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-blue-50 rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Stethoscope className="w-4 h-4 text-blue-600" />
-              <p className="text-xs font-medium text-blue-800">Médicos</p>
-            </div>
-            <p className="text-2xl font-bold text-blue-700">{data?.doctorCount ?? 0}<span className="text-sm font-normal text-blue-400"> / {limits.DOCTOR}</span></p>
-            <div className="w-full bg-blue-200 rounded-full h-1.5 mt-2">
-              <div className="h-1.5 bg-blue-500 rounded-full" style={{ width: `${Math.min(100, ((data?.doctorCount ?? 0) / limits.DOCTOR) * 100)}%` }} />
-            </div>
-          </div>
-          <div className="bg-orange-50 rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Shield className="w-4 h-4 text-orange-600" />
-              <p className="text-xs font-medium text-orange-800">Administrativos</p>
-            </div>
-            <p className="text-2xl font-bold text-orange-700">{data?.staffCount ?? 0}<span className="text-sm font-normal text-orange-400"> / {limits.STAFF}</span></p>
-            <div className="w-full bg-orange-200 rounded-full h-1.5 mt-2">
-              <div className="h-1.5 bg-orange-500 rounded-full" style={{ width: `${Math.min(100, ((data?.staffCount ?? 0) / limits.STAFF) * 100)}%` }} />
-            </div>
-          </div>
+          {/* Médicos + Admins */}
+          {(() => {
+            const used = data?.doctorCount ?? 0
+            const max  = limits.DOCTOR
+            const pct  = Math.min(100, (used / max) * 100)
+            const full = used >= max
+            return (
+              <div className={cn('rounded-lg p-3', full ? 'bg-red-50' : 'bg-blue-50')}>
+                <div className="flex items-center gap-2 mb-1">
+                  <Stethoscope className={cn('w-4 h-4', full ? 'text-red-500' : 'text-blue-600')} />
+                  <p className={cn('text-xs font-medium', full ? 'text-red-700' : 'text-blue-800')}>Médicos y Admins</p>
+                </div>
+                <p className={cn('text-2xl font-bold', full ? 'text-red-600' : 'text-blue-700')}>
+                  {used}<span className={cn('text-sm font-normal', full ? 'text-red-400' : 'text-blue-400')}> / {max}</span>
+                </p>
+                <div className={cn('w-full rounded-full h-1.5 mt-2', full ? 'bg-red-200' : 'bg-blue-200')}>
+                  <div className={cn('h-1.5 rounded-full transition-all', full ? 'bg-red-500' : 'bg-blue-500')} style={{ width: `${pct}%` }} />
+                </div>
+                {full && <p className="text-xs text-red-600 mt-1.5 font-medium">Límite alcanzado</p>}
+              </div>
+            )
+          })()}
+          {/* Administrativos STAFF */}
+          {(() => {
+            const used = data?.staffCount ?? 0
+            const max  = limits.STAFF
+            const pct  = Math.min(100, (used / max) * 100)
+            const full = used >= max
+            return (
+              <div className={cn('rounded-lg p-3', full ? 'bg-red-50' : 'bg-orange-50')}>
+                <div className="flex items-center gap-2 mb-1">
+                  <Shield className={cn('w-4 h-4', full ? 'text-red-500' : 'text-orange-600')} />
+                  <p className={cn('text-xs font-medium', full ? 'text-red-700' : 'text-orange-800')}>Administrativos</p>
+                </div>
+                <p className={cn('text-2xl font-bold', full ? 'text-red-600' : 'text-orange-700')}>
+                  {used}<span className={cn('text-sm font-normal', full ? 'text-red-400' : 'text-orange-400')}> / {max}</span>
+                </p>
+                <div className={cn('w-full rounded-full h-1.5 mt-2', full ? 'bg-red-200' : 'bg-orange-200')}>
+                  <div className={cn('h-1.5 rounded-full transition-all', full ? 'bg-red-500' : 'bg-orange-500')} style={{ width: `${pct}%` }} />
+                </div>
+                {full && <p className="text-xs text-red-600 mt-1.5 font-medium">Límite alcanzado</p>}
+              </div>
+            )
+          })()}
         </div>
       </div>
 
@@ -283,7 +307,9 @@ function UsuariosTab() {
                     ) : (
                       <>
                         <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
-                        {user.specialty && <p className="text-xs text-gray-400">{user.specialty}</p>}
+                        {user.role === 'DOCTOR' && user.specialty && user.specialty.trim().length > 1 && (
+                          <p className="text-xs text-gray-400">{user.specialty.trim()}</p>
+                        )}
                       </>
                     )}
                   </td>
@@ -327,54 +353,66 @@ function UsuariosTab() {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => { setEditingId(user.id); setEditForm({ firstName: user.firstName, lastName: user.lastName, specialty: user.specialty ?? '' }) }}
-                          title="Editar" className="text-gray-400 hover:text-blue-600 p-1 rounded">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => handleResend(user)} disabled={actionId === user.id + '_resend'}
-                          title={isPending ? 'Reenviar invitación' : 'Reenviar acceso'}
-                          className="text-xs text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1">
-                          {actionId === user.id + '_resend' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                          {isPending ? 'Reenviar' : 'Reenviar acceso'}
-                        </button>
-                        {user.role !== 'ADMIN' && (
-                          <>
-                            <button onClick={() => handleToggleActive(user)} disabled={actionId === user.id}
-                              className={cn('text-xs hover:underline disabled:opacity-50', user.isActive ? 'text-red-500' : 'text-green-600')}>
-                              {actionId === user.id ? <Loader2 className="w-3 h-3 animate-spin inline" /> : user.isActive ? 'Desactivar' : 'Activar'}
-                            </button>
-                            {callerRole === 'ADMIN' && (
-                              <>
-                                {/* Promote DOCTOR → ADMIN */}
-                                {user.role === 'DOCTOR' && (
-                                  <button
-                                    onClick={() => handleChangeRole(user, 'ADMIN')}
-                                    disabled={actionId === user.id + '_role'}
-                                    title="Promover a Administrador"
-                                    className="text-xs text-purple-600 hover:underline disabled:opacity-50 flex items-center gap-1">
-                                    {actionId === user.id + '_role' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
-                                    Hacer Admin
-                                  </button>
-                                )}
-                                <button onClick={() => handleDelete(user)} disabled={actionId === user.id + '_delete'}
-                                  title="Eliminar usuario" className="text-gray-400 hover:text-red-600 p-1 rounded disabled:opacity-50">
-                                  {actionId === user.id + '_delete' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                                </button>
-                              </>
-                            )}
-                          </>
-                        )}
-                        {/* Demote ADMIN → DOCTOR (only by ADMIN caller, not self) */}
-                        {user.role === 'ADMIN' && callerRole === 'ADMIN' && (
+                      <div className="flex flex-col gap-1.5">
+                        {/* Fila primaria */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <button
-                            onClick={() => handleChangeRole(user, 'DOCTOR')}
-                            disabled={actionId === user.id + '_role'}
-                            title="Cambiar a Médico"
-                            className="text-xs text-gray-500 hover:text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1">
-                            {actionId === user.id + '_role' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Stethoscope className="w-3 h-3" />}
-                            Cambiar a Médico
+                            onClick={() => { setEditingId(user.id); setEditForm({ firstName: user.firstName, lastName: user.lastName, specialty: user.specialty ?? '' }) }}
+                            title="Editar nombre / especialidad"
+                            className="text-gray-400 hover:text-blue-600 p-1 rounded">
+                            <Pencil className="w-3.5 h-3.5" />
                           </button>
+                          <button
+                            onClick={() => handleResend(user)}
+                            disabled={actionId === user.id + '_resend'}
+                            className="text-xs text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1">
+                            {actionId === user.id + '_resend' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                            {isPending ? 'Reenviar' : 'Reenviar acceso'}
+                          </button>
+                          {user.role !== 'ADMIN' && (
+                            <button
+                              onClick={() => handleToggleActive(user)}
+                              disabled={actionId === user.id}
+                              className={cn('text-xs hover:underline disabled:opacity-50', user.isActive ? 'text-red-500' : 'text-green-600')}>
+                              {actionId === user.id
+                                ? <Loader2 className="w-3 h-3 animate-spin inline" />
+                                : user.isActive ? 'Desactivar' : 'Activar'}
+                            </button>
+                          )}
+                        </div>
+                        {/* Fila secundaria — acciones de rol (solo ADMIN caller) */}
+                        {callerRole === 'ADMIN' && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {user.role === 'DOCTOR' && (
+                              <button
+                                onClick={() => handleChangeRole(user, 'ADMIN')}
+                                disabled={actionId === user.id + '_role'}
+                                title="Promover a Administrador"
+                                className="text-xs text-purple-600 hover:underline disabled:opacity-50 flex items-center gap-1">
+                                {actionId === user.id + '_role' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
+                                Hacer Admin
+                              </button>
+                            )}
+                            {user.role === 'ADMIN' && (
+                              <button
+                                onClick={() => handleChangeRole(user, 'DOCTOR')}
+                                disabled={actionId === user.id + '_role'}
+                                title="Quitar permisos de Admin"
+                                className="text-xs text-gray-500 hover:text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1">
+                                {actionId === user.id + '_role' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Stethoscope className="w-3 h-3" />}
+                                Quitar Admin
+                              </button>
+                            )}
+                            {user.role !== 'ADMIN' && (
+                              <button
+                                onClick={() => handleDelete(user)}
+                                disabled={actionId === user.id + '_delete'}
+                                title="Eliminar usuario"
+                                className="text-gray-400 hover:text-red-600 p-1 rounded disabled:opacity-50">
+                                {actionId === user.id + '_delete' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}
