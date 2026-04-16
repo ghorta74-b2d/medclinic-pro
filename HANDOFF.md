@@ -1,5 +1,5 @@
 # MedClinic Pro — Handoff Completo
-**Última actualización:** 2026-04-16 | **Branch:** `main` | **Último commit:** `ba2d0dc`
+**Última actualización:** 2026-04-16 | **Branch:** `main` | **Último commit:** `83c8d26`
 
 ---
 
@@ -128,13 +128,13 @@ cd apps/api && npx tsx prisma/seed-catalogs.ts --csv=/ruta/CIE10_SSA.csv
 # CSV: https://www.paho.org/es/clasificacion-internacional-enfermedades
 ```
 
-### 🔲 Fase 3 — Privacidad y Consentimiento (próxima)
+### ✅ Fase 3 — Privacidad LFPDPPP + MFA (commit `83c8d26`, 2026-04-16)
 
-| Item | Descripción |
-|---|---|
-| **3.1 UI aviso de privacidad** | Modal al registrar paciente: texto de aviso + checkbox + timestamp en `privacyConsentAt`/`dataConsentAt`. |
-| **3.2 Módulo ARCO básico** | `GET /api/patients/:id/data-export` (Acceso), `PATCH` para Rectificación/Cancelación. |
-| **3.3 MFA** | Habilitar TOTP en Supabase Auth para ADMIN/DOCTOR. |
+| Item | Descripción | Estado |
+|---|---|---|
+| **3.1 UI aviso de privacidad** | `new-patient-dialog.tsx`: aviso LFPDPPP expandible, doble checkbox (`privacyConsentAt` + `dataConsentAt`), requerido para crear paciente. | ✅ |
+| **3.2 Módulo ARCO** | `GET /api/patients/:id/data-export` — exporta expediente completo (solo ADMIN/DOCTOR), audit trail con `reason: ARCO_ACCESS`. `api.patients.dataExport(id)` en cliente web. | ✅ |
+| **3.3 MFA TOTP** | `/mfa-setup`: enrolamiento paso a paso (QR + entrada manual). Login: segundo paso TOTP cuando factor verified. Dashboard layout: banner amber para ADMIN/DOCTOR sin MFA (dismissable por sesión vía `_mc_mfa_dismissed`). | ✅ |
 
 ### 🔲 Fase 4 — Infraestructura
 
@@ -231,7 +231,8 @@ INV-010            →  Gerardo Horta (ADMIN)
 ## Commits Recientes
 
 ```
-ba2d0dc  feat(compliance): Fase 2 — Catálogos Regulatorios NOM-024/NOM-004  ← HEAD
+83c8d26  feat(compliance): Fase 3 — Privacidad LFPDPPP + MFA enforcement  ← HEAD
+ba2d0dc  feat(compliance): Fase 2 — Catálogos Regulatorios NOM-024/NOM-004
 066ba7c  feat(compliance): NOM-004/NOM-024 — Fase 0 + Fase 1 completa
 1715e67  fix(roles): eliminar confianza ciega en sessionStorage — siempre verificar JWT
 a92aa77  fix(roles): ADMIN/STAFF — filtro confiable, limit cobros 200, limpiar doctorId viejo
@@ -254,46 +255,44 @@ a92aa77  fix(roles): ADMIN/STAFF — filtro confiable, limit cobros 200, limpiar
 
 ---
 
-## Inicio de la Fase 3 — Guía para el próximo chat
+## Inicio de la Fase 4 — Guía para el próximo chat
 
 ### Objetivo
-Implementar los requisitos de privacidad LFPDPPP y acceso seguro:
-1. **UI aviso de privacidad** al registrar paciente
-2. **Módulo ARCO básico** (export, rectificación, cancelación)
-3. **MFA** Supabase Auth para ADMIN/DOCTOR
+Infraestructura de calidad: CI/CD, tests de integración, staging y limpieza de sesión.
 
-### Tarea 3.1 — UI Aviso de Privacidad
-
-**Estado actual:** Los campos `privacyConsentAt` y `dataConsentAt` existen en `Patient` pero no hay UI que los capture. El registro de paciente es el formulario en `apps/web/src/app/(dashboard)/pacientes/`.
+### Tarea 4.1 — CI/CD GitHub Actions
 
 **Qué construir:**
-1. Modal en el formulario de registro de paciente (nuevo y edición) con:
-   - Texto del aviso de privacidad simplificado (LFPDPPP)
-   - Checkbox "He leído y acepto el aviso de privacidad"
-   - Checkbox "Acepto el tratamiento de mis datos para fines médicos"
-   - Timestamp de consentimiento → `privacyConsentAt` y `dataConsentAt`
-2. Validación: no se puede crear paciente sin ambos checkboxes marcados
-3. El `PATCH /api/patients/:id` ya acepta estos campos
+- `.github/workflows/ci.yml`: en cada PR → `pnpm lint` + `pnpm typecheck` en ambos workspaces
+- `.github/workflows/deploy.yml`: en push a `main` → trigger deploy Vercel vía `vercel --prod`
+- Secretos necesarios en GitHub: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_WEB_PROJECT_ID`, `VERCEL_API_PROJECT_ID`
 
-### Tarea 3.2 — Módulo ARCO básico
+### Tarea 4.2 — Tests de integración
 
 **Qué construir:**
-1. `GET /api/patients/:id/data-export` → devuelve JSON con todo el expediente del paciente (datos personales, notas, recetas, resultados de laboratorio). Solo ADMIN/DOCTOR de la misma clínica.
-2. `PATCH /api/patients/:id` ya permite Rectificación (campos del perfil).
-3. Cancelación: `PATCH /api/patients/:id` con `{ isActive: false }` + `deletedReason` (campo nuevo).
-4. Frontend: tab "Privacidad" en la configuración o en el expediente del paciente.
+- Framework: Vitest + `supertest` o Fastify `inject()`
+- Rutas críticas a cubrir:
+  - `POST /api/appointments` → auditLog generado
+  - `DELETE /api/patients/:id` → soft delete (isActive: false)
+  - `PATCH /api/configuracion/clinic` → rechaza si role !== ADMIN
+  - `GET /api/patients/:id/data-export` → rechaza si role === STAFF
 
-### Tarea 3.3 — MFA Supabase Auth
+### Tarea 4.3 — Staging
 
 **Qué construir:**
-1. Habilitar TOTP en Supabase Auth (Auth → MFA en el dashboard de Supabase — proyecto `gzojhcjymqtjswxqgkgk`)
-2. Frontend: pantalla de enrolamiento MFA al primer login de ADMIN/DOCTOR
-3. Verificar en `apps/web/src/middleware.ts` (si existe) o en el layout protegido
+- Nuevo proyecto Supabase (branch o proyecto separado) para staging
+- Proyecto Vercel "staging" con env vars apuntando al Supabase de staging
+- Branch `staging` → auto-deploya a Vercel staging
 
-**Archivos relevantes Fase 3:**
-- `apps/web/src/app/(dashboard)/pacientes/` → formulario de paciente
-- `apps/api/src/routes/patients.ts` → agregar endpoint ARCO
-- `apps/web/src/lib/api.ts` → agregar `api.patients.dataExport(id)`
+### Tarea 4.4 — sessionCache.clear() en logout
+
+**Estado actual:** el ADMIN puede cerrar sesión y un nuevo DOCTOR en la misma máquina podría ver caché del anterior en sessionStorage.
+
+**Archivos relevantes:**
+- `apps/web/src/components/layout/sidebar.tsx` → función de logout
+- `apps/web/src/lib/api.ts` → `sessionCache.clear()` ya existe
+
+**Qué hacer:** En el handler de logout del Sidebar, llamar `sessionCache.clear()` antes de `supabase.auth.signOut()`.
 
 ---
 
