@@ -1,5 +1,5 @@
 # MedClinic Pro — Handoff Completo
-**Última actualización:** 2026-04-16 | **Branch:** `main` | **Último commit:** `83c8d26`
+**Última actualización:** 2026-04-16 | **Branch:** `main` | **Último commit:** `5888b5f`
 
 ---
 
@@ -14,6 +14,7 @@
 | DB | Supabase `gzojhcjymqtjswxqgkgk` (sa-east-1) |
 | Auth | Supabase Auth — roles en `user_metadata.role` |
 | Email | Resend, sender `medclinic@glasshaus.mx` |
+| Package manager | pnpm workspaces |
 
 **Vercel:**
 - Team: `team_5b8HfRA7B0605D5MRa2BQ6qA`
@@ -21,17 +22,26 @@
 - API project: `prj_n6FzzeQYAsdUyEt12UNSC9kYQbqa`
 - Deploy: `git push origin main` → Vercel auto-deploya ambos proyectos
 
+**Prisma:**
+- Schema: `apps/api/prisma/schema.prisma`
+- Output: `apps/api/generated/` (NO está en git — se regenera con `prisma generate` en build Vercel)
+- `apps/api/vercel.json` tiene `buildCommand: "prisma generate"` + `includeFiles: "generated/**"`
+
 ---
 
-## Usuarios de Prueba (clínica `cmnr49xsl00004ev0ziey0sk2`)
+## Usuarios de Producción (clínica `cmnr49xsl00004ev0ziey0sk2`)
 
-| Nombre | Rol JWT | Rol DB | doctor_id |
+| Nombre | Email | Rol JWT | doctor_id |
 |---|---|---|---|
-| Gerardo Horta | ADMIN | DOCTOR | `cmnr49y8g00024ev0so8uwvv6` |
-| Paulina González | DOCTOR | DOCTOR | `cmnxdxb1v0001o52vmfj5tfmz` |
-| Martha López | STAFF | STAFF | `cmnt6otqv00011qlg9t6l09vw` ← tiene record Doctor pero no es médica |
+| Gerardo Horta | `c5@b2d.mx` | ADMIN | `cmnr49y8g00024ev0so8uwvv6` |
+| Paulina González | `paulina@b2d.mx` | DOCTOR | `cmnxdxb1v0001o52vmfj5tfmz` |
+| Marcela Altamirano | `mrcaltamiranochan@gmail.com` | ADMIN | `cmo0ooqzo0001olngedne3gdr` |
+| Martha López | `mlopez@b2d.mx` | STAFF | `cmnt6otqv00011qlg9t6l09vw` |
 
 **SuperAdmin platform:** `ghorta74@gmail.com` (contraseña en gestor de contraseñas) → `/superadmin`
+
+> ⚠️ **Martha López** tiene un record `Doctor` en DB con `role: STAFF` — NO borrar, tiene citas históricas asignadas.
+> ⚠️ Hay 6 registros de doctor desactivados (`isActive: false`) que son duplicados de prueba — no reactivar.
 
 ---
 
@@ -48,8 +58,12 @@
 | Reasignar cita | ❌ | ✅ | ✅ |
 | Firmar nota clínica | ✅ solo propias | ✅ cualquiera en clínica | ❌ |
 | Ver expediente clínico | ✅ sus pacientes | ✅ toda la clínica | ✅ solo lectura |
+| Exportar expediente ARCO | ✅ sus pacientes | ✅ toda la clínica | ❌ (403) |
 | Configuración clínica | ❌ | ✅ | ❌ |
 | Gestión usuarios / roles | ❌ | ✅ | ❌ |
+| MFA requerido | ✅ banner | ✅ banner | ❌ |
+
+**Plan PRO limits (clínica actual):** 4 Médicos+Admins / 1 Administrativo (STAFF)
 
 ---
 
@@ -58,7 +72,7 @@
 `agenda/page.tsx` y `cobros/page.tsx` siempre verifican JWT en mount. **Nunca** bootstrapear rol desde sessionStorage.
 
 ```typescript
-// Estado inicia en null/false — NUNCA bootstrapped desde sessionStorage
+// ✅ CORRECTO — estado inicia en null, siempre verifica JWT
 const [userRole, setUserRole] = useState<string | null>(null)
 const [roleReady, setRoleReady] = useState(false)
 
@@ -86,105 +100,157 @@ useEffect(() => {
 }, [])
 ```
 
-**OBSOLETO — NO usar:**
 ```typescript
-// ❌ este patrón era el bug (datos cruzados entre usuarios)
+// ❌ OBSOLETO — NO usar (causaba datos cruzados entre usuarios)
 const [userRole] = useState(() => sessionCache.getRole())
 if (sessionCache.getRole()) return
 ```
 
 ---
 
-## Estado de Cumplimiento NOM-004 / NOM-024
+## Estado de Cumplimiento NOM-004 / NOM-024 / LFPDPPP
 
-### ✅ Completado — Fase 0 + Fase 1 (commit `066ba7c`, 2026-04-15)
+### ✅ Fase 0 + Fase 1 — NOM-004 Base (commit `066ba7c`, 2026-04-15)
 
 | Item | Descripción | Archivos |
 |---|---|---|
-| **Bucket privado** | `clinical-files` → `public: false` en Supabase. Todos los archivos clínicos requieren signed URL (1h). Upload guarda path relativo, no URL pública. | `lib/supabase.ts`, `lab-results.ts` |
+| **Bucket privado** | `clinical-files` → `public: false`. Archivos clínicos requieren signed URL (1h). Upload guarda path relativo, no URL pública. | `lib/supabase.ts`, `lab-results.ts` |
 | **Soft delete LabResult** | `deletedAt TIMESTAMPTZ` — retención 5 años NOM-004. El archivo en Storage NO se borra. | `schema.prisma`, `lab-results.ts` |
-| **requireAdmin en PATCH /clinic** | Solo ADMIN/SUPER_ADMIN pueden modificar datos de la clínica. | `configuracion.ts` |
-| **auditLog en appointments** | `POST /appointments` y `PATCH /:id` normal ahora generan registro de auditoría. | `appointments.ts` |
-| **IP + User-Agent en auditoría** | Todos los `auditLog()` capturan `request.ip` y `user-agent`. | `audit.ts` + 5 rutas |
-| **Hard fail en auditLog** | Si el log de auditoría falla, la operación lanza error (no silencio). Operaciones fire-and-forget usan `.catch()` explícito. | `audit.ts` |
+| **requireAdmin en PATCH /clinic** | Solo ADMIN/SUPER_ADMIN modifican datos de la clínica. | `configuracion.ts` |
+| **auditLog completo** | `POST/PATCH /appointments`, `/patients`, `/clinical-notes`, `/lab-results` — todos generan audit trail. | `audit.ts` + rutas |
+| **IP + User-Agent en auditoría** | Todos los `auditLog()` capturan `request.ip` y `user-agent` en metadata. | `audit.ts` |
+| **Hard fail en auditLog** | Si el log falla, la operación lanza error (no silencio). Fire-and-forget usa `.catch()` explícito. | `audit.ts` |
 | **Validación CURP algorítmica** | Dígito verificador RENAPO — no solo `length(18)`. | `patients.ts` |
-| **PDF receta → nota FIRMADA** | `POST /generate-pdf` verifica `clinicalNote.status === 'SIGNED'` antes de generar. | `prescriptions.ts` |
-| **Enmienda → firmar antes de segunda** | `POST /:id/amend` bloquea nueva enmienda si ya existe una en DRAFT sin firmar. | `clinical-notes.ts` |
+| **PDF receta → nota FIRMADA** | `POST /generate-pdf` verifica `clinicalNote.status === 'SIGNED'`. | `prescriptions.ts` |
+| **Enmienda → firmar antes de segunda** | `POST /:id/amend` bloquea si ya hay una enmienda DRAFT sin firmar. | `clinical-notes.ts` |
 | **Etiqueta IA en llmSummary** | Guarda `llmSummaryGeneratedAt` y `llmProvider` al crear resumen con Claude. | `lab-results.ts` |
-| **Versión semántica** | `package.json v1.0.0` + `GET /health` expone `version` y `app`. | `server.ts`, `package.json` |
-| **Credenciales fuera del repo** | Contraseña SuperAdmin eliminada de HANDOFF.md. `.gitignore` cubre `apps/**/.env`. | `HANDOFF.md`, `.gitignore` |
+| **Versión semántica** | `package.json v1.0.0` + `GET /health` expone `version` y `app`. | `server.ts` |
+| **Credenciales fuera del repo** | `.gitignore` cubre `apps/**/.env` y `apps/api/generated/`. | `.gitignore` |
 
-### ✅ Fase 2 — Completada (commit `ba2d0dc`, 2026-04-16)
+### ✅ Fase 2 — Catálogos NOM-024 (commit `ba2d0dc`, 2026-04-16)
 
 | Item | Descripción | Estado |
 |---|---|---|
-| **2.1 CIE-10 completo** | Tabla `cie10_codes` + 247 códigos SSA en prod. `GET /api/catalogs/cie10?q=`. `note-editor.tsx` usa búsqueda async con debounce 300ms. `seed-catalogs.ts` soporta `--csv=` para los ~70k completos. | ✅ |
-| **2.2 CUM** | Campo `cumKey` en `medications`. 112 medicamentos COFEPRIS en prod. `GET /api/catalogs/cum?q=`. | ✅ |
+| **2.1 CIE-10** | Tabla `cie10_codes` + 247 códigos SSA México en prod. `GET /api/catalogs/cie10?q=`. `note-editor.tsx` búsqueda async debounce 300ms + spinner. `seed-catalogs.ts` acepta `--csv=` para los ~70k completos. | ✅ |
+| **2.2 CUM COFEPRIS** | Campo `cumKey` en `Medication`. 112 medicamentos en prod. `GET /api/catalogs/cum?q=`. | ✅ |
 | **2.3 Validaciones vitales** | `VitalSignsSchema`: sistólica 60-250, diastólica 40-150, FC 20-300, temp 34-42°C, FR 5-60, glucosa 20-600. | ✅ |
 
 **Para cargar CIE-10 completo (~70k):**
 ```bash
 cd apps/api && npx tsx prisma/seed-catalogs.ts --csv=/ruta/CIE10_SSA.csv
-# CSV: https://www.paho.org/es/clasificacion-internacional-enfermedades
+# CSV oficial: https://www.paho.org/es/clasificacion-internacional-enfermedades
 ```
 
 ### ✅ Fase 3 — Privacidad LFPDPPP + MFA (commit `83c8d26`, 2026-04-16)
 
 | Item | Descripción | Estado |
 |---|---|---|
-| **3.1 UI aviso de privacidad** | `new-patient-dialog.tsx`: aviso LFPDPPP expandible, doble checkbox (`privacyConsentAt` + `dataConsentAt`), requerido para crear paciente. | ✅ |
-| **3.2 Módulo ARCO** | `GET /api/patients/:id/data-export` — exporta expediente completo (solo ADMIN/DOCTOR), audit trail con `reason: ARCO_ACCESS`. `api.patients.dataExport(id)` en cliente web. | ✅ |
-| **3.3 MFA TOTP** | `/mfa-setup`: enrolamiento paso a paso (QR + entrada manual). Login: segundo paso TOTP cuando factor verified. Dashboard layout: banner amber para ADMIN/DOCTOR sin MFA (dismissable por sesión vía `_mc_mfa_dismissed`). | ✅ |
+| **3.1 Aviso de privacidad** | `new-patient-dialog.tsx`: aviso LFPDPPP expandible, doble checkbox (`privacyConsentAt` + `dataConsentAt`), requerido para crear paciente. | ✅ |
+| **3.2 ARCO — Acceso** | `GET /api/patients/:id/data-export` — exporta JSON completo (datos, citas, notas, recetas, labs, seguros). Solo ADMIN/DOCTOR. Audit trail `action: EXPORT, reason: ARCO_ACCESS`. | ✅ |
+| **3.3 MFA TOTP** | `/mfa-setup`: enrolamiento TOTP paso a paso (QR + clave manual + verificación). Login: segundo paso TOTP cuando factor verificado. Dashboard: banner amber para ADMIN/DOCTOR sin MFA (dismissable por sesión vía `_mc_mfa_dismissed` en sessionStorage). | ✅ |
 
-### 🔲 Fase 4 — Infraestructura
+### ✅ QA Fix — Sección Usuarios (commit `5888b5f`, 2026-04-16)
 
-| Item | Descripción |
+| Item | Fix |
 |---|---|
-| **4.1 CI/CD** | GitHub Actions: lint + typecheck en cada PR. |
-| **4.2 Tests de integración** | Rutas críticas: sign, soft delete, requireAdmin. |
-| **4.3 Staging** | Proyecto Vercel + Supabase branch separados. |
-| **4.4 sessionCache.clear() en logout** | Layout: limpiar cache al hacer sign out. |
-
-### 🔲 Fase 5 — Interoperabilidad (no bloquea certificación v1)
-
-FHIR R4: `Patient`, `Encounter`, `MedicationRequest`. WhatsApp audit trail. ARCO completo.
+| **"d" bajo nombre de Gerardo** | Especialidad solo se muestra para rol DOCTOR con valor > 1 caracter |
+| **Label "Médicos" inexacto** | Renombrado a "Médicos y Admins" (el cupo incluye rol ADMIN) |
+| **Barra de límite sin feedback** | Cuando `usado >= límite`: color rojo + label "Límite alcanzado" |
+| **Acciones truncadas ("Ca...")** | Layout `flex-col + flex-wrap`: acciones primarias en fila 1, cambios de rol en fila 2 |
+| **"Cambiar a Médico" ambiguo** | Renombrado a "Quitar Admin" |
+| **DB: specialty = "d"** | Limpiado a `""` en Gerardo Horta (`cmnr49y8g`) |
+| **DB: "Marcela " trailing space** | Corregido a `"Marcela"` |
+| **DB: 6 registros de prueba activos** | Desactivados (`isActive = false`): g/g/g, ADMIN/ADMIN, 3 Gerardos duplicados, Gerardo Iturriaga |
 
 ---
 
-## Archivos Clave
+## Fase 4 — Infraestructura (PRÓXIMA)
+
+### Objetivo
+CI/CD, tests de integración, staging environment, limpieza de sesión al logout.
+
+### 4.1 — CI/CD GitHub Actions
+
+```yaml
+# .github/workflows/ci.yml — en cada PR
+- pnpm lint (apps/web + apps/api)
+- pnpm typecheck
+```
+
+Secretos requeridos en GitHub: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_WEB_PROJECT_ID`, `VERCEL_API_PROJECT_ID`
+
+### 4.2 — Tests de integración
+
+Framework sugerido: **Vitest** + Fastify `inject()` (sin red real).
+
+Rutas críticas mínimas:
+- `POST /api/appointments` → auditLog se crea
+- `DELETE /api/patients/:id` → soft delete (`isActive: false`), no borrado físico
+- `PATCH /api/configuracion/clinic` → rechaza `role !== ADMIN` con 403
+- `GET /api/patients/:id/data-export` → rechaza `role === STAFF` con 403
+
+### 4.3 — Staging
+
+- Nuevo proyecto Supabase para staging (branch o proyecto separado)
+- Proyecto Vercel "medclinic-staging" apuntando al Supabase de staging
+- Branch `staging` → auto-deploya a Vercel staging
+
+### 4.4 — sessionCache.clear() en logout
+
+**Archivo:** `apps/web/src/components/layout/sidebar.tsx`
+**Qué hacer:** Llamar `sessionCache.clear()` **antes** de `supabase.auth.signOut()` en el handler de logout.
+
+---
+
+## Fase 5 — Interoperabilidad (no bloquea certificación v1)
+
+- FHIR R4: recursos `Patient`, `Encounter`, `MedicationRequest`
+- ARCO completo: Rectificación (UI), Cancelación (UI con `deletedReason`), Oposición
+- WhatsApp audit trail completo
+
+---
+
+## Archivos Clave del Proyecto
 
 ### Backend (`apps/api/src/`)
 
 | Archivo | Responsabilidad |
 |---|---|
 | `middleware/auth.ts` | `authenticate()`, `requireRoles()`, `requireDoctor`, `requireStaff`, `requireAdmin` |
-| `middleware/audit.ts` | `auditLog(params)` — append-only, hard fail, captura IP+UA en metadata |
+| `middleware/audit.ts` | `auditLog(params)` — append-only, hard fail, captura IP+UA |
 | `lib/supabase.ts` | `supabase` client, `verifySupabaseToken()`, `getSignedFileUrl()`, `getSignedFileUrls()` |
 | `lib/prisma.ts` | Singleton Prisma client |
 | `routes/appointments.ts` | CRUD citas, takeover, reasignación, availability — con auditLog completo |
-| `routes/patients.ts` | CRUD pacientes, CURP validado algorítmicamente, soft delete |
+| `routes/patients.ts` | CRUD pacientes, CURP algorítmico, soft delete, ARCO export |
 | `routes/clinical-notes.ts` | SOAP notes, firma electrónica, enmiendas NOM-004 |
 | `routes/prescriptions.ts` | Recetas, PDF (requiere nota FIRMADA), WhatsApp |
-| `routes/lab-results.ts` | Resultados lab, upload a Storage privado, signed URLs, soft delete, AI summary |
+| `routes/lab-results.ts` | Resultados lab, upload Storage privado, signed URLs, soft delete, AI summary |
 | `routes/billing.ts` | Facturas e ingresos — filtro por rol |
-| `routes/configuracion.ts` | Config clínica (PATCH requiere ADMIN), médicos, horarios, usuarios |
-| `prisma/schema.prisma` | Schema completo — ver sección DB más abajo |
+| `routes/configuracion.ts` | Config clínica (PATCH → ADMIN), médicos, horarios, usuarios, roles |
+| `routes/catalogs.ts` | `GET /api/catalogs/cie10?q=` y `/cum?q=` — requieren `requireStaff` |
+| `prisma/schema.prisma` | Schema completo |
+| `prisma/seed-catalogs.ts` | Seed CIE-10 (247 codes) + CUM (112 meds), acepta `--csv=` |
 
 ### Frontend (`apps/web/src/`)
 
 | Archivo | Responsabilidad |
 |---|---|
-| `lib/api.ts` | Cliente API, `getUserRole()`, `getOwnDoctorId()`, `sessionCache`, `readCache/writeCache` |
+| `lib/api.ts` | Cliente API, `getUserRole()`, `getOwnDoctorId()`, `sessionCache`, `readCache/writeCache`, `api.catalogs`, `api.patients.dataExport()` |
+| `app/(auth)/login/page.tsx` | Login con segundo paso TOTP si factor verificado |
+| `app/(dashboard)/layout.tsx` | Banner MFA para ADMIN/DOCTOR sin TOTP configurado |
+| `app/mfa-setup/page.tsx` | Enrolamiento TOTP paso a paso (QR + manual + verificación) |
 | `app/(dashboard)/agenda/page.tsx` | Lista citas — patrón JWT-first correcto |
 | `app/(dashboard)/cobros/page.tsx` | Facturas — patrón JWT-first correcto |
-| `app/(dashboard)/configuracion/page.tsx` | Configuración clínica — tabs por rol |
+| `app/(dashboard)/configuracion/page.tsx` | Config clínica — tabs por rol, sección usuarios corregida |
 | `app/(dashboard)/pacientes/[id]/page.tsx` | Expediente paciente |
+| `components/patients/new-patient-dialog.tsx` | Formulario nuevo paciente + aviso LFPDPPP expandible + doble consentimiento |
+| `components/clinical-notes/note-editor.tsx` | Editor SOAP, búsqueda CIE-10 async con debounce 300ms |
 
 ---
 
 ## Estado de la DB (Supabase `gzojhcjymqtjswxqgkgk`)
 
-### Columnas agregadas con SQL (fuera de Prisma migrations)
+### Tablas con columnas agregadas vía SQL (fuera de Prisma migrations)
 
 ```sql
 -- patients
@@ -201,6 +267,10 @@ ALTER TABLE lab_results ADD COLUMN IF NOT EXISTS "llmSummaryGeneratedAt" TIMESTA
 ALTER TABLE lab_results ADD COLUMN IF NOT EXISTS "llmProvider" TEXT;
 CREATE INDEX IF NOT EXISTS idx_lab_results_not_deleted
   ON lab_results ("clinicId", "patientId") WHERE "deletedAt" IS NULL;
+
+-- cie10_codes (nueva tabla, Fase 2)
+-- Creada vía prisma migrate / apply_migration con modelo Cie10Code
+-- 247 códigos SSA México ya insertados en prod
 ```
 
 ### Índices existentes
@@ -211,19 +281,48 @@ CREATE INDEX IF NOT EXISTS idx_invoice_created ON "Invoice" ("createdAt");
 CREATE INDEX IF NOT EXISTS idx_payment_invoice ON "PaymentRecord" ("invoiceId");
 CREATE INDEX IF NOT EXISTS idx_payment_paid ON "PaymentRecord" ("paidAt");
 CREATE INDEX IF NOT EXISTS idx_doctor_clinic_active ON "Doctor" ("clinicId", "isActive");
+CREATE INDEX IF NOT EXISTS idx_cie10_code ON cie10_codes (code);
+CREATE INDEX IF NOT EXISTS idx_cie10_description ON cie10_codes (description);
 ```
 
 ### Storage
 - Bucket `clinical-files`: **privado** (`public: false`) desde 2026-04-15.
-- Archivos se suben con path relativo (ej. `lab-results/clinicId/id/ts-file.pdf`).
-- Los GETs generan signed URLs de 1 hora vía `getSignedFileUrl()` / `getSignedFileUrls()`.
-- Registros previos con URL completa (`https://...`) también se manejan por la función `toStoragePath()`.
+- Path de archivos: `lab-results/{clinicId}/{id}/{timestamp}-{filename}`
+- GET de archivos: `getSignedFileUrl()` / `getSignedFileUrls()` → signed URL con TTL 1h.
+- Registros legacy con URL completa (`https://...`) se manejan por `toStoragePath()`.
 
-### Facturas de prueba
+### Datos de prueba en prod
 ```
-INV-001 a INV-006  →  Gerardo Horta (ADMIN)
-INV-007 a INV-009  →  Paulina González (DOCTOR)
-INV-010            →  Gerardo Horta (ADMIN)
+Citas:    14 asignadas a Gerardo, 4 a Paulina, 1 a Martha
+Facturas: INV-001 a INV-006 → Gerardo | INV-007 a INV-009 → Paulina | INV-010 → Gerardo
+CIE-10:   247 códigos SSA México activos en tabla cie10_codes
+CUM:      112 medicamentos COFEPRIS activos en tabla medications
+```
+
+### Queries útiles de depuración
+```sql
+-- Usuarios activos de la clínica
+SELECT id, "firstName", "lastName", role, specialty, "isActive"
+FROM doctors WHERE "isActive" = true ORDER BY role, "lastName";
+
+-- Audit log reciente
+SELECT "userId", action, "resourceType", "resourceId", ip, "createdAt"
+FROM audit_logs ORDER BY "createdAt" DESC LIMIT 20;
+
+-- Verificar export ARCO
+SELECT action, "resourceType", metadata, "createdAt"
+FROM audit_logs WHERE action = 'EXPORT' ORDER BY "createdAt" DESC;
+
+-- Soft-deleted lab results (retención NOM-004)
+SELECT id, title, "deletedAt" FROM lab_results WHERE "deletedAt" IS NOT NULL;
+
+-- Consentimientos LFPDPPP
+SELECT "firstName", "lastName", "privacyConsentAt", "dataConsentAt"
+FROM patients WHERE "privacyConsentAt" IS NOT NULL ORDER BY "createdAt" DESC LIMIT 10;
+
+-- Facturas
+SELECT "invoiceNumber", "doctorId", status, total, "issuedAt"
+FROM invoices ORDER BY "issuedAt" DESC LIMIT 20;
 ```
 
 ---
@@ -231,7 +330,10 @@ INV-010            →  Gerardo Horta (ADMIN)
 ## Commits Recientes
 
 ```
-83c8d26  feat(compliance): Fase 3 — Privacidad LFPDPPP + MFA enforcement  ← HEAD
+5888b5f  fix(usuarios): corregir sección equipo — datos y UX  ← HEAD
+2d0291d  docs: marcar Fase 3 completa en HANDOFF — próxima Fase 4
+83c8d26  feat(compliance): Fase 3 — Privacidad LFPDPPP + MFA enforcement
+b4b11a2  chore: gitignore generated/, actualizar HANDOFF y memory Fase 2
 ba2d0dc  feat(compliance): Fase 2 — Catálogos Regulatorios NOM-024/NOM-004
 066ba7c  feat(compliance): NOM-004/NOM-024 — Fase 0 + Fase 1 completa
 1715e67  fix(roles): eliminar confianza ciega en sessionStorage — siempre verificar JWT
@@ -246,64 +348,26 @@ a92aa77  fix(roles): ADMIN/STAFF — filtro confiable, limit cobros 200, limpiar
 1. **NO `@fastify/compress`** — incompatible con Vercel serverless (streaming zlib)
 2. **NO bootstrapear rol desde sessionStorage** — siempre verificar JWT en `init()` al mount
 3. **NO `getSchedule()`** para obtener doctorId — usar `getOwnDoctorId()` del JWT
-4. **Supabase client:** singleton en `lib/api.ts` (frontend) y `lib/supabase.ts` (backend) — nunca instanciar dentro de un componente
-5. **Martha López:** tiene Doctor record en DB — no borrar, tiene citas históricas asignadas
-6. **Cobros limit:** `200` facturas — no bajar a 50 (las primeras 6 facturas desaparecían con límite anterior)
-7. **LabResult delete:** SIEMPRE soft delete (`deletedAt`) — nunca `prisma.labResult.delete()` — retención NOM-004 5 años
-8. **Bucket `clinical-files`:** privado — nunca volver a `public: true`. Usar `getSignedFileUrl()` para servir archivos.
-9. **auditLog():** ahora lanza en lugar de silenciar — llamadas fire-and-forget deben usar `.catch(console.error)` explícito
-
----
-
-## Inicio de la Fase 4 — Guía para el próximo chat
-
-### Objetivo
-Infraestructura de calidad: CI/CD, tests de integración, staging y limpieza de sesión.
-
-### Tarea 4.1 — CI/CD GitHub Actions
-
-**Qué construir:**
-- `.github/workflows/ci.yml`: en cada PR → `pnpm lint` + `pnpm typecheck` en ambos workspaces
-- `.github/workflows/deploy.yml`: en push a `main` → trigger deploy Vercel vía `vercel --prod`
-- Secretos necesarios en GitHub: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_WEB_PROJECT_ID`, `VERCEL_API_PROJECT_ID`
-
-### Tarea 4.2 — Tests de integración
-
-**Qué construir:**
-- Framework: Vitest + `supertest` o Fastify `inject()`
-- Rutas críticas a cubrir:
-  - `POST /api/appointments` → auditLog generado
-  - `DELETE /api/patients/:id` → soft delete (isActive: false)
-  - `PATCH /api/configuracion/clinic` → rechaza si role !== ADMIN
-  - `GET /api/patients/:id/data-export` → rechaza si role === STAFF
-
-### Tarea 4.3 — Staging
-
-**Qué construir:**
-- Nuevo proyecto Supabase (branch o proyecto separado) para staging
-- Proyecto Vercel "staging" con env vars apuntando al Supabase de staging
-- Branch `staging` → auto-deploya a Vercel staging
-
-### Tarea 4.4 — sessionCache.clear() en logout
-
-**Estado actual:** el ADMIN puede cerrar sesión y un nuevo DOCTOR en la misma máquina podría ver caché del anterior en sessionStorage.
-
-**Archivos relevantes:**
-- `apps/web/src/components/layout/sidebar.tsx` → función de logout
-- `apps/web/src/lib/api.ts` → `sessionCache.clear()` ya existe
-
-**Qué hacer:** En el handler de logout del Sidebar, llamar `sessionCache.clear()` antes de `supabase.auth.signOut()`.
+4. **Supabase client:** singleton a nivel módulo — nunca instanciar dentro de un componente
+5. **Martha López:** tiene Doctor record (`cmnt6otqv`) — NO borrar, tiene citas históricas
+6. **Registros de prueba:** 6 doctors con `isActive: false` — NO reactivar
+7. **Cobros limit:** `200` facturas — no bajar (las primeras 6 desaparecían con límite 50)
+8. **LabResult delete:** SIEMPRE soft delete (`deletedAt`) — nunca `prisma.labResult.delete()`
+9. **Bucket `clinical-files`:** privado — nunca volver a `public: true`
+10. **auditLog():** lanza en lugar de silenciar — fire-and-forget usa `.catch(console.error)`
+11. **apps/api/generated/:** NO commitar — se regenera con `prisma generate` en build Vercel
+12. **Especialidad en tabla usuarios:** solo mostrar si `role === 'DOCTOR'` y `length > 1`
 
 ---
 
 ## Performance — Arquitectura Vigente
 
-1. `layout.tsx` → `warmupApi()` al montar (pre-calienta serverless en Vercel)
-2. `sessionCache` → rol + doctorId guardados después de verificar JWT (0ms lectura, ~100ms verificación en mount)
-3. `readCache/writeCache` → datos de listas en sessionStorage con TTL 3 min
+1. `layout.tsx` → `warmupApi()` al montar (pre-calienta serverless Vercel)
+2. `sessionCache` → rol + doctorId guardados post-JWT (0ms lectura, ~100ms verificación en mount)
+3. `readCache/writeCache` → listas en sessionStorage TTL 3 min
 4. In-memory cache para `/doctors`, `/services`, `/types` (TTL 5-10 min) en `api.ts`
 5. Backend: queries paralelas con `Promise.all()`, fire-and-forget para WhatsApp/email
-6. `getSignedFileUrls()` usa batch `createSignedUrls()` de Supabase para minimizar round-trips en listas
+6. `getSignedFileUrls()` usa batch `createSignedUrls()` de Supabase — minimiza round-trips
 
 ---
 
@@ -312,23 +376,15 @@ Infraestructura de calidad: CI/CD, tests de integración, staging y limpieza de 
 1. DevTools → Application → Session Storage → revisar `_mc_role` y `_mc_did`
 2. Si no corresponden al usuario → `Cmd+Shift+R` (hard refresh)
 3. Si persiste → verificar que `agenda/page.tsx` y `cobros/page.tsx` NO tengan `if (sessionCache.getRole()) return`
-4. Supabase MCP project `gzojhcjymqtjswxqgkgk`:
-
-```sql
-SELECT id, "firstName", "lastName", role, "clinicId" FROM doctors ORDER BY "createdAt";
-SELECT "invoiceNumber", "doctorId", "status", "total", "issuedAt" FROM invoices ORDER BY "issuedAt";
-SELECT id, "doctorId", "status", "startsAt" FROM appointments ORDER BY "startsAt" DESC LIMIT 20;
--- Verificar soft-deleted lab results
-SELECT id, title, "deletedAt" FROM lab_results WHERE "deletedAt" IS NOT NULL;
-```
+4. MFA banner que no aparece → borrar `_mc_mfa_dismissed` de Session Storage
 
 ---
 
-## Pendientes de Baja Prioridad
+## Pendientes / Deuda Técnica (Baja Prioridad)
 
-- `sessionCache.clear()` en logout (cubierto por detección de cambio de cuenta)
 - Paginación en cobros (límite actual 200)
-- WhatsApp PDF se invalida al editar receta
-- Nombre de clínica en header dashboard
-- Asistente IA KPIs no conectados a BD
+- WhatsApp PDF se invalida al editar receta (URL cambia al regenerar)
+- Nombre de clínica dinámico en header del dashboard
+- Asistente IA KPIs no conectados a BD real
 - `pdf.ts` línea 114 — error TypeScript pre-existente (no bloquea build ni deploy)
+- ARCO UI completo: pantalla de Rectificación y Cancelación en expediente del paciente
