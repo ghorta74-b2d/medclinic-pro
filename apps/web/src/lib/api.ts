@@ -216,6 +216,7 @@ export const api = {
     },
     get: (id: string) => request(`/api/patients/${id}`),
     timeline: (id: string) => request(`/api/patients/${id}/timeline`),
+    dataExport: (id: string) => request(`/api/patients/${id}/data-export`),
     create: (data: unknown) =>
       request('/api/patients', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: unknown) =>

@@ -288,6 +288,76 @@ export async function patientsRoutes(server: FastifyInstance) {
     return reply.send({ data: updated })
   })
 
+  // GET /api/patients/:id/data-export — ARCO (Acceso) — NOM-004 + LFPDPPP
+  // Solo ADMIN y DOCTOR; STAFF no puede exportar expediente completo
+  server.get('/:id/data-export', { preHandler: requireStaff }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { clinicId, authUserId, role } = request.authUser
+
+    if (role === 'STAFF') {
+      return reply.status(403).send({ error: { message: 'Acceso denegado. Solo médicos y administradores pueden exportar expedientes.' } })
+    }
+
+    const patient = await prisma.patient.findFirst({ where: { id, clinicId } })
+    if (!patient) return Errors.NOT_FOUND(reply, 'Patient')
+
+    // Fetch everything in parallel
+    const [appointments, clinicalNotes, prescriptions, labResults, insurances] = await Promise.all([
+      prisma.appointment.findMany({
+        where: { patientId: id, clinicId },
+        include: {
+          doctor: { select: { firstName: true, lastName: true, licenseNumber: true } },
+          appointmentType: { select: { name: true } },
+        },
+        orderBy: { startsAt: 'desc' },
+      }),
+      prisma.clinicalNote.findMany({
+        where: { patientId: id, clinicId },
+        include: {
+          doctor: { select: { firstName: true, lastName: true, licenseNumber: true } },
+          vitalSigns: true,
+          prescriptions: { include: { items: { include: { medication: { select: { name: true, cumKey: true } } } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.prescription.findMany({
+        where: { patientId: id, clinicId },
+        include: {
+          doctor: { select: { firstName: true, lastName: true } },
+          items: { include: { medication: { select: { name: true, cumKey: true } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.labResult.findMany({
+        where: { patientId: id, clinicId, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.insurance.findMany({ where: { patientId: id, isActive: true } }),
+    ])
+
+    await auditLog({
+      user: { authUserId, clinicId, role },
+      action: 'EXPORT',
+      resourceType: 'Patient',
+      resourceId: id,
+      metadata: { reason: 'ARCO_ACCESS', exportedAt: new Date().toISOString() },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
+    })
+
+    return reply.send({
+      data: {
+        exportedAt: new Date().toISOString(),
+        patient,
+        appointments,
+        clinicalNotes,
+        prescriptions,
+        labResults,
+        insurances,
+      },
+    })
+  })
+
   // DELETE /api/patients/:id — soft delete
   server.delete('/:id', { preHandler: requireStaff }, async (request, reply) => {
     const { id } = request.params as { id: string }

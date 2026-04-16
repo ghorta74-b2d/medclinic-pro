@@ -2,7 +2,28 @@
 
 import { useState } from 'react'
 import { api } from '@/lib/api'
-import { X } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react'
+
+const AVISO_PRIVACIDAD = `
+AVISO DE PRIVACIDAD SIMPLIFICADO
+
+Con fundamento en los artículos 15 y 16 de la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP), el responsable del tratamiento de sus datos personales es la clínica propietaria de este sistema (en adelante "la Clínica").
+
+DATOS QUE RECABAMOS
+Recabamos datos de identificación (nombre, CURP, fecha de nacimiento), datos de contacto (teléfono, correo electrónico, domicilio) y datos personales sensibles de salud (historial médico, diagnósticos, tratamientos, resultados de laboratorio y cualquier otra información relacionada con su estado de salud).
+
+FINALIDADES DEL TRATAMIENTO
+Sus datos personales son utilizados para: (i) brindarle atención médica integral; (ii) llevar su expediente clínico conforme a la NOM-004-SSA3-2012; (iii) enviarle notificaciones sobre citas y resultados; (iv) facturación y gestión administrativa de la Clínica.
+
+TRANSFERENCIAS
+Sus datos no serán transferidos a terceros sin su consentimiento, salvo las excepciones previstas en el artículo 37 de la LFPDPPP (autoridades de salud, obligaciones legales).
+
+DERECHOS ARCO
+Usted tiene derecho a Acceder, Rectificar, Cancelar u Oponerse al tratamiento de sus datos personales (derechos ARCO). Para ejercerlos, diríjase al responsable de privacidad de la Clínica.
+
+CAMBIOS AL AVISO
+Cualquier modificación a este aviso será notificada a través de los medios disponibles en la Clínica.
+`.trim()
 
 interface NewPatientDialogProps {
   onClose: () => void
@@ -18,6 +39,7 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [phoneDigits, setPhoneDigits] = useState('')
+  const [showAviso, setShowAviso] = useState(false)
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -214,31 +236,58 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
             </div>
           </div>
 
-          {/* Consent — LFPDPPP */}
-          <div className="bg-blue-50 rounded-lg p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-800">Consentimiento — LFPDPPP</h3>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.privacyConsent}
-                onChange={(e) => set('privacyConsent', e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600"
-              />
-              <span className="text-xs text-gray-700">
-                El paciente ha recibido y aceptado el <strong>Aviso de Privacidad</strong> de la clínica conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.
-              </span>
-            </label>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.dataConsent}
-                onChange={(e) => set('dataConsent', e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600"
-              />
-              <span className="text-xs text-gray-700">
-                El paciente otorga su <strong>consentimiento para el tratamiento de sus datos personales sensibles</strong> (datos de salud) con fines de atención médica.
-              </span>
-            </label>
+          {/* Consentimiento — LFPDPPP */}
+          <div className="border border-blue-200 rounded-xl overflow-hidden">
+            {/* Header */}
+            <div className="bg-blue-50 px-4 py-3 flex items-center gap-2 border-b border-blue-100">
+              <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+              <span className="text-sm font-semibold text-blue-900">Consentimiento — LFPDPPP</span>
+              <span className="ml-auto text-xs text-red-600 font-medium">Requerido *</span>
+            </div>
+
+            {/* Aviso expandible */}
+            <div className="bg-white px-4 py-3 space-y-3">
+              <button
+                type="button"
+                onClick={() => setShowAviso(!showAviso)}
+                className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+              >
+                {showAviso ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                {showAviso ? 'Ocultar aviso de privacidad' : 'Ver aviso de privacidad completo'}
+              </button>
+
+              {showAviso && (
+                <div className="bg-gray-50 rounded-lg p-3 max-h-48 overflow-y-auto border border-gray-200">
+                  <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
+                    {AVISO_PRIVACIDAD}
+                  </pre>
+                </div>
+              )}
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.privacyConsent}
+                  onChange={(e) => set('privacyConsent', e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                />
+                <span className="text-xs text-gray-700 leading-relaxed">
+                  El paciente ha recibido, leído y aceptado el <strong>Aviso de Privacidad</strong> de la clínica, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP).
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.dataConsent}
+                  onChange={(e) => set('dataConsent', e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                />
+                <span className="text-xs text-gray-700 leading-relaxed">
+                  El paciente otorga su <strong>consentimiento expreso para el tratamiento de sus datos personales sensibles</strong> (datos de salud, diagnósticos, tratamientos) con la finalidad exclusiva de recibir atención médica.
+                </span>
+              </label>
+            </div>
           </div>
 
           {error && (
