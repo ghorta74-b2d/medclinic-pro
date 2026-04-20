@@ -297,7 +297,7 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
     if (!clinic) return Errors.NOT_FOUND(reply, 'Clínica')
 
     const users = await prisma.doctor.findMany({
-      where: { clinicId },
+      where: { clinicId, isActive: true },
       orderBy: { createdAt: 'asc' },
     })
 
@@ -585,8 +585,10 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // ── DELETE /api/configuracion/users/:id ───────────────────────────────────
-  // Permanently removes a user from Supabase Auth and the Doctor table.
-  // Only ADMIN can delete; cannot delete another ADMIN.
+  // Removes a user from Supabase Auth and the Doctor table.
+  // If the doctor has historical data (appointments, prescriptions, notes)
+  // we do a soft-delete (isActive=false) to preserve referential integrity
+  // and NOM-004 retention. Only ADMIN can delete; cannot delete another ADMIN.
   fastify.delete('/users/:id', async (request, reply) => {
     const { id } = request.params as { id: string }
     const { clinicId, role: callerRole } = request.authUser
@@ -604,12 +606,27 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
 
     const supabaseAdmin = getSupabaseAdmin()
 
+    // Always revoke access in Supabase Auth first
     if (existing.authUserId) {
       await supabaseAdmin.auth.admin.deleteUser(existing.authUserId).catch(() => {})
     }
 
-    await prisma.doctor.delete({ where: { id } })
+    // Check if this doctor has historical records that must be preserved (NOM-004)
+    const [apptCount, noteCount, rxCount] = await Promise.all([
+      prisma.appointment.count({ where: { doctorId: id } }),
+      prisma.clinicalNote.count({ where: { doctorId: id } }),
+      prisma.prescription.count({ where: { doctorId: id } }),
+    ])
+    const hasHistory = apptCount > 0 || noteCount > 0 || rxCount > 0
 
-    return { data: { deleted: true } }
+    if (hasHistory) {
+      // Soft-delete: preserve records for audit/NOM-004, access already revoked above
+      await prisma.doctor.update({ where: { id }, data: { isActive: false, authUserId: null } })
+      return { data: { deleted: true, soft: true } }
+    }
+
+    // No history → safe to hard-delete
+    await prisma.doctor.delete({ where: { id } })
+    return { data: { deleted: true, soft: false } }
   })
 }
