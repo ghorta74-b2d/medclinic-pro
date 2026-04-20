@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { Loader2, ShieldCheck } from 'lucide-react'
 
@@ -11,6 +12,7 @@ const supabase = createBrowserClient(
 )
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -78,14 +80,12 @@ export default function LoginPage() {
   }
 
   function redirectByRole(role?: string) {
-    // Full-page navigation so middleware sees the fresh session cookie on the first request.
-    // router.push() (client-side) can race against cookie propagation and get stuck.
     if (role === 'SUPER_ADMIN') {
-      window.location.href = '/superadmin'
+      router.push('/superadmin')
     } else if (role === 'ADMIN' || role === 'STAFF') {
-      window.location.href = '/dashboard'
+      router.push('/dashboard')
     } else {
-      window.location.href = '/agenda'
+      router.push('/agenda')
     }
   }
 

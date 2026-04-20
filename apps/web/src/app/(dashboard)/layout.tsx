@@ -6,7 +6,7 @@ import { Roboto } from 'next/font/google'
 import { Sidebar } from '@/components/layout/sidebar'
 import { warmupApi, getUserRole } from '@/lib/api'
 import { createBrowserClient } from '@supabase/ssr'
-import { ShieldAlert, X } from 'lucide-react'
+import { ShieldAlert, X, Loader2 } from 'lucide-react'
 
 const roboto = Roboto({
   subsets: ['latin'],
@@ -30,13 +30,28 @@ export default function DashboardLayout({
 }) {
   const router = useRouter()
   const [showMfaBanner, setShowMfaBanner] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
 
   useEffect(() => {
-    // Pre-warm serverless para que el primer request al API sea rápido
-    warmupApi()
+    // ── Auth guard: redirige al login si no hay sesión activa ────────────
+    async function init() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          window.location.href = '/login'
+          return
+        }
+      } catch {
+        window.location.href = '/login'
+        return
+      }
 
-    // ── MFA check: solo para ADMIN y DOCTOR ─────────────────────────────
-    async function checkMfa() {
+      setAuthChecked(true)
+
+      // Pre-warm serverless para que el primer request al API sea rápido
+      warmupApi()
+
+      // ── MFA check: solo para ADMIN y DOCTOR ─────────────────────────────
       try {
         const role = await getUserRole()
         if (role !== 'ADMIN' && role !== 'DOCTOR') return
@@ -55,12 +70,21 @@ export default function DashboardLayout({
       }
     }
 
-    checkMfa()
+    init()
   }, [])
 
   function dismissBanner() {
     setShowMfaBanner(false)
     sessionStorage.setItem(MFA_DISMISSED_KEY, '1')
+  }
+
+  // Muestra spinner mientras se verifica la sesión — evita flash del dashboard sin auth
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+      </div>
+    )
   }
 
   return (
