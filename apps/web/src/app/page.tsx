@@ -1,6 +1,2 @@
-import { redirect } from 'next/navigation'
-
-// Root redirects to dashboard (middleware handles auth)
-export default function RootPage() {
-  redirect('/dashboard')
-}
+// Root serves the landing page — no redirect, no bounce
+export { default } from './landing/page'
