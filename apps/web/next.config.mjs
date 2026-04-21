@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['medclinic-shared'],
+  transpilePackages: ['medclinic-shared', '@vercel/analytics'],
   images: {
     remotePatterns: [
       {
