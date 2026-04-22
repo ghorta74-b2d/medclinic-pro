@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
-  Calendar, Users, Pill, FlaskConical, CreditCard,
+  Calendar, Users, CreditCard,
   Settings, Video, LayoutDashboard, LogOut, Bot,
 } from 'lucide-react'
 
@@ -13,8 +13,6 @@ const NAV_ITEMS = [
   { href: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },
   { href: '/agenda',       label: 'Agenda',        icon: Calendar },
   { href: '/pacientes',    label: 'Pacientes',     icon: Users },
-  { href: '/recetas',      label: 'Recetas',       icon: Pill },
-  { href: '/resultados',   label: 'Resultados',    icon: FlaskConical },
   { href: '/cobros',       label: 'Cobros',        icon: CreditCard },
   { href: '/telemedicina', label: 'Telemedicina',  icon: Video },
   { href: '/asistente-ia', label: 'Asistente IA',  icon: Bot },

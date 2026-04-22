@@ -27,6 +27,7 @@ function isValidCurp(curp: string): boolean {
 const CreatePatientSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
+  secondLastName: z.string().optional(),
   phone: z.string().min(10),
   email: z.string().email().optional(),
   dateOfBirth: z.string().datetime().optional(),
@@ -60,7 +61,7 @@ export async function patientsRoutes(server: FastifyInstance) {
   // GET /api/patients — search + list
   server.get('/', { preHandler: authenticate }, async (request, reply) => {
     const { clinicId } = request.authUser
-    const query = request.query as { q?: string; page?: string; limit?: string }
+    const query = request.query as { q?: string; page?: string; limit?: string; letter?: string }
 
     const page = parseInt(query.page ?? '1', 10)
     const limit = parseInt(query.limit ?? '20', 10)
@@ -72,10 +73,13 @@ export async function patientsRoutes(server: FastifyInstance) {
       where['OR'] = [
         { firstName: { contains: query.q, mode: 'insensitive' } },
         { lastName: { contains: query.q, mode: 'insensitive' } },
+        { secondLastName: { contains: query.q, mode: 'insensitive' } },
         { phone: { contains: query.q } },
         { email: { contains: query.q, mode: 'insensitive' } },
         { curp: { equals: query.q.toUpperCase() } },
       ]
+    } else if (query.letter) {
+      where['lastName'] = { startsWith: query.letter, mode: 'insensitive' }
     }
 
     const [patients, total] = await Promise.all([
@@ -85,6 +89,7 @@ export async function patientsRoutes(server: FastifyInstance) {
           id: true,
           firstName: true,
           lastName: true,
+          secondLastName: true,
           phone: true,
           email: true,
           dateOfBirth: true,
@@ -200,6 +205,7 @@ export async function patientsRoutes(server: FastifyInstance) {
         clinicId,
         firstName: data.firstName,
         lastName: data.lastName,
+        secondLastName: data.secondLastName,
         phone: data.phone,
         email: data.email,
         dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,

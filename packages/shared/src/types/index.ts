@@ -78,6 +78,7 @@ export interface Patient {
   clinicId: string
   firstName: string
   lastName: string
+  secondLastName?: string
   phone: string
   email?: string
   dateOfBirth?: string

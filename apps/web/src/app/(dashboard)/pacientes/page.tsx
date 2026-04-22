@@ -27,6 +27,7 @@ export default function PacientesPage() {
   const [patients, setPatients] = useState<PatientRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [letter, setLetter] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
@@ -35,10 +36,11 @@ export default function PacientesPage() {
   const load = useCallback(async () => {
     const params: Record<string, string> = { page: String(page), limit: '20' }
     if (search) params['q'] = search
+    else if (letter) params['letter'] = letter
 
     // Stale-while-revalidate: show cached list instantly on return visits
     // Only cache non-search page-1 (the most common landing state)
-    const cacheKey = `_pts_${page}_${search}`
+    const cacheKey = `_pts_${page}_${search}_${letter ?? ''}`
     if (!search || page === 1) {
       const cached = readCache<PatientsResponse>(cacheKey)
       if (cached) {
@@ -61,7 +63,7 @@ export default function PacientesPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, letter])
 
   useEffect(() => {
     const t = setTimeout(load, search ? 400 : 0)
@@ -86,15 +88,44 @@ export default function PacientesPage() {
 
       <div className="flex-1 p-6 overflow-auto">
         {/* Search */}
-        <div className="relative mb-6 max-w-md">
+        <div className="relative mb-3 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             placeholder="Buscar por nombre, teléfono o CURP..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+            onChange={(e) => { setSearch(e.target.value); setLetter(null); setPage(1) }}
             className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+
+        {/* Alphabet filter */}
+        <div className="flex flex-wrap gap-1 mb-5">
+          <button
+            onClick={() => { setLetter(null); setSearch(''); setPage(1) }}
+            className={cn(
+              'px-2 py-1 text-xs font-medium rounded transition-colors',
+              letter === null && !search
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            )}
+          >
+            Todos
+          </button>
+          {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((l) => (
+            <button
+              key={l}
+              onClick={() => { setLetter(l); setSearch(''); setPage(1) }}
+              className={cn(
+                'px-2 py-1 text-xs font-medium rounded transition-colors',
+                letter === l
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              )}
+            >
+              {l}
+            </button>
+          ))}
         </div>
 
         {/* Table */}
@@ -145,7 +176,7 @@ export default function PacientesPage() {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-900">
-                              {patient.firstName} {patient.lastName}
+                              {[patient.lastName, patient.secondLastName, patient.firstName].filter(Boolean).join(' ')}
                             </p>
                             {patient.curp && (
                               <p className="text-xs text-gray-400 font-mono">{patient.curp}</p>

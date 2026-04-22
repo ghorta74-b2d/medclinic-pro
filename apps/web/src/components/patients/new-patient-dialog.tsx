@@ -43,6 +43,7 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
+    secondLastName: '',
     email: '',
     dateOfBirth: '',
     gender: '',
@@ -86,6 +87,7 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
       await api.patients.create({
         firstName: form.firstName,
         lastName: form.lastName,
+        secondLastName: form.secondLastName || undefined,
         phone: buildPhone(phoneDigits),
         email: form.email || undefined,
         dateOfBirth: form.dateOfBirth ? (() => { const [y,m,d] = form.dateOfBirth.split('-').map(Number); return new Date(y!, m!-1, d!, 12).toISOString() })() : undefined,
@@ -133,8 +135,12 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
                 <input required value={form.firstName} onChange={(e) => set('firstName', e.target.value)} className={inputClass} />
               </div>
               <div>
-                <label className={labelClass}>Apellidos *</label>
+                <label className={labelClass}>Apellido Paterno *</label>
                 <input required value={form.lastName} onChange={(e) => set('lastName', e.target.value)} className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Apellido Materno</label>
+                <input value={form.secondLastName} onChange={(e) => set('secondLastName', e.target.value)} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>WhatsApp *</label>

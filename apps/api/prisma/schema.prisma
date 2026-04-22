@@ -206,6 +206,7 @@ model Patient {
   authUserId       String?   @unique
   firstName        String
   lastName         String
+  secondLastName   String?
   email            String?
   phone            String    // WhatsApp number (E.164 format: +521234567890)
   dateOfBirth      DateTime?
