@@ -255,6 +255,15 @@ export const api = {
       request(`/api/prescriptions/medications/search?q=${encodeURIComponent(q)}`),
   },
 
+  consultaIa: {
+    process: (data: {
+      patientId: string
+      transcriptText: string
+      durationSeconds: number
+      consentAt: string
+    }) => request('/api/consulta-ia/process', { method: 'POST', body: JSON.stringify(data) }),
+  },
+
   labResults: {
     list: (params?: Record<string, string>) => {
       const qs = params ? '?' + new URLSearchParams(params).toString() : ''

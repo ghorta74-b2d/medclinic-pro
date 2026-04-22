@@ -354,6 +354,12 @@ model ClinicalNote {
   amendedFromId   String?
   amendedFrom     ClinicalNote? @relation("NoteAmendment", fields: [amendedFromId], references: [id])
   amendments      ClinicalNote[] @relation("NoteAmendment")
+  // AI-assisted consultation (Consulta con IA)
+  isAiAssisted            Boolean   @default(false)
+  aiSummary               String?   @db.Text
+  transcriptText          String?   @db.Text
+  transcriptDurationSeconds Int?
+  transcriptConsentAt     DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 

@@ -6,19 +6,19 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   Calendar, Users, CreditCard,
-  Settings, Video, LayoutDashboard, LogOut, Bot,
+  Settings, Video, LayoutDashboard, LogOut, Brain,
 } from 'lucide-react'
 
 // Dispatched by Header hamburger button
 const TOGGLE_EVENT = 'toggle-sidebar'
 
 const NAV_ITEMS = [
-  { href: '/dashboard',    label: 'Dashboard',    icon: LayoutDashboard },
-  { href: '/agenda',       label: 'Agenda',        icon: Calendar },
-  { href: '/pacientes',    label: 'Pacientes',     icon: Users },
-  { href: '/cobros',       label: 'Cobros',        icon: CreditCard },
-  { href: '/telemedicina', label: 'Telemedicina',  icon: Video },
-  { href: '/asistente-ia', label: 'Asistente IA',  icon: Bot },
+  { href: '/dashboard',    label: 'Dashboard',      icon: LayoutDashboard },
+  { href: '/agenda',       label: 'Agenda',          icon: Calendar },
+  { href: '/pacientes',    label: 'Pacientes',       icon: Users },
+  { href: '/cobros',       label: 'Cobros',          icon: CreditCard },
+  { href: '/telemedicina', label: 'Telemedicina',    icon: Video },
+  { href: '/consulta-ia',  label: 'Consulta con IA', icon: Brain },
 ]
 
 const BOTTOM_ITEMS = [

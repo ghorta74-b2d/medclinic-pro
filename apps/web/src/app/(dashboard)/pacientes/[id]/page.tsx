@@ -9,7 +9,7 @@ import {
   ArrowLeft, Phone, Mail, Calendar, Droplets, AlertTriangle,
   FileText, Pill, FlaskConical, ChevronDown, ChevronUp, Clock,
   Pencil, X, Check, Loader2, Printer, Plus, Stethoscope, UserCheck,
-  Upload, Sparkles, ExternalLink,
+  Upload, Sparkles, ExternalLink, Brain, Download,
 } from 'lucide-react'
 import type { Patient, ClinicalNote, Appointment, Prescription, LabResult, VitalSigns } from 'medclinic-shared'
 import { GENDER_LABELS, BLOOD_TYPE_LABELS, STATUS_LABELS } from 'medclinic-shared'
@@ -370,8 +370,28 @@ function VitalsStrip({ v }: { v: VitalSigns }) {
 }
 
 // ── ConsultaCard — single past note with full audit trail ──────────────────────
-function ConsultaCard({ note }: { note: ClinicalNote }) {
+interface AiNote extends ClinicalNote {
+  isAiAssisted?: boolean
+  aiSummary?: string
+  transcriptText?: string
+  transcriptDurationSeconds?: number
+}
+
+function downloadTranscript(note: AiNote) {
+  if (!note.transcriptText) return
+  const blob = new Blob([note.transcriptText], { type: 'text/plain; charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `transcript-${note.id.slice(0, 8)}-${new Date(note.createdAt).toISOString().slice(0, 10)}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function ConsultaCard({ note: rawNote }: { note: ClinicalNote }) {
+  const note = rawNote as AiNote
   const [expanded, setExpanded] = useState(false)
+  const [showTranscript, setShowTranscript] = useState(false)
   const isSigned = note.status === 'SIGNED'
 
   return (
@@ -405,6 +425,15 @@ function ConsultaCard({ note }: { note: ClinicalNote }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {note.isAiAssisted && (
+            <span className={cn(
+              'flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium',
+              expanded ? 'bg-blue-400/20 text-blue-200' : 'bg-blue-100 text-blue-700'
+            )}>
+              <Brain className="w-3 h-3" />
+              IA
+            </span>
+          )}
           <span className={cn(
             'text-xs px-2.5 py-0.5 rounded-full font-medium',
             isSigned
@@ -442,10 +471,16 @@ function ConsultaCard({ note }: { note: ClinicalNote }) {
       {/* Expanded detail */}
       {expanded && (
         <div className="border-t border-gray-100 px-4 py-4 space-y-4">
+          {note.evolutionNotes && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Padecimiento actual</p>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.evolutionNotes}</p>
+            </div>
+          )}
           {note.physicalExam && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Exploración física</p>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.physicalExam}</p>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{String(note.physicalExam)}</p>
             </div>
           )}
           {note.treatmentPlan && (
@@ -454,10 +489,46 @@ function ConsultaCard({ note }: { note: ClinicalNote }) {
               <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.treatmentPlan}</p>
             </div>
           )}
-          {note.evolutionNotes && (
+
+          {/* AI Summary — only for AI-assisted notes */}
+          {note.isAiAssisted && note.aiSummary && (
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Brain className="w-3.5 h-3.5 text-blue-600" />
+                <p className="text-xs font-bold text-blue-700 uppercase tracking-wide">Resumen IA</p>
+              </div>
+              <p className="text-sm text-gray-800 leading-relaxed">{note.aiSummary}</p>
+            </div>
+          )}
+
+          {/* Transcript — only for AI-assisted notes */}
+          {note.isAiAssisted && note.transcriptText && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Evolución</p>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.evolutionNotes}</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Transcript de consulta</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowTranscript(t => !t)}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    {showTranscript ? 'Ocultar' : 'Ver transcript'}
+                  </button>
+                  <button
+                    onClick={() => downloadTranscript(note)}
+                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium"
+                  >
+                    <Download className="w-3 h-3" />
+                    Descargar
+                  </button>
+                </div>
+              </div>
+              {showTranscript && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 max-h-48 overflow-y-auto">
+                  <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap font-mono">
+                    {note.transcriptText}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
