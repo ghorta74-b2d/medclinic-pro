@@ -97,7 +97,7 @@ export async function patientsRoutes(server: FastifyInstance) {
           createdAt: true,
           _count: { select: { appointments: true } },
         },
-        orderBy: { lastName: 'asc' },
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
         skip,
         take: limit,
       }),

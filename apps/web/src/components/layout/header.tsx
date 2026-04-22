@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, Search, X, Loader2, Mail, Phone, Save, RefreshCw, CheckCheck } from 'lucide-react'
+import { Bell, Search, X, Loader2, Mail, Phone, Save, RefreshCw, CheckCheck, Menu } from 'lucide-react'
 import { api } from '@/lib/api'
 import { calculateAge, getInitials } from '@/lib/utils'
 import type { Patient, Appointment } from 'medclinic-shared'
@@ -61,7 +61,7 @@ function GlobalSearch() {
 
   return (
     <div ref={ref} className="relative">
-      <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 w-72">
+      <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 w-40 sm:w-56 lg:w-72">
         <Search className="w-4 h-4 text-gray-400 shrink-0" />
         <input
           type="text"
@@ -467,12 +467,21 @@ function UserAvatar() {
 
 export function Header({ title, subtitle, actions }: HeaderProps) {
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-4">
-      <div className="min-w-0">
+    <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 flex items-center gap-3">
+      {/* Hamburger — visible only below lg breakpoint */}
+      <button
+        className="lg:hidden p-1.5 hover:bg-gray-100 rounded-lg shrink-0 text-gray-600"
+        onClick={() => document.dispatchEvent(new CustomEvent('toggle-sidebar'))}
+        aria-label="Menú"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      <div className="min-w-0 flex-1">
         <h1 className="text-xl font-semibold text-gray-900 truncate">{title}</h1>
         {subtitle && <p className="text-sm text-gray-500 mt-0.5 truncate">{subtitle}</p>}
       </div>
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2 lg:gap-3 shrink-0">
         <GlobalSearch />
         {actions}
         <NotificationCenter />

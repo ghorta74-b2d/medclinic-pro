@@ -90,7 +90,7 @@ export default function DashboardLayout({
   return (
     <div className={`flex min-h-screen bg-gray-50 ${roboto.className}`}>
       <Sidebar />
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Banner MFA — visible solo para ADMIN/DOCTOR sin MFA configurado */}
         {showMfaBanner && (
           <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center gap-3 z-40">

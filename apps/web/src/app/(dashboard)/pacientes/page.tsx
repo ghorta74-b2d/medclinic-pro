@@ -100,7 +100,7 @@ export default function PacientesPage() {
         </div>
 
         {/* Alphabet filter */}
-        <div className="flex flex-wrap gap-1 mb-5">
+        <div className="flex flex-wrap gap-x-0.5 gap-y-1 mb-5">
           <button
             onClick={() => { setLetter(null); setSearch(''); setPage(1) }}
             className={cn(
@@ -117,7 +117,7 @@ export default function PacientesPage() {
               key={l}
               onClick={() => { setLetter(l); setSearch(''); setPage(1) }}
               className={cn(
-                'px-2 py-1 text-xs font-medium rounded transition-colors',
+                'w-7 py-1 text-xs font-medium rounded transition-colors text-center',
                 letter === l
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -129,8 +129,8 @@ export default function PacientesPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-x-auto">
+          <table className="w-full min-w-[750px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Paciente</th>
