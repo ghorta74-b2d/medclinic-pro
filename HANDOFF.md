@@ -1,5 +1,5 @@
 # MedClinic Pro — Handoff Completo
-**Última actualización:** 2026-04-16 | **Branch:** `main` | **Último commit:** `5888b5f`
+**Última actualización:** 2026-04-22 | **Branch:** `main` | **Último commit:** `7555caa`
 
 ---
 
@@ -15,6 +15,8 @@
 | Auth | Supabase Auth — roles en `user_metadata.role` |
 | Email | Resend, sender `medclinic@glasshaus.mx` |
 | Package manager | pnpm workspaces |
+
+**Dominio activo:** `https://mediaclinic.mx` (producción) — Vercel + DNS configurado
 
 **Vercel:**
 - Team: `team_5b8HfRA7B0605D5MRa2BQ6qA`
@@ -330,16 +332,70 @@ FROM invoices ORDER BY "issuedAt" DESC LIMIT 20;
 ## Commits Recientes
 
 ```
-5888b5f  fix(usuarios): corregir sección equipo — datos y UX  ← HEAD
-2d0291d  docs: marcar Fase 3 completa en HANDOFF — próxima Fase 4
-83c8d26  feat(compliance): Fase 3 — Privacidad LFPDPPP + MFA enforcement
-b4b11a2  chore: gitignore generated/, actualizar HANDOFF y memory Fase 2
-ba2d0dc  feat(compliance): Fase 2 — Catálogos Regulatorios NOM-024/NOM-004
-066ba7c  feat(compliance): NOM-004/NOM-024 — Fase 0 + Fase 1 completa
-1715e67  fix(roles): eliminar confianza ciega en sessionStorage — siempre verificar JWT
-a92aa77  fix(roles): ADMIN/STAFF — filtro confiable, limit cobros 200, limpiar doctorId viejo
-0828342  fix(agenda): ADMIN ve toda la clínica por defecto, dropdown de médico visible
+7555caa  fix: Analytics desde /react — el root no exporta componente JSX  ← HEAD
+25f2df7  fix: Analytics como default import (incorrecto, corregido por 7555caa)
+a8a045b  fix: resolver @vercel/analytics en pnpm monorepo (transpilePackages)
+e30e17c  Analytics Vercel (commit manual del usuario — solo agregó dep en package.json)
+a6f137e  feat: Vercel Analytics (instalación inicial)
+b4651b6  fix: ocultar usuarios inactivos y soft-delete con historial
+aa4f038  fix: añadir mediaclinic.mx a CORS del API
+417f7b5  fix: auth guard en dashboard layout, middleware sin session check
+03b1daa  fix: login stuck en "Ingresando…" post-auth
+5888b5f  fix(usuarios): corregir sección equipo — datos y UX
 ```
+
+---
+
+## ✅ Sesión 2026-04-22 — Fixes aplicados
+
+### 1. RLS Supabase — Seguridad crítica (commit anterior a esta sesión)
+Las 21 tablas tenían RLS desactivado — cualquiera con la anon key podía leer todos los datos.
+- **Fix:** Migration `enable_rls_all_public_tables` aplicada en prod vía MCP Supabase
+- **Estado:** ✅ Todas las tablas tienen `rowsecurity: true`
+- **Nota:** Prisma usa el usuario `postgres` (bypass RLS). `service_role` también bypass. Solo `anon` key respeta RLS.
+
+### 2. Dominio mediaclinic.mx — Root URL y CORS
+
+**Root URL:** `apps/web/src/app/page.tsx` → re-exporta la landing en lugar de redirigir a `/dashboard`
+```tsx
+export { default } from './landing/page'
+```
+
+**CORS API:** `apps/api/src/server.ts` — agregado mediaclinic.mx a `allowedOrigins`
+```typescript
+const allowedOrigins = [
+  process.env['NEXT_PUBLIC_APP_URL'],
+  'http://localhost:3000',
+  'https://mediaclinic.mx',
+  'https://www.mediaclinic.mx',
+  'https://medclinic-web.vercel.app',
+  'https://medclinic-web-ghorta74-6617s-projects.vercel.app',
+].filter(Boolean) as string[]
+// origin check también cubre startsWith('https://mediaclinic')
+```
+
+### 3. Login stuck en "Ingresando..."
+- **Causa raíz:** Middleware con session check amplio → race condition con cookies → redirect a /login → React no desmontaba el componente → `loading: true` indefinido
+- **Fix:** Middleware revierte a solo restricción STAFF. Auth guard real en `(dashboard)/layout.tsx` usando browser `getSession()` con spinner mientras verifica.
+
+### 4. Marcela Altamirano — Usuario fantasma
+- **Causa:** Hard-delete fallaba silenciosamente (FK a citas/recetas). GET /users mostraba inactivos sin filtrar.
+- **Fix en `apps/api/src/routes/configuracion.ts`:**
+  - `GET /users`: agrega `where: { isActive: true }` 
+  - `DELETE /users/:id`: soft-delete si hay historial → `isActive: false, authUserId: null` (preserva NOM-004)
+- **Estado en prod:** Marcela está `isActive: false` y NO aparece en la lista.
+
+### 5. Vercel Analytics — Instalación definitiva
+- **Problema:** 4 intentos fallidos por conflicto de pnpm workspaces + exports de `@vercel/analytics` v2
+- **Solución definitiva:**
+  - `apps/web/next.config.mjs`: `transpilePackages: ['medclinic-shared', '@vercel/analytics']`
+  - `apps/web/src/app/layout.tsx`: `import { Analytics } from '@vercel/analytics/react'`
+- **Por qué:** El componente JSX React SOLO existe en el subpath `/react`. El root export son funciones `inject/track/va`. `transpilePackages` es necesario para que webpack resuelva subpaths en pnpm monorepo.
+- **Estado:** Deploy `7555caa` en progreso — debería ser el primero en pasar ✅
+
+### 6. Git refs corruptas
+- **Problema:** Archivo `HEAD 2` en `.git/refs/remotes/origin/` causaba `fatal: bad object` en `git fetch`
+- **Fix:** `rm ".git/refs/remotes/origin/HEAD 2"` → `git fetch origin` volvió a funcionar
 
 ---
 
@@ -357,6 +413,10 @@ a92aa77  fix(roles): ADMIN/STAFF — filtro confiable, limit cobros 200, limpiar
 10. **auditLog():** lanza en lugar de silenciar — fire-and-forget usa `.catch(console.error)`
 11. **apps/api/generated/:** NO commitar — se regenera con `prisma generate` en build Vercel
 12. **Especialidad en tabla usuarios:** solo mostrar si `role === 'DOCTOR'` y `length > 1`
+13. **Doctor delete:** SIEMPRE verificar historial antes — soft-delete si tiene citas/notas/recetas
+14. **CORS API:** al agregar dominio nuevo → actualizar `allowedOrigins` en `apps/api/src/server.ts`
+15. **@vercel/analytics:** importar de `/react` subpath, NO del root. Requiere `transpilePackages` en next.config.mjs
+16. **RLS Supabase:** todas las tablas tienen RLS activo — no desactivar. Prisma usa `postgres` user (bypass automático).
 
 ---
 
@@ -388,3 +448,17 @@ a92aa77  fix(roles): ADMIN/STAFF — filtro confiable, limit cobros 200, limpiar
 - Asistente IA KPIs no conectados a BD real
 - `pdf.ts` línea 114 — error TypeScript pre-existente (no bloquea build ni deploy)
 - ARCO UI completo: pantalla de Rectificación y Cancelación en expediente del paciente
+- `sessionCache.clear()` en logout (`sidebar.tsx`) — pendiente desde Fase 4
+
+## ⏳ Estado actual al cerrar sesión 2026-04-22
+
+| Item | Estado |
+|---|---|
+| RLS en 21 tablas Supabase | ✅ Activado |
+| Root URL → landing | ✅ Funcionando en mediaclinic.mx |
+| Login stuck | ✅ Corregido |
+| CORS mediaclinic.mx | ✅ Corregido |
+| Dashboard/Cobros/Pacientes vacíos | ✅ Corregidos |
+| Marcela en lista de usuarios | ✅ Eliminada (soft-deleted) |
+| Vercel Analytics | ⏳ Deploy `7555caa` en progreso — pendiente confirmar READY |
+| Git refs corruptas | ✅ Limpiadas |
