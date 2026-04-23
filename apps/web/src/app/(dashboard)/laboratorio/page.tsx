@@ -81,7 +81,7 @@ export default function LaboratorioPage() {
         }
       />
 
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-3 sm:p-6 overflow-auto">
         {/* Filters */}
         <div className="flex gap-2 mb-5 flex-wrap">
           {FILTERS.map((f) => (

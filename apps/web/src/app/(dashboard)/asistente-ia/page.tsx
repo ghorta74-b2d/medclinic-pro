@@ -67,7 +67,7 @@ export default function AsistenteIAPage() {
         subtitle="Agentes inteligentes nativos para comunicación y automatización"
       />
 
-      <div className="flex-1 p-6 overflow-auto space-y-6">
+      <div className="flex-1 p-3 sm:p-6 overflow-auto space-y-4 sm:space-y-6">
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {kpis.map(({ label, value, sub, icon: Icon, color, bg }) => (

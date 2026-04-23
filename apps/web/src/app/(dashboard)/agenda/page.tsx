@@ -182,7 +182,7 @@ export default function AgendaPage() {
         }
       />
 
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-3 sm:p-6 overflow-auto">
         {/* Controls */}
         <div className="flex items-center gap-3 mb-6 flex-wrap">
           {/* Navigation */}

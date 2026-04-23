@@ -766,7 +766,7 @@ export default function ConsultaIaPage() {
         subtitle={subtitle}
       />
 
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-3 sm:p-6 overflow-auto">
         <div className="max-w-3xl">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-6 flex items-center gap-2">

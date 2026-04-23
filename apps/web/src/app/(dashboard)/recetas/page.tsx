@@ -94,7 +94,7 @@ export default function RecetasPage() {
         }
       />
 
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-3 sm:p-6 overflow-auto">
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-blue-600" />

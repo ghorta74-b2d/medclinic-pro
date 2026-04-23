@@ -290,7 +290,7 @@ export default function DashboardPage() {
         subtitle={todayStr}
       />
 
-      <div className="flex-1 p-6 overflow-auto space-y-6">
+      <div className="flex-1 p-3 sm:p-6 overflow-auto space-y-4 sm:space-y-6">
 
         {/* Selector de vista — solo ADMIN (doctor superadmin de la clínica) */}
         {userRole === 'ADMIN' && doctors.length > 0 && (

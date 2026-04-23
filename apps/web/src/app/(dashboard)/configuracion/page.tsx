@@ -1142,7 +1142,7 @@ export default function ConfiguracionPage() {
   return (
     <>
       <Header title="Configuración" subtitle="Administra los ajustes de tu clínica" />
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-3 sm:p-6 overflow-auto">
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 flex-wrap">
           {visibleTabs.map((tab) => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}

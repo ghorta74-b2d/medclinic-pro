@@ -314,7 +314,7 @@ export default function CobrosPage() {
         }
       />
 
-      <div className="flex-1 p-6 overflow-auto space-y-6">
+      <div className="flex-1 p-3 sm:p-6 overflow-auto space-y-4 sm:space-y-6">
         {/* Controls row: view mode + doctor filter */}
         <div className="flex items-center gap-3 flex-wrap">
           {/* View mode */}

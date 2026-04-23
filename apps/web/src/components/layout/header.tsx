@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, Search, X, Loader2, Mail, Phone, Save, RefreshCw, CheckCheck, Menu } from 'lucide-react'
+import { Bell, Search, X, Loader2, Mail, Phone, Save, RefreshCw, CheckCheck, Menu, ArrowLeft } from 'lucide-react'
 import { api } from '@/lib/api'
 import { calculateAge, getInitials } from '@/lib/utils'
 import type { Patient, Appointment } from 'medclinic-shared'
@@ -25,7 +25,9 @@ function GlobalSearch() {
   const [results, setResults] = useState<SearchResults | null>(null)
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const mobileInputRef = useRef<HTMLInputElement>(null)
 
   const search = useCallback(async (q: string) => {
     if (!q || q.length < 2) { setResults(null); return }
@@ -57,76 +59,133 @@ function GlobalSearch() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  function closeMobile() {
+    setMobileOpen(false)
+    setQuery('')
+    setResults(null)
+  }
+
   const hasResults = results && (results.patients.length > 0 || results.appointments.length > 0)
 
-  return (
-    <div ref={ref} className="relative">
-      <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 w-40 sm:w-56 lg:w-72">
-        <Search className="w-4 h-4 text-gray-400 shrink-0" />
-        <input
-          type="text"
-          placeholder="Buscar pacientes, citas, recetas..."
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
-          onFocus={() => setOpen(true)}
-          className="bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none w-full"
-        />
-        {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400 shrink-0" />}
-        {query && !loading && (
-          <button onClick={() => { setQuery(''); setResults(null) }}>
-            <X className="w-3 h-3 text-gray-400" />
-          </button>
-        )}
-      </div>
-
-      {open && query.length >= 2 && (
-        <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-            </div>
-          ) : !hasResults ? (
-            <p className="text-sm text-gray-400 text-center py-6">
-              No se encontraron resultados para &quot;{query}&quot;
-            </p>
-          ) : (
+  const ResultsList = () => (
+    <>
+      {loading ? (
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+        </div>
+      ) : !hasResults ? (
+        <p className="text-sm text-gray-400 text-center py-6">
+          No se encontraron resultados para &quot;{query}&quot;
+        </p>
+      ) : (
+        <div>
+          {results!.patients.length > 0 && (
             <div>
-              {results!.patients.length > 0 && (
-                <div>
-                  <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
-                    Pacientes
-                  </p>
-                  {results!.patients.map((patient) => (
-                    <button
-                      key={patient.id}
-                      onClick={() => {
-                        router.push(`/pacientes/${patient.id}`)
-                        setOpen(false)
-                        setQuery('')
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
-                    >
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 text-xs font-bold shrink-0">
-                        {getInitials(patient.firstName, patient.lastName)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {patient.firstName} {patient.lastName}
-                        </p>
-                        <p className="text-xs text-gray-400 truncate">
-                          {patient.phone}
-                          {patient.dateOfBirth ? ` · ${calculateAge(patient.dateOfBirth)} años` : ''}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+                Pacientes
+              </p>
+              {results!.patients.map((patient) => (
+                <button
+                  key={patient.id}
+                  onClick={() => {
+                    router.push(`/pacientes/${patient.id}`)
+                    setOpen(false)
+                    closeMobile()
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
+                >
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 text-xs font-bold shrink-0">
+                    {getInitials(patient.firstName, patient.lastName)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {patient.firstName} {patient.lastName}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {patient.phone}
+                      {patient.dateOfBirth ? ` · ${calculateAge(patient.dateOfBirth)} años` : ''}
+                    </p>
+                  </div>
+                </button>
+              ))}
             </div>
           )}
         </div>
       )}
-    </div>
+    </>
+  )
+
+  return (
+    <>
+      {/* ── Mobile search overlay ───────────────────────────────────── */}
+      {mobileOpen && (
+        <div className="sm:hidden fixed inset-0 z-50 bg-white flex flex-col">
+          <div className="flex items-center gap-2 px-3 py-3 border-b border-gray-200">
+            <button onClick={closeMobile} className="p-1.5 rounded-lg hover:bg-gray-100 shrink-0">
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
+            </button>
+            <div className="flex-1 flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2">
+              <Search className="w-4 h-4 text-gray-400 shrink-0" />
+              <input
+                ref={mobileInputRef}
+                type="text"
+                placeholder="Buscar pacientes, citas..."
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+                autoFocus
+                className="bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none w-full"
+              />
+              {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400 shrink-0" />}
+              {query && !loading && (
+                <button onClick={() => { setQuery(''); setResults(null) }}>
+                  <X className="w-3 h-3 text-gray-400" />
+                </button>
+              )}
+            </div>
+          </div>
+          {query.length >= 2 && (
+            <div className="flex-1 overflow-y-auto">
+              <ResultsList />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Desktop search (hidden below sm) ───────────────────────── */}
+      <div ref={ref} className="relative hidden sm:block">
+        <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 sm:w-52 lg:w-72">
+          <Search className="w-4 h-4 text-gray-400 shrink-0" />
+          <input
+            type="text"
+            placeholder="Buscar pacientes, citas..."
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+            onFocus={() => setOpen(true)}
+            className="bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none w-full"
+          />
+          {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400 shrink-0" />}
+          {query && !loading && (
+            <button onClick={() => { setQuery(''); setResults(null) }}>
+              <X className="w-3 h-3 text-gray-400" />
+            </button>
+          )}
+        </div>
+        {open && query.length >= 2 && (
+          <div className="absolute top-full right-0 mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+            <ResultsList />
+          </div>
+        )}
+      </div>
+
+      {/* ── Mobile search icon button (hidden above sm) ─────────────── */}
+      <button
+        className="sm:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Buscar"
+      >
+        <Search className="w-5 h-5" />
+      </button>
+    </>
   )
 }
 
@@ -467,26 +526,42 @@ function UserAvatar() {
 
 export function Header({ title, subtitle, actions }: HeaderProps) {
   return (
-    <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4 flex items-center gap-3">
-      {/* Hamburger — visible only below lg breakpoint */}
-      <button
-        className="lg:hidden p-1.5 hover:bg-gray-100 rounded-lg shrink-0 text-gray-600"
-        onClick={() => document.dispatchEvent(new CustomEvent('toggle-sidebar'))}
-        aria-label="Menú"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
+    <header className="bg-white border-b border-gray-200">
+      {/* ── Main row ──────────────────────────────────────────────── */}
+      <div className="px-3 sm:px-4 lg:px-6 py-3 flex items-center gap-2 sm:gap-3">
+        {/* Hamburger — visible only below lg */}
+        <button
+          className="lg:hidden p-1.5 hover:bg-gray-100 rounded-lg shrink-0 text-gray-600"
+          onClick={() => document.dispatchEvent(new CustomEvent('toggle-sidebar'))}
+          aria-label="Menú"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
 
-      <div className="min-w-0 flex-1">
-        <h1 className="text-xl font-semibold text-gray-900 truncate">{title}</h1>
-        {subtitle && <p className="text-sm text-gray-500 mt-0.5 truncate">{subtitle}</p>}
+        {/* Title */}
+        <div className="min-w-0 flex-1">
+          <h1 className="text-base sm:text-xl font-semibold text-gray-900 truncate">{title}</h1>
+          {subtitle && (
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5 truncate hidden sm:block">{subtitle}</p>
+          )}
+        </div>
+
+        {/* Right group: search + actions (desktop) + notifications + avatar */}
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 shrink-0">
+          <GlobalSearch />
+          {/* Actions inline — desktop only */}
+          {actions && <div className="hidden sm:flex items-center gap-2">{actions}</div>}
+          <NotificationCenter />
+          <UserAvatar />
+        </div>
       </div>
-      <div className="flex items-center gap-2 lg:gap-3 shrink-0">
-        <GlobalSearch />
-        {actions}
-        <NotificationCenter />
-        <UserAvatar />
-      </div>
+
+      {/* ── Actions second row — mobile only ──────────────────────── */}
+      {actions && (
+        <div className="sm:hidden px-3 pb-3 flex items-center gap-2">
+          {actions}
+        </div>
+      )}
     </header>
   )
 }
