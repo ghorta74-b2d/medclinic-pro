@@ -31,7 +31,7 @@ const CreateNoteSchema = z.object({
   diagnoses: z.array(DiagnosisSchema).optional(),
   treatmentPlan: z.string().optional(),
   evolutionNotes: z.string().optional(),
-  reviewOfSystems: z.record(z.unknown()).optional(),
+  reviewOfSystems: z.record(z.any()).optional(),
   vitalSigns: VitalSignsSchema.optional(),
 })
 
@@ -213,7 +213,7 @@ export async function clinicalNotesRoutes(server: FastifyInstance) {
             },
           },
         } : {}),
-      },
+      } as Parameters<typeof prisma.clinicalNote.update>[0]['data'],
       include: { vitalSigns: true },
     })
 
@@ -315,7 +315,7 @@ export async function clinicalNotesRoutes(server: FastifyInstance) {
         appointmentId: original.appointmentId,
         chiefComplaint: original.chiefComplaint,
         physicalExam: original.physicalExam ?? undefined,
-        diagnoses: original.diagnoses,
+        diagnoses: (original.diagnoses as unknown) as object[],
         treatmentPlan: original.treatmentPlan,
         evolutionNotes: original.evolutionNotes,
         status: 'DRAFT',

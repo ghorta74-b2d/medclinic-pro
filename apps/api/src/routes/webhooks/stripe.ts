@@ -57,7 +57,8 @@ export async function webhookStripe(server: FastifyInstance) {
           break
         }
 
-        case 'payment_link.completed': {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        case ('payment_link.completed' as any): {
           // Handle payment link completion if needed
           break
         }

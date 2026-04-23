@@ -67,9 +67,9 @@ export async function consultaIaRoutes(server: FastifyInstance) {
   // POST /api/consulta-ia/process
   // Procesa un transcript, llama a Claude y crea la nota clínica en DRAFT
   server.post('/process', { preHandler: requireDoctor }, async (request, reply) => {
-    const { clinicId, doctorId, userId } = request.authUser
+    const { clinicId, doctorId, authUserId } = request.authUser
 
-    if (!doctorId) return Errors.FORBIDDEN(reply, 'Requiere rol de médico con expediente activo')
+    if (!doctorId) return Errors.FORBIDDEN(reply)
 
     const parsed = ProcessSchema.safeParse(request.body)
     if (!parsed.success) return Errors.VALIDATION(reply, parsed.error.format())
@@ -88,7 +88,7 @@ export async function consultaIaRoutes(server: FastifyInstance) {
       where: { id: doctorId, clinicId, isActive: true },
       select: { id: true },
     })
-    if (!doctor) return Errors.FORBIDDEN(reply, 'Médico no activo en esta clínica')
+    if (!doctor) return Errors.FORBIDDEN(reply)
 
     // Call Claude for clinical extraction
     let extracted: ClaudeExtraction = {}
@@ -142,9 +142,8 @@ export async function consultaIaRoutes(server: FastifyInstance) {
     })
 
     await auditLog({
-      clinicId,
-      userId,
-      action: 'AI_CONSULT',
+      user: { authUserId, clinicId, role: request.authUser.role },
+      action: 'CREATE',
       resourceType: 'ClinicalNote',
       resourceId: note.id,
       metadata: {
@@ -153,6 +152,7 @@ export async function consultaIaRoutes(server: FastifyInstance) {
         durationSeconds,
         transcriptLength: transcriptText.length,
         claudeError,
+        source: 'AI_CONSULT',
       },
       ip: request.ip,
       userAgent: request.headers['user-agent'] as string | undefined,

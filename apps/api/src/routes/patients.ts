@@ -47,8 +47,8 @@ const CreatePatientSchema = z.object({
   allergies: z.array(z.string()).optional(),
   chronicConditions: z.array(z.string()).optional(),
   currentMedications: z.array(z.string()).optional(),
-  familyHistory: z.record(z.unknown()).optional(),
-  personalHistory: z.record(z.unknown()).optional(),
+  familyHistory: z.record(z.any()).optional(),
+  personalHistory: z.record(z.any()).optional(),
   surgicalHistory: z.array(z.string()).optional(),
   privacyConsentAt: z.string().datetime().optional(),
   dataConsentAt: z.string().datetime().optional(),
@@ -277,7 +277,7 @@ export async function patientsRoutes(server: FastifyInstance) {
         ...(data.dataConsentAt ? { dataConsentAt: new Date(data.dataConsentAt) } : {}),
         lastModifiedByName: editorName,
         lastModifiedAt: new Date(),
-      },
+      } as Parameters<typeof prisma.patient.update>[0]['data'],
     })
 
     await auditLog({

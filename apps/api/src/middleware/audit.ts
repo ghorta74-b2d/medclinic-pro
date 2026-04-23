@@ -47,7 +47,7 @@ export async function auditLog(params: AuditParams): Promise<void> {
       newValue: params.newValue
         ? (params.newValue as object)
         : undefined,
-      metadata: Object.keys(meta).length > 0 ? meta : undefined,
+      metadata: Object.keys(meta).length > 0 ? (meta as object) : undefined,
     },
   })
 }

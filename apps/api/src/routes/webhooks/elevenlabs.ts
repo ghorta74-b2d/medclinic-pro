@@ -10,7 +10,7 @@ export async function webhookElevenLabs(server: FastifyInstance) {
   async function verifySignature(request: Parameters<typeof server.get>[1] extends { preHandler: infer P } ? never : Parameters<typeof server.addHook>[1]) {
     // In production: validate X-ElevenLabs-Signature header
     // For now, verify shared secret in Authorization header
-    const auth = (request as { headers: Record<string, string> }).headers.authorization
+    const auth = (request as unknown as { headers: Record<string, string> }).headers.authorization
     if (auth !== `Bearer ${process.env['ELEVENLABS_WEBHOOK_SECRET']}`) {
       return false
     }
