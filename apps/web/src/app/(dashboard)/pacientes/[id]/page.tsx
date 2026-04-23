@@ -385,7 +385,12 @@ function ComplementarPanel({ note, onSaved, onClose }: {
   onSaved: () => void
   onClose: () => void
 }) {
+  const panelRef = useRef<HTMLDivElement>(null)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
 
   const initVitals = (): ComplementarVitals => ({
     weightKg:     note.vitalSigns?.weightKg    != null ? String(note.vitalSigns.weightKg)    : '',
@@ -529,13 +534,13 @@ function ComplementarPanel({ note, onSaved, onClose }: {
   }
 
   return (
-    <div className="border-t-2 border-violet-200 bg-violet-50/30">
-      <div className="px-4 py-3 flex items-center justify-between border-b border-violet-200">
+    <div ref={panelRef} className="border-t-2 border-emerald-300 bg-emerald-50/40">
+      <div className="px-4 py-3 flex items-center justify-between border-b border-emerald-200 bg-emerald-100/60">
         <div className="flex items-center gap-2">
-          <PenLine className="w-4 h-4 text-violet-600" />
-          <span className="text-sm font-semibold text-violet-800">Complementar consulta</span>
+          <PenLine className="w-4 h-4 text-emerald-700" />
+          <span className="text-sm font-semibold text-emerald-800">Complementar consulta</span>
         </div>
-        <button onClick={onClose} className="p-1 hover:bg-violet-100 rounded text-violet-400 hover:text-violet-600">
+        <button onClick={onClose} className="p-1 hover:bg-emerald-200 rounded text-emerald-500 hover:text-emerald-700">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -674,7 +679,7 @@ function ComplementarPanel({ note, onSaved, onClose }: {
       )}
 
       {/* Action buttons */}
-      <div className="px-4 py-4 border-t border-violet-200 flex gap-3">
+      <div className="px-4 py-4 border-t border-emerald-200 flex gap-3">
         <button
           type="button"
           onClick={handleSaveDraft}
