@@ -1,5 +1,5 @@
 # MedClinic Pro — Handoff Completo
-**Última actualización:** 2026-04-22 | **Branch:** `main` | **Último commit:** `7555caa`
+**Última actualización:** 2026-04-23 | **Branch:** `main` | **Último commit:** `2dccb8a`
 
 ---
 
@@ -230,6 +230,7 @@ Rutas críticas mínimas:
 | `routes/billing.ts` | Facturas e ingresos — filtro por rol |
 | `routes/configuracion.ts` | Config clínica (PATCH → ADMIN), médicos, horarios, usuarios, roles |
 | `routes/catalogs.ts` | `GET /api/catalogs/cie10?q=` y `/cum?q=` — requieren `requireStaff` |
+| `routes/consulta-ia.ts` | `POST /api/consulta-ia/process` — valida paciente, llama Claude, crea ClinicalNote DRAFT con `isAiAssisted: true` |
 | `prisma/schema.prisma` | Schema completo |
 | `prisma/seed-catalogs.ts` | Seed CIE-10 (247 codes) + CUM (112 meds), acepta `--csv=` |
 
@@ -244,7 +245,8 @@ Rutas críticas mínimas:
 | `app/(dashboard)/agenda/page.tsx` | Lista citas — patrón JWT-first correcto |
 | `app/(dashboard)/cobros/page.tsx` | Facturas — patrón JWT-first correcto |
 | `app/(dashboard)/configuracion/page.tsx` | Config clínica — tabs por rol, sección usuarios corregida |
-| `app/(dashboard)/pacientes/[id]/page.tsx` | Expediente paciente |
+| `app/(dashboard)/pacientes/[id]/page.tsx` | Expediente paciente — `ConsultaCard` con badge IA, transcript, panel Complementar |
+| `app/(dashboard)/consulta-ia/page.tsx` | Wizard 6 pasos: paciente → consentimiento → micrófono → grabación → procesando → listo |
 | `components/patients/new-patient-dialog.tsx` | Formulario nuevo paciente + aviso LFPDPPP expandible + doble consentimiento |
 | `components/clinical-notes/note-editor.tsx` | Editor SOAP, búsqueda CIE-10 async con debounce 300ms |
 
@@ -332,15 +334,13 @@ FROM invoices ORDER BY "issuedAt" DESC LIMIT 20;
 ## Commits Recientes
 
 ```
-7555caa  fix: Analytics desde /react — el root no exporta componente JSX  ← HEAD
-25f2df7  fix: Analytics como default import (incorrecto, corregido por 7555caa)
-a8a045b  fix: resolver @vercel/analytics en pnpm monorepo (transpilePackages)
-e30e17c  Analytics Vercel (commit manual del usuario — solo agregó dep en package.json)
-a6f137e  feat: Vercel Analytics (instalación inicial)
-b4651b6  fix: ocultar usuarios inactivos y soft-delete con historial
-aa4f038  fix: añadir mediaclinic.mx a CORS del API
-417f7b5  fix: auth guard en dashboard layout, middleware sin session check
-03b1daa  fix: login stuck en "Ingresando…" post-auth
+2dccb8a  fix(complementar): scroll automático al panel y header verde editable  ← HEAD
+2a6f5d7  feat(consultas): panel Complementar con acordeón, borrador y firma validada
+de7dcec  feat: Consulta con IA — grabación, transcripción y autollenado clínico con Claude
+7fbc37a  feat(responsive): sidebar hamburger en tablet, tablas scrollables, alfabeto compacto
+da99502  feat(nav+pacientes): quitar recetas/resultados del sidebar, filtro alfabético y apellido materno
+b88d7c0  docs: handoff 2026-04-22 — sesión dominio, RLS, analytics, fixes
+7555caa  fix: Analytics desde /react — el root no exporta componente JSX
 5888b5f  fix(usuarios): corregir sección equipo — datos y UX
 ```
 
@@ -450,7 +450,7 @@ const allowedOrigins = [
 - ARCO UI completo: pantalla de Rectificación y Cancelación en expediente del paciente
 - `sessionCache.clear()` en logout (`sidebar.tsx`) — pendiente desde Fase 4
 
-## ⏳ Estado actual al cerrar sesión 2026-04-22
+## ✅ Sesión 2026-04-22 — Resumen (commits `da99502` → `b88d7c0`)
 
 | Item | Estado |
 |---|---|
@@ -460,5 +460,92 @@ const allowedOrigins = [
 | CORS mediaclinic.mx | ✅ Corregido |
 | Dashboard/Cobros/Pacientes vacíos | ✅ Corregidos |
 | Marcela en lista de usuarios | ✅ Eliminada (soft-deleted) |
-| Vercel Analytics | ⏳ Deploy `7555caa` en progreso — pendiente confirmar READY |
+| Vercel Analytics | ✅ Deployado en `7555caa` |
 | Git refs corruptas | ✅ Limpiadas |
+
+---
+
+## ✅ Sesión 2026-04-23 — Features implementados (commits `da99502` → `2dccb8a`)
+
+### 1. Apellido Materno (`secondLastName`) — commit `da99502`
+
+**Archivos modificados:**
+- `apps/api/prisma/schema.prisma` — `Patient.secondLastName String?`
+- `apps/api/src/routes/patients.ts` — `secondLastName` en create/update/search/letterFilter
+- `packages/shared/src/types/index.ts` — `secondLastName?: string` en `Patient`
+- `apps/web/src/app/(dashboard)/pacientes/page.tsx` — formato nombre: `Apellido Paterno + Apellido Materno + Nombre(s)`, filtro alfabético A-Z
+- `apps/web/src/components/patients/new-patient-dialog.tsx` — campo "Apellido Materno" (opcional)
+
+**Comportamiento:**
+- Búsqueda aplica a lastName (OR)
+- Click en letra del alfabeto filtra por `lastName.startsWith(letra)` (case-insensitive)
+- Clic en misma letra deselecciona; search borra letra activa
+
+### 2. Sidebar responsivo + hamburger — commit `7fbc37a`
+
+**Archivos modificados:**
+- `apps/web/src/components/layout/sidebar.tsx` — `fixed inset-y-0 left-0` + overlay negro + spacer div `hidden lg:block w-48`; escucha evento DOM `toggle-sidebar`
+- `apps/web/src/components/layout/header.tsx` — botón hamburger `lg:hidden` que dispara `toggle-sidebar`
+- `apps/web/src/app/(dashboard)/layout.tsx` — `min-w-0` en `<main>` para evitar desbordamiento flex
+- `apps/web/src/app/(dashboard)/pacientes/page.tsx` — `overflow-x-auto` + `min-w-[750px]` en tabla
+
+**Patrón clave:** Evento DOM custom (`new CustomEvent('toggle-sidebar')`) para comunicar Header ↔ Sidebar sin context. El sidebar siempre está en `fixed` — el spacer div reserva el espacio en desktop.
+
+### 3. Feature: Consulta con IA — commit `de7dcec`
+
+Wizard de 6 pasos completo: `patient → consent → microphone → recording → processing → done`
+
+**Archivos nuevos/modificados:**
+- `apps/web/src/app/(dashboard)/consulta-ia/page.tsx` — 821 líneas, wizard completo
+- `apps/api/src/routes/consulta-ia.ts` — `POST /api/consulta-ia/process`
+- `apps/api/src/server.ts` — registra `consultaIaRoutes` en `/api/consulta-ia`
+- `apps/web/src/lib/api.ts` — `api.consultaIa.process(data)`
+- `apps/api/prisma/schema.prisma` — ClinicalNote: `isAiAssisted`, `aiSummary`, `transcriptText`, `transcriptDurationSeconds`, `transcriptConsentAt`
+- `apps/web/src/app/(dashboard)/pacientes/[id]/page.tsx` — badge "IA", AI summary box, transcript viewer + download
+
+**Implementación clave:**
+- Web Speech API: `SpeechRecognition`, `lang: 'es-MX'`, `continuous: true`, auto-restart en `onend` via `isRecordingRef`
+- Claude `claude-sonnet-4-6` extrae: motivo, exploración, diagnósticos CIE-10, plan, notas, resumen
+- Prompt con regla estricta: solo información explícita, usa `[REVISAR]` para ambigüedad
+- Claude failure: guarda transcripción, deja campos vacíos (graceful)
+- ClinicalNote se crea en `DRAFT` con `isAiAssisted: true`
+- Strip de markdown fences antes del `JSON.parse()`
+
+### 4. Panel "Complementar" — commits `2a6f5d7` + `2dccb8a`
+
+**Archivo modificado:** `apps/web/src/app/(dashboard)/pacientes/[id]/page.tsx`
+
+**Qué hace:**
+- Botón "Complementar" aparece en el header de `ConsultaCard` **solo en notas `DRAFT`**
+- Abre `ComplementarPanel` inline al final del card con header verde (`emerald`) que señala zona editable
+- Scroll automático al panel al abrirse (`scrollIntoView({ behavior: 'smooth' })`)
+- 4 secciones acordeón (colapsadas por defecto): Signos vitales, Diagnóstico CIE-10, Plan de tratamiento, Notas de evolución
+- Pre-puebla datos desde la nota existente (`note.vitalSigns`, `note.diagnoses`, `note.treatmentPlan`, `note.evolutionNotes`)
+- **Guardar borrador:** `PATCH /api/clinical-notes/:id` — sin validación
+- **Firmar consulta:** valida secciones vacías → modal advisory con lista + botones "Volver y completar" / "Firmar de todas formas" → `PATCH` + `POST /sign`
+- Tras firmar: nota pasa a `SIGNED`, botón "Complementar" desaparece
+
+**Criterios de "vacío" para el modal:**
+- Signos vitales: todos los 8 campos en '' Y sin `note.vitalSigns` previo
+- Diagnósticos: `diagnoses.length === 0`
+- Plan / Evolución: `!texto.trim()`
+
+**Componentes nuevos en `page.tsx`:**
+- `ComplementarPanel` — panel completo con estado propio
+- Interfaces: `ComplementarVitals`, `Cie10Result`, `DiagItem`
+- `ConsultaCard` refactorizado: header dividido en `<div>` + `<button>` para que "Complementar" no active el toggle de expansión
+
+**No requirió cambios backend** — `PATCH /:id` y `POST /:id/sign` ya existían.
+
+---
+
+## ⏳ Estado actual al cerrar sesión 2026-04-23
+
+| Item | Estado |
+|---|---|
+| Vercel Analytics | ✅ Deployado y funcionando |
+| Apellido Materno (`secondLastName`) | ✅ En prod |
+| Sidebar hamburger responsivo | ✅ En prod |
+| Consulta con IA (wizard + Claude) | ✅ En prod |
+| Panel Complementar (acordeón + firma) | ✅ En prod |
+| Último commit en `main` | `2dccb8a` |
