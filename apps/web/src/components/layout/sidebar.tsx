@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { sessionCache } from '@/lib/api'
 import {
   Calendar, Users, CreditCard,
   Settings, Video, LayoutDashboard, LogOut, Brain,
@@ -77,9 +78,11 @@ export function Sidebar() {
         process.env['NEXT_PUBLIC_SUPABASE_URL']!,
         process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
       )
+      sessionCache.clear()
       await supabase.auth.signOut()
       window.location.href = '/login'
     } catch {
+      sessionCache.clear()
       window.location.href = '/login'
     }
   }
