@@ -106,7 +106,7 @@ interface PrescriptionForPdf {
   }>
 }
 
-interface ClinicForPdf {
+type ClinicForPdf = {
   name: string
   address: string | null
   city: string | null

@@ -47,7 +47,7 @@ describe('DELETE /api/patients/:id', () => {
       headers: { authorization: 'Bearer fake-token' },
     })
 
-    expect(res.statusCode).toBe(200)
+    expect(res.statusCode).toBe(204)
     expect(mockPatientUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ isActive: false }) })
     )
