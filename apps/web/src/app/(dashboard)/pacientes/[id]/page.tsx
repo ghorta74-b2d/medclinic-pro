@@ -7,9 +7,10 @@ import { api, getUserRole } from '@/lib/api'
 import { formatDate, formatDateTime, getInitials, calculateAge, formatCurrency } from '@/lib/utils'
 import {
   ArrowLeft, Phone, Mail, Calendar, Droplets, AlertTriangle,
-  FileText, Pill, FlaskConical, ChevronDown, ChevronUp, Clock,
+  FileText, Pill, FlaskConical, ChevronDown, ChevronUp, ChevronRight, Clock,
   Pencil, X, Check, Loader2, Printer, Plus, Stethoscope, UserCheck,
-  Upload, Sparkles, ExternalLink, Brain, Download,
+  Upload, Sparkles, ExternalLink, Brain, Download, PenLine, Search,
+  AlertCircle, CheckCircle2,
 } from 'lucide-react'
 import type { Patient, ClinicalNote, Appointment, Prescription, LabResult, VitalSigns } from 'medclinic-shared'
 import { GENDER_LABELS, BLOOD_TYPE_LABELS, STATUS_LABELS } from 'medclinic-shared'
@@ -369,6 +370,374 @@ function VitalsStrip({ v }: { v: VitalSigns }) {
   )
 }
 
+// ── Complementar types ─────────────────────────────────────────────────────────
+interface ComplementarVitals {
+  weightKg: string; heightCm: string; systolicBp: string; diastolicBp: string
+  heartRateBpm: string; temperatureC: string; spo2Percent: string; glucoseMgDl: string
+}
+
+interface Cie10Result { code: string; description: string; chapter?: string; block?: string }
+interface DiagItem { code: string; description: string; type: 'PRIMARY' | 'SECONDARY' | 'RULE_OUT' }
+
+// ── ComplementarPanel ──────────────────────────────────────────────────────────
+function ComplementarPanel({ note, onSaved, onClose }: {
+  note: AiNote
+  onSaved: () => void
+  onClose: () => void
+}) {
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set())
+
+  const initVitals = (): ComplementarVitals => ({
+    weightKg:     note.vitalSigns?.weightKg    != null ? String(note.vitalSigns.weightKg)    : '',
+    heightCm:     note.vitalSigns?.heightCm    != null ? String(note.vitalSigns.heightCm)    : '',
+    systolicBp:   note.vitalSigns?.systolicBp  != null ? String(note.vitalSigns.systolicBp)  : '',
+    diastolicBp:  note.vitalSigns?.diastolicBp != null ? String(note.vitalSigns.diastolicBp) : '',
+    heartRateBpm: note.vitalSigns?.heartRateBpm != null ? String(note.vitalSigns.heartRateBpm) : '',
+    temperatureC: note.vitalSigns?.temperatureC != null ? String(note.vitalSigns.temperatureC) : '',
+    spo2Percent:  note.vitalSigns?.spo2Percent  != null ? String(note.vitalSigns.spo2Percent)  : '',
+    glucoseMgDl:  note.vitalSigns?.glucoseMgDl  != null ? String(note.vitalSigns.glucoseMgDl)  : '',
+  })
+
+  const [vitals, setVitals] = useState<ComplementarVitals>(initVitals)
+  const [diagnoses, setDiagnoses] = useState<DiagItem[]>(
+    Array.isArray(note.diagnoses) ? (note.diagnoses as DiagItem[]) : []
+  )
+  const [treatmentPlan, setTreatmentPlan] = useState(note.treatmentPlan ?? '')
+  const [evolutionNotes, setEvolutionNotes] = useState(note.evolutionNotes ?? '')
+
+  const [diagSearch, setDiagSearch] = useState('')
+  const [diagResults, setDiagResults] = useState<Cie10Result[]>([])
+  const [diagSearching, setDiagSearching] = useState(false)
+  const diagDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const [isSaving, setIsSaving] = useState(false)
+  const [isSigning, setIsSigning] = useState(false)
+  const [showSignModal, setShowSignModal] = useState(false)
+  const [missingSections, setMissingSections] = useState<string[]>([])
+  const [error, setError] = useState('')
+
+  function toggleSection(id: string) {
+    setOpenSections(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function handleDiagSearch(q: string) {
+    setDiagSearch(q)
+    if (diagDebounceRef.current) clearTimeout(diagDebounceRef.current)
+    if (q.length < 2) { setDiagResults([]); setDiagSearching(false); return }
+    setDiagSearching(true)
+    diagDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await api.catalogs.cie10(q) as { data: Cie10Result[] }
+        setDiagResults(res.data ?? [])
+      } catch { setDiagResults([]) }
+      finally { setDiagSearching(false) }
+    }, 300)
+  }
+
+  function addDiagnosis(entry: Cie10Result) {
+    if (diagnoses.some(d => d.code === entry.code)) return
+    const type: DiagItem['type'] = diagnoses.length === 0 ? 'PRIMARY' : 'SECONDARY'
+    setDiagnoses([...diagnoses, { code: entry.code, description: entry.description, type }])
+    setDiagSearch('')
+    setDiagResults([])
+  }
+
+  function buildPayload() {
+    const hasVitals = Object.values(vitals).some(x => x !== '')
+    return {
+      diagnoses,
+      treatmentPlan: treatmentPlan || undefined,
+      evolutionNotes: evolutionNotes || undefined,
+      vitalSigns: hasVitals ? {
+        weightKg:     vitals.weightKg     ? parseFloat(vitals.weightKg)     : undefined,
+        heightCm:     vitals.heightCm     ? parseFloat(vitals.heightCm)     : undefined,
+        systolicBp:   vitals.systolicBp   ? parseInt(vitals.systolicBp)     : undefined,
+        diastolicBp:  vitals.diastolicBp  ? parseInt(vitals.diastolicBp)    : undefined,
+        heartRateBpm: vitals.heartRateBpm ? parseInt(vitals.heartRateBpm)   : undefined,
+        temperatureC: vitals.temperatureC ? parseFloat(vitals.temperatureC) : undefined,
+        spo2Percent:  vitals.spo2Percent  ? parseInt(vitals.spo2Percent)    : undefined,
+        glucoseMgDl:  vitals.glucoseMgDl  ? parseInt(vitals.glucoseMgDl)    : undefined,
+      } : undefined,
+    }
+  }
+
+  async function handleSaveDraft() {
+    setIsSaving(true)
+    setError('')
+    try {
+      await api.clinicalNotes.update(note.id, buildPayload())
+      onSaved()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al guardar')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  function handleSign() {
+    const missing: string[] = []
+    if (!Object.values(vitals).some(x => x !== '') && !note.vitalSigns) missing.push('Signos vitales')
+    if (diagnoses.length === 0) missing.push('Diagnóstico CIE-10')
+    if (!treatmentPlan.trim()) missing.push('Plan de tratamiento')
+    if (!evolutionNotes.trim()) missing.push('Notas de evolución')
+    if (missing.length > 0) {
+      setMissingSections(missing)
+      setShowSignModal(true)
+      return
+    }
+    executeSign()
+  }
+
+  async function executeSign() {
+    setShowSignModal(false)
+    setIsSigning(true)
+    setError('')
+    try {
+      await api.clinicalNotes.update(note.id, buildPayload())
+      await api.clinicalNotes.sign(note.id)
+      onSaved()
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al firmar')
+    } finally {
+      setIsSigning(false)
+    }
+  }
+
+  const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4E2DD2]/40 focus:border-[#4E2DD2]'
+  const lbl = 'block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1'
+
+  function AccordionHeader({ id, label }: { id: string; label: string }) {
+    const isOpen = openSections.has(id)
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSection(id)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+      >
+        <span className="text-sm font-semibold text-gray-800">{label}</span>
+        {isOpen
+          ? <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+          : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+        }
+      </button>
+    )
+  }
+
+  return (
+    <div className="border-t-2 border-violet-200 bg-violet-50/30">
+      <div className="px-4 py-3 flex items-center justify-between border-b border-violet-200">
+        <div className="flex items-center gap-2">
+          <PenLine className="w-4 h-4 text-violet-600" />
+          <span className="text-sm font-semibold text-violet-800">Complementar consulta</span>
+        </div>
+        <button onClick={onClose} className="p-1 hover:bg-violet-100 rounded text-violet-400 hover:text-violet-600">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="divide-y divide-gray-200">
+        {/* ── Signos vitales ── */}
+        <div>
+          <AccordionHeader id="vitals" label="Signos vitales" />
+          {openSections.has('vitals') && (
+            <div className="px-4 pb-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { key: 'weightKg',     label: 'Peso (kg)',        placeholder: '65.5' },
+                { key: 'heightCm',     label: 'Talla (cm)',       placeholder: '165'  },
+                { key: 'systolicBp',   label: 'TA sistólica',     placeholder: '120'  },
+                { key: 'diastolicBp',  label: 'TA diastólica',    placeholder: '80'   },
+                { key: 'heartRateBpm', label: 'FC (lpm)',         placeholder: '72'   },
+                { key: 'temperatureC', label: 'Temperatura (°C)', placeholder: '36.5' },
+                { key: 'spo2Percent',  label: 'SpO₂ (%)',        placeholder: '98'   },
+                { key: 'glucoseMgDl',  label: 'Glucosa (mg/dL)', placeholder: '95'   },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className={lbl}>{f.label}</label>
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder={f.placeholder}
+                    value={vitals[f.key as keyof ComplementarVitals]}
+                    onChange={e => setVitals(v => ({ ...v, [f.key]: e.target.value }))}
+                    className={inp}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Diagnóstico CIE-10 ── */}
+        <div>
+          <AccordionHeader id="diagnoses" label="Diagnóstico CIE-10" />
+          {openSections.has('diagnoses') && (
+            <div className="px-4 pb-4 space-y-3">
+              {diagnoses.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {diagnoses.map(d => (
+                    <div key={d.code} className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
+                      <span className="text-xs font-bold text-blue-700">{d.code}</span>
+                      <span className="text-xs text-blue-800">{d.description}</span>
+                      <select
+                        value={d.type}
+                        onChange={e => setDiagnoses(diagnoses.map(x =>
+                          x.code === d.code ? { ...x, type: e.target.value as DiagItem['type'] } : x
+                        ))}
+                        className="text-xs border-none bg-transparent text-blue-600 outline-none cursor-pointer"
+                      >
+                        <option value="PRIMARY">Principal</option>
+                        <option value="SECONDARY">Secundario</option>
+                        <option value="RULE_OUT">A descartar</option>
+                      </select>
+                      <button onClick={() => setDiagnoses(diagnoses.filter(x => x.code !== d.code))} className="text-blue-400 hover:text-red-500">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="relative">
+                {diagSearching
+                  ? <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 animate-spin" />
+                  : <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                }
+                <input
+                  type="text"
+                  placeholder="Buscar código CIE-10 o descripción..."
+                  value={diagSearch}
+                  onChange={e => handleDiagSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4E2DD2]/40"
+                />
+                {diagResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                    {diagResults.map(entry => (
+                      <button
+                        key={entry.code}
+                        type="button"
+                        onClick={() => addDiagnosis(entry)}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-3"
+                      >
+                        <span className="font-mono text-xs text-blue-600 w-16 shrink-0">{entry.code}</span>
+                        <span className="text-gray-800">{entry.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Plan de tratamiento ── */}
+        <div>
+          <AccordionHeader id="plan" label="Plan de tratamiento" />
+          {openSections.has('plan') && (
+            <div className="px-4 pb-4">
+              <textarea
+                rows={4}
+                value={treatmentPlan}
+                onChange={e => setTreatmentPlan(e.target.value)}
+                placeholder="Indicaciones, estudios solicitados, interconsultas..."
+                className={inp}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* ── Notas de evolución ── */}
+        <div>
+          <AccordionHeader id="evolution" label="Notas de evolución" />
+          {openSections.has('evolution') && (
+            <div className="px-4 pb-4">
+              <textarea
+                rows={3}
+                value={evolutionNotes}
+                onChange={e => setEvolutionNotes(e.target.value)}
+                placeholder="Evolución del padecimiento, respuesta al tratamiento previo..."
+                className={inp}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mx-4 mb-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+          <p className="text-sm text-red-800">{error}</p>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="px-4 py-4 border-t border-violet-200 flex gap-3">
+        <button
+          type="button"
+          onClick={handleSaveDraft}
+          disabled={isSaving || isSigning}
+          className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+        >
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          {isSaving ? 'Guardando...' : 'Guardar borrador'}
+        </button>
+        <button
+          type="button"
+          onClick={handleSign}
+          disabled={isSigning || isSaving}
+          className="flex-1 py-2.5 bg-[#4E2DD2] hover:bg-[#3d22a8] disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
+        >
+          {isSigning
+            ? <><Loader2 className="w-4 h-4 animate-spin" /> Firmando...</>
+            : <><CheckCircle2 className="w-4 h-4" /> Firmar consulta</>
+          }
+        </button>
+      </div>
+
+      {/* Sign validation modal */}
+      {showSignModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900">Secciones sin completar</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-3">Las siguientes secciones están vacías:</p>
+            <ul className="space-y-1.5 mb-4">
+              {missingSections.map(s => (
+                <li key={s} className="flex items-center gap-2 text-sm text-gray-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                  {s}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-gray-400 mb-5">La firma es válida aunque haya secciones vacías. Puedes completarlas antes o firmar de todas formas.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSignModal(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Volver y completar
+              </button>
+              <button
+                onClick={executeSign}
+                className="flex-1 px-4 py-2.5 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white rounded-xl text-sm font-semibold transition-colors"
+              >
+                Firmar de todas formas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── ConsultaCard — single past note with full audit trail ──────────────────────
 interface AiNote extends ClinicalNote {
   isAiAssisted?: boolean
@@ -388,23 +757,25 @@ function downloadTranscript(note: AiNote) {
   URL.revokeObjectURL(url)
 }
 
-function ConsultaCard({ note: rawNote }: { note: ClinicalNote }) {
+function ConsultaCard({ note: rawNote, onRefresh }: { note: ClinicalNote; onRefresh: () => void }) {
   const note = rawNote as AiNote
   const [expanded, setExpanded] = useState(false)
   const [showTranscript, setShowTranscript] = useState(false)
+  const [showComplementar, setShowComplementar] = useState(false)
   const isSigned = note.status === 'SIGNED'
+  const canComplement = !isSigned
 
   return (
     <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
       {/* Audit header — clic en cualquier parte del header para expandir/colapsar */}
-      <button
-        onClick={() => setExpanded(e => !e)}
-        className={cn(
-          'w-full flex items-center justify-between px-4 py-3 border-b border-gray-300 transition-colors text-left',
-          expanded ? 'bg-[#0D1B2E]' : 'bg-gray-200 hover:bg-gray-300'
-        )}
-      >
-        <div className="flex items-center gap-2.5">
+      <div className={cn(
+        'flex items-center justify-between px-4 py-3 border-b border-gray-300',
+        expanded ? 'bg-[#0D1B2E]' : 'bg-gray-200'
+      )}>
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="flex-1 flex items-center gap-2.5 text-left"
+        >
           <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0', expanded ? 'bg-white/15' : 'bg-[#4E2DD2]/10')}>
             <UserCheck className={cn('w-3.5 h-3.5', expanded ? 'text-white' : 'text-[#4E2DD2]')} />
           </div>
@@ -423,7 +794,7 @@ function ConsultaCard({ note: rawNote }: { note: ClinicalNote }) {
               )}
             </p>
           </div>
-        </div>
+        </button>
         <div className="flex items-center gap-2">
           {note.isAiAssisted && (
             <span className={cn(
@@ -442,11 +813,27 @@ function ConsultaCard({ note: rawNote }: { note: ClinicalNote }) {
           )}>
             {isSigned ? 'Firmada' : 'Borrador'}
           </span>
-          {expanded
-            ? <ChevronUp className="w-4 h-4 text-white/70" />
-            : <ChevronDown className="w-4 h-4 text-gray-500" />}
+          {canComplement && (
+            <button
+              onClick={() => setShowComplementar(c => !c)}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors',
+                showComplementar
+                  ? 'bg-violet-200 text-violet-800 border-violet-300'
+                  : 'bg-violet-50 text-violet-700 hover:bg-violet-100 border-violet-200'
+              )}
+            >
+              <PenLine className="w-3 h-3" />
+              {showComplementar ? 'Cerrar' : 'Complementar'}
+            </button>
+          )}
+          <button onClick={() => setExpanded(e => !e)} className="ml-1">
+            {expanded
+              ? <ChevronUp className="w-4 h-4 text-white/70" />
+              : <ChevronDown className="w-4 h-4 text-gray-500" />}
+          </button>
         </div>
-      </button>
+      </div>
 
       {/* Summary (always visible) */}
       <div className="px-4 py-3">
@@ -532,6 +919,15 @@ function ConsultaCard({ note: rawNote }: { note: ClinicalNote }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Complementar panel */}
+      {showComplementar && (
+        <ComplementarPanel
+          note={note}
+          onSaved={() => { setShowComplementar(false); onRefresh() }}
+          onClose={() => setShowComplementar(false)}
+        />
       )}
     </div>
   )
@@ -642,7 +1038,7 @@ function ConsultasTab({
             Historial de consultas ({sorted.length})
           </p>
           <div className="space-y-3">
-            {sorted.map(note => <ConsultaCard key={note.id} note={note} />)}
+            {sorted.map(note => <ConsultaCard key={note.id} note={note} onRefresh={onRefresh} />)}
           </div>
         </div>
       )}
