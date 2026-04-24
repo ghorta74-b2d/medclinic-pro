@@ -559,7 +559,7 @@ export default function LandingPage() {
             ].map((t, i) => (
               <FadeUp key={t.name} delay={i * 80}>
                 <div className="bg-white rounded-2xl p-8 h-full flex flex-col">
-                  <p className="text-[#1d1d1f] text-[17px] leading-[1.6] flex-1 mb-8">"{t.quote}"</p>
+                  <p className="text-[#1d1d1f] text-[17px] leading-[1.6] flex-1 mb-8">&ldquo;{t.quote}&rdquo;</p>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-[#0071e3] flex items-center justify-center text-white text-[12px] font-semibold shrink-0">{t.init}</div>
                     <div>

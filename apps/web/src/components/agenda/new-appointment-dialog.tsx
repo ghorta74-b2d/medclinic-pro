@@ -575,7 +575,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
                     ))}
                     <button type="button" onClick={switchToNew}
                       className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 border-t border-gray-100">
-                      <UserPlus className="w-3 h-3" /> Crear "{patientSearch}" como nuevo
+                      <UserPlus className="w-3 h-3" /> Crear &ldquo;{patientSearch}&rdquo; como nuevo
                     </button>
                   </div>
                 )}
@@ -584,7 +584,7 @@ export function NewAppointmentDialog({ defaultDate, onClose, onCreated }: NewApp
                     <div className="px-3 py-2 text-sm text-gray-400">Sin resultados</div>
                     <button type="button" onClick={switchToNew}
                       className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 border-t border-gray-100">
-                      <UserPlus className="w-3 h-3" /> Crear "{patientSearch}" como nuevo
+                      <UserPlus className="w-3 h-3" /> Crear &ldquo;{patientSearch}&rdquo; como nuevo
                     </button>
                   </div>
                 )}

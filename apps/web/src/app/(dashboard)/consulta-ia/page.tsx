@@ -436,18 +436,15 @@ function RecordingStep({
 
   // Speech recognition
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SR) return
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recog = new SR() as any
     recog.lang = 'es-MX'
     recog.continuous = true
     recog.interimResults = true
     recognitionRef.current = recog
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recog.onresult = (event: any) => {
       let interim = ''
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -486,7 +483,6 @@ function RecordingStep({
   function handleEnd() {
     if (confirming) {
       isRecordingRef.current = false
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       try { (recognitionRef.current as any)?.stop() } catch { /* ignore */ }
       onEnd(transcriptRef.current || transcriptDisplay, elapsed)
     } else {
