@@ -14,7 +14,7 @@ const LabResultWebhookSchema = z.object({
   laboratoryName: z.string().optional(),
   fileUrl: z.string().url().optional(),
   reportedAt: z.string().datetime().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.any()).optional(),
 })
 
 export async function webhookLab(server: FastifyInstance) {
