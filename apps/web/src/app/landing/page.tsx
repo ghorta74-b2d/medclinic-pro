@@ -675,7 +675,8 @@ export default function LandingPage() {
       ══════════════════════════════════════════ */}
       <footer className="bg-[#1d1d1f] border-t border-white/10 py-10 px-6">
         <div className="max-w-[980px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-6">
-          <img src="/logo-white.svg" alt="MediaClinic" className="h-7 w-auto opacity-40" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-white.svg" alt="MedClinic" className="h-7 w-auto opacity-40" />
           <div className="flex flex-wrap justify-center gap-6 text-[13px] text-white/30">
             {['Plataforma','Precios','Privacidad','Términos','HIPAA'].map(l => (
               <a key={l} href="#" className="hover:text-white/60 transition-colors">{l}</a>
