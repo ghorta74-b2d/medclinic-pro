@@ -13,10 +13,10 @@ import { NewLabResultDialog } from '@/components/lab-results/new-lab-result-dial
 interface LabResponse { data: LabResult[]; pagination: { total: number } }
 
 const STATUS_CONFIG = {
-  PENDING:  { label: 'Pendiente', classes: 'bg-gray-100 text-gray-600' },
-  RECEIVED: { label: 'Recibido',  classes: 'bg-yellow-100 text-yellow-700' },
-  REVIEWED: { label: 'Revisado',  classes: 'bg-blue-100 text-blue-700' },
-  NOTIFIED: { label: 'Notificado', classes: 'bg-green-100 text-green-700' },
+  PENDING:  { label: 'Pendiente', classes: 'bg-muted text-muted-foreground' },
+  RECEIVED: { label: 'Recibido',  classes: 'bg-warning/15 text-warning' },
+  REVIEWED: { label: 'Revisado',  classes: 'bg-primary/15 text-primary' },
+  NOTIFIED: { label: 'Notificado', classes: 'bg-success/15 text-success' },
 }
 
 export default function LaboratorioPage() {
@@ -73,7 +73,7 @@ export default function LaboratorioPage() {
         actions={
           <button
             onClick={() => setShowNew(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg"
           >
             <Plus className="w-4 h-4" />
             Agregar resultado
@@ -91,8 +91,8 @@ export default function LaboratorioPage() {
               className={cn(
                 'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
                 filter === f.value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-600 hover:border-blue-400'
+                  ? 'bg-primary text-white'
+                  : 'bg-card border border-border text-muted-foreground hover:border-primary'
               )}
             >
               {f.label}
@@ -102,12 +102,12 @@ export default function LaboratorioPage() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         ) : results.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-            <FlaskConical className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-            <p className="text-sm text-gray-400">No hay resultados para este filtro</p>
+          <div className="text-center py-16 bg-card rounded-xl border border-border">
+            <FlaskConical className="w-10 h-10 mx-auto mb-3 text-muted-foreground/60" />
+            <p className="text-sm text-muted-foreground">No hay resultados para este filtro</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -116,31 +116,31 @@ export default function LaboratorioPage() {
               const cfg = STATUS_CONFIG[status]
 
               return (
-                <div key={result.id} className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
+                <div key={result.id} className="bg-card rounded-xl border border-border p-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center shrink-0">
-                      <FlaskConical className="w-5 h-5 text-orange-500" />
+                    <div className="w-10 h-10 bg-warning/10 rounded-xl flex items-center justify-center shrink-0">
+                      <FlaskConical className="w-5 h-5 text-warning" />
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <p className="text-sm font-semibold text-gray-900">{result.title}</p>
+                        <p className="text-sm font-semibold text-foreground">{result.title}</p>
                         <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', cfg.classes)}>
                           {cfg.label}
                         </span>
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
                           {LAB_CATEGORY_LABELS[result.category]}
                         </span>
                       </div>
 
-                      <p className="text-xs text-gray-500 mb-1">
+                      <p className="text-xs text-muted-foreground mb-1">
                         {result.patient && `${result.patient.firstName} ${result.patient.lastName}`}
                         {result.laboratoryName && ` · ${result.laboratoryName}`}
                         {' · '}{formatRelative(result.createdAt)}
                       </p>
 
                       {result.notes && (
-                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">{result.notes}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{result.notes}</p>
                       )}
                     </div>
 
@@ -151,7 +151,7 @@ export default function LaboratorioPage() {
                           href={result.fileUrl ?? result.externalUrl ?? '#'}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50"
+                          className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground/80 hover:bg-muted/50"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           Ver
@@ -162,7 +162,7 @@ export default function LaboratorioPage() {
                         <button
                           onClick={() => handleReview(result.id)}
                           disabled={actionLoading[result.id] === 'review'}
-                          className="flex items-center gap-1.5 px-3 py-1.5 border border-blue-300 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-50 disabled:opacity-50"
+                          className="flex items-center gap-1.5 px-3 py-1.5 border border-primary text-primary rounded-lg text-xs font-medium hover:bg-primary/10 disabled:opacity-50"
                         >
                           {actionLoading[result.id] === 'review'
                             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -177,7 +177,7 @@ export default function LaboratorioPage() {
                         <button
                           onClick={() => handleNotify(result.id)}
                           disabled={actionLoading[result.id] === 'notify'}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-success hover:bg-success/90 text-white rounded-lg text-xs font-medium disabled:opacity-50"
                         >
                           {actionLoading[result.id] === 'notify'
                             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />

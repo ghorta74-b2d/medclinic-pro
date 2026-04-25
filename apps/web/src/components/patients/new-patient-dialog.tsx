@@ -112,15 +112,15 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
     }
   }
 
-  const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-  const labelClass = 'block text-xs font-medium text-gray-600 mb-1'
+  const inputClass = 'w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary'
+  const labelClass = 'block text-xs font-medium text-muted-foreground mb-1'
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-semibold text-gray-900">Registrar nuevo paciente</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
+          <h2 className="text-lg font-semibold text-foreground">Registrar nuevo paciente</h2>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -128,7 +128,7 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Basic info */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Datos personales</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Datos personales</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Nombre(s) *</label>
@@ -145,7 +145,7 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
               <div>
                 <label className={labelClass}>WhatsApp *</label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-sm text-gray-600 font-medium select-none">+52</span>
+                  <span className="inline-flex items-center px-3 border border-r-0 border-border rounded-l-lg bg-muted/50 text-sm text-muted-foreground font-medium select-none">+52</span>
                   <input
                     required
                     type="tel"
@@ -154,7 +154,7 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
                     value={phoneDigits}
                     onChange={(e) => handlePhoneChange(e.target.value)}
                     maxLength={10}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-border rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
                 {phoneDigits.length > 0 && phoneDigits.length < 10 && (
@@ -195,7 +195,7 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
 
           {/* Address */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Domicilio</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Domicilio</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className={labelClass}>Dirección</label>
@@ -214,7 +214,7 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
 
           {/* Medical background */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Antecedentes médicos</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Antecedentes médicos</h3>
             <div className="space-y-3">
               <div>
                 <label className={labelClass}>Alergias (separadas por comas)</label>
@@ -229,7 +229,7 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
 
           {/* Emergency contact */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Contacto de emergencia</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Contacto de emergencia</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Nombre</label>
@@ -243,28 +243,28 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
           </div>
 
           {/* Consentimiento — LFPDPPP */}
-          <div className="border border-blue-200 rounded-xl overflow-hidden">
+          <div className="border border-primary/30 rounded-xl overflow-hidden">
             {/* Header */}
-            <div className="bg-blue-50 px-4 py-3 flex items-center gap-2 border-b border-blue-100">
-              <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-              <span className="text-sm font-semibold text-blue-900">Consentimiento — LFPDPPP</span>
-              <span className="ml-auto text-xs text-red-600 font-medium">Requerido *</span>
+            <div className="bg-primary/10 px-4 py-3 flex items-center gap-2 border-b border-primary/20">
+              <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
+              <span className="text-sm font-semibold text-primary">Consentimiento — LFPDPPP</span>
+              <span className="ml-auto text-xs text-destructive font-medium">Requerido *</span>
             </div>
 
             {/* Aviso expandible */}
-            <div className="bg-white px-4 py-3 space-y-3">
+            <div className="bg-card px-4 py-3 space-y-3">
               <button
                 type="button"
                 onClick={() => setShowAviso(!showAviso)}
-                className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                className="flex items-center gap-2 text-xs text-primary hover:text-primary font-medium transition-colors"
               >
                 {showAviso ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 {showAviso ? 'Ocultar aviso de privacidad' : 'Ver aviso de privacidad completo'}
               </button>
 
               {showAviso && (
-                <div className="bg-gray-50 rounded-lg p-3 max-h-48 overflow-y-auto border border-gray-200">
-                  <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
+                <div className="bg-muted/50 rounded-lg p-3 max-h-48 overflow-y-auto border border-border">
+                  <pre className="text-xs text-foreground/80 whitespace-pre-wrap font-sans leading-relaxed">
                     {AVISO_PRIVACIDAD}
                   </pre>
                 </div>
@@ -275,9 +275,9 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
                   type="checkbox"
                   checked={form.privacyConsent}
                   onChange={(e) => set('privacyConsent', e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                  className="mt-0.5 w-4 h-4 rounded border-border text-primary cursor-pointer"
                 />
-                <span className="text-xs text-gray-700 leading-relaxed">
+                <span className="text-xs text-foreground/80 leading-relaxed">
                   El paciente ha recibido, leído y aceptado el <strong>Aviso de Privacidad</strong> de la clínica, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP).
                 </span>
               </label>
@@ -287,9 +287,9 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
                   type="checkbox"
                   checked={form.dataConsent}
                   onChange={(e) => set('dataConsent', e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                  className="mt-0.5 w-4 h-4 rounded border-border text-primary cursor-pointer"
                 />
-                <span className="text-xs text-gray-700 leading-relaxed">
+                <span className="text-xs text-foreground/80 leading-relaxed">
                   El paciente otorga su <strong>consentimiento expreso para el tratamiento de sus datos personales sensibles</strong> (datos de salud, diagnósticos, tratamientos) con la finalidad exclusiva de recibir atención médica.
                 </span>
               </label>
@@ -297,14 +297,14 @@ export function NewPatientDialog({ onClose, onCreated }: NewPatientDialogProps) 
           </div>
 
           {error && (
-            <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+            <p className="text-destructive text-sm bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>
           )}
 
           <div className="flex gap-3">
-            <button type="button" onClick={onClose} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <button type="button" onClick={onClose} className="flex-1 py-2 border border-border rounded-lg text-sm font-medium text-foreground/80 hover:bg-muted/50">
               Cancelar
             </button>
-            <button type="submit" disabled={loading} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
+            <button type="submit" disabled={loading} className="flex-1 py-2 bg-primary hover:bg-primary disabled:opacity-50 text-white rounded-lg text-sm font-medium">
               {loading ? 'Registrando...' : 'Registrar paciente'}
             </button>
           </div>

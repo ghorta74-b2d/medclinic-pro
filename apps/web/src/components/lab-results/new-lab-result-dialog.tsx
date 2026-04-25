@@ -91,14 +91,14 @@ export function NewLabResultDialog({ onClose, onCreated, patientId: defaultPatie
     }
   }
 
-  const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const inputClass = 'w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary'
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">Agregar resultado de laboratorio</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+      <div className="bg-card rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-border">
+          <h2 className="text-lg font-semibold text-foreground">Agregar resultado de laboratorio</h2>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -107,25 +107,25 @@ export function NewLabResultDialog({ onClose, onCreated, patientId: defaultPatie
           {/* Patient */}
           {!defaultPatientId && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">Paciente *</label>
               {selectedPatientId ? (
-                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <span className="text-sm font-medium text-green-800">{selectedPatientName}</span>
+                <div className="flex items-center gap-2 bg-success/10 border border-success/30 rounded-lg px-3 py-2">
+                  <span className="text-sm font-medium text-success">{selectedPatientName}</span>
                   <button type="button" onClick={() => { setSelectedPatientId(''); setSelectedPatientName('') }}
-                    className="ml-auto"><X className="w-3.5 h-3.5 text-green-600" /></button>
+                    className="ml-auto"><X className="w-3.5 h-3.5 text-success" /></button>
                 </div>
               ) : (
                 <div className="relative">
                   <input type="text" placeholder="Buscar paciente..." value={patientSearch}
                     onChange={(e) => setPatientSearch(e.target.value)} className={inputClass} />
                   {patients.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg z-10">
                       {patients.map((p) => (
                         <button key={p.id} type="button"
                           onClick={() => { setSelectedPatientId(p.id); setSelectedPatientName(`${p.firstName} ${p.lastName}`); setPatientSearch(''); setPatients([]) }}
-                          className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex justify-between">
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-primary/10 flex justify-between">
                           <span>{p.firstName} {p.lastName}</span>
-                          <span className="text-gray-400 text-xs">{p.phone}</span>
+                          <span className="text-muted-foreground text-xs">{p.phone}</span>
                         </button>
                       ))}
                     </div>
@@ -136,14 +136,14 @@ export function NewLabResultDialog({ onClose, onCreated, patientId: defaultPatie
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Título del estudio *</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-1">Título del estudio *</label>
             <input value={form.title} onChange={(e) => set('title', e.target.value)}
               placeholder="Biometría hemática, Ultrasonido pélvico..." className={inputClass} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">Categoría</label>
               <select value={form.category} onChange={(e) => set('category', e.target.value)} className={inputClass}>
                 <option value="LABORATORY">Laboratorio</option>
                 <option value="IMAGING">Imagenología</option>
@@ -154,7 +154,7 @@ export function NewLabResultDialog({ onClose, onCreated, patientId: defaultPatie
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Laboratorio</label>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">Laboratorio</label>
               <input value={form.laboratoryName} onChange={(e) => set('laboratoryName', e.target.value)}
                 placeholder="Ej. Laboratorio ABC" className={inputClass} />
             </div>
@@ -162,27 +162,27 @@ export function NewLabResultDialog({ onClose, onCreated, patientId: defaultPatie
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de solicitud</label>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">Fecha de solicitud</label>
               <input type="date" value={form.orderedAt} onChange={(e) => set('orderedAt', e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de resultado</label>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">Fecha de resultado</label>
               <input type="date" value={form.reportedAt} onChange={(e) => set('reportedAt', e.target.value)} className={inputClass} />
             </div>
           </div>
 
           {/* File or URL */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Archivo de resultado</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">Archivo de resultado</label>
             <div className="flex gap-2 mb-3">
               <button type="button" onClick={() => setUploadMode('url')}
                 className={cn('flex-1 py-2 rounded-lg text-sm font-medium border transition-colors flex items-center justify-center gap-2',
-                  uploadMode === 'url' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600')}>
+                  uploadMode === 'url' ? 'bg-primary text-white border-primary' : 'border-border text-muted-foreground')}>
                 <Link className="w-4 h-4" /> URL externa
               </button>
               <button type="button" onClick={() => setUploadMode('file')}
                 className={cn('flex-1 py-2 rounded-lg text-sm font-medium border transition-colors flex items-center justify-center gap-2',
-                  uploadMode === 'file' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600')}>
+                  uploadMode === 'file' ? 'bg-primary text-white border-primary' : 'border-border text-muted-foreground')}>
                 <Upload className="w-4 h-4" /> Subir PDF
               </button>
             </div>
@@ -191,33 +191,33 @@ export function NewLabResultDialog({ onClose, onCreated, patientId: defaultPatie
               <input type="url" value={form.externalUrl} onChange={(e) => set('externalUrl', e.target.value)}
                 placeholder="https://portal.laboratorio.com/resultado/..." className={inputClass} />
             ) : (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+              <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
                 <input type="file" accept=".pdf,image/*" id="lab-file"
                   onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)} className="hidden" />
                 <label htmlFor="lab-file" className="cursor-pointer">
-                  <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">
+                  <Upload className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
                     {fileToUpload ? fileToUpload.name : 'Clic para seleccionar PDF o imagen'}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">Máximo 50MB</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Máximo 50MB</p>
                 </label>
               </div>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notas del médico</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-1">Notas del médico</label>
             <textarea rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)}
               placeholder="Observaciones sobre los resultados..." className={inputClass} />
           </div>
 
-          {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          {error && <p className="text-destructive text-sm bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>}
 
           <div className="flex gap-3">
-            <button type="button" onClick={onClose} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <button type="button" onClick={onClose} className="flex-1 py-2 border border-border rounded-lg text-sm font-medium text-foreground/80 hover:bg-muted/50">
               Cancelar
             </button>
-            <button type="submit" disabled={loading} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
+            <button type="submit" disabled={loading} className="flex-1 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
               {loading ? 'Guardando...' : 'Guardar resultado'}
             </button>
           </div>

@@ -98,32 +98,32 @@ function EditPatientModal({
     }
   }
 
-  const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4E2DD2]/40 focus:border-[#4E2DD2]'
-  const lbl = 'block text-xs font-medium text-gray-600 mb-1'
+  const inp = 'w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary'
+  const lbl = 'block text-xs font-medium text-muted-foreground mb-1'
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
-          <h2 className="text-lg font-semibold text-gray-900">Editar paciente</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10 rounded-t-2xl">
+          <h2 className="text-lg font-semibold text-foreground">Editar paciente</h2>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <form onSubmit={handleSave} className="p-6 space-y-6">
           <section>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Datos personales</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Datos personales</h3>
             <div className="grid grid-cols-2 gap-3">
               <div><label className={lbl}>Nombre(s) *</label><input required value={form.firstName} onChange={e => set('firstName', e.target.value)} className={inp} /></div>
               <div><label className={lbl}>Apellidos *</label><input required value={form.lastName} onChange={e => set('lastName', e.target.value)} className={inp} /></div>
               <div>
                 <label className={lbl}>WhatsApp *</label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-sm text-gray-600 font-medium select-none">+52</span>
+                  <span className="inline-flex items-center px-3 border border-r-0 border-border rounded-l-lg bg-muted/50 text-sm text-muted-foreground font-medium select-none">+52</span>
                   <input type="tel" inputMode="numeric" placeholder="5512345678" value={phoneDigits}
                     onChange={e => setPhoneDigits(e.target.value.replace(/\D/g, '').slice(0, 10))} maxLength={10}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4E2DD2]/40" />
+                    className="flex-1 px-3 py-2 border border-border rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
                 </div>
                 {phoneDigits.length > 0 && phoneDigits.length < 10 && (
                   <p className="text-xs text-amber-600 mt-0.5">{10 - phoneDigits.length} dígitos restantes</p>
@@ -153,7 +153,7 @@ function EditPatientModal({
           </section>
 
           <section>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Domicilio</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Domicilio</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2"><label className={lbl}>Dirección</label><input value={form.address} onChange={e => set('address', e.target.value)} className={inp} /></div>
               <div><label className={lbl}>Ciudad</label><input value={form.city} onChange={e => set('city', e.target.value)} className={inp} /></div>
@@ -162,28 +162,28 @@ function EditPatientModal({
           </section>
 
           <section>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Antecedentes médicos</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Antecedentes médicos</h3>
             <div className="space-y-3">
-              <div><label className={lbl}>Alergias <span className="font-normal text-gray-400">(separadas por comas)</span></label><input value={form.allergies} onChange={e => set('allergies', e.target.value)} placeholder="Penicilina, Sulfa..." className={inp} /></div>
-              <div><label className={lbl}>Enfermedades crónicas <span className="font-normal text-gray-400">(separadas por comas)</span></label><input value={form.chronicConditions} onChange={e => set('chronicConditions', e.target.value)} placeholder="Diabetes, Hipertensión..." className={inp} /></div>
-              <div><label className={lbl}>Medicamentos actuales <span className="font-normal text-gray-400">(separados por comas)</span></label><input value={form.currentMedications} onChange={e => set('currentMedications', e.target.value)} placeholder="Metformina 500mg, Losartán..." className={inp} /></div>
+              <div><label className={lbl}>Alergias <span className="font-normal text-muted-foreground/60">(separadas por comas)</span></label><input value={form.allergies} onChange={e => set('allergies', e.target.value)} placeholder="Penicilina, Sulfa..." className={inp} /></div>
+              <div><label className={lbl}>Enfermedades crónicas <span className="font-normal text-muted-foreground/60">(separadas por comas)</span></label><input value={form.chronicConditions} onChange={e => set('chronicConditions', e.target.value)} placeholder="Diabetes, Hipertensión..." className={inp} /></div>
+              <div><label className={lbl}>Medicamentos actuales <span className="font-normal text-muted-foreground/60">(separados por comas)</span></label><input value={form.currentMedications} onChange={e => set('currentMedications', e.target.value)} placeholder="Metformina 500mg, Losartán..." className={inp} /></div>
               <div><label className={lbl}>Notas internas</label><textarea rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} className={`${inp} resize-none`} placeholder="Observaciones del expediente..." /></div>
             </div>
           </section>
 
           <section>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">Contacto de emergencia</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Contacto de emergencia</h3>
             <div className="grid grid-cols-2 gap-3">
               <div><label className={lbl}>Nombre</label><input value={form.emergencyName} onChange={e => set('emergencyName', e.target.value)} className={inp} /></div>
               <div><label className={lbl}>Teléfono</label><input value={form.emergencyPhone} onChange={e => set('emergencyPhone', e.target.value)} className={inp} /></div>
             </div>
           </section>
 
-          {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          {error && <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>}
 
           <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">Cancelar</button>
-            <button type="submit" disabled={saving} className="flex-1 py-2.5 bg-[#4E2DD2] hover:bg-[#3d22a8] disabled:opacity-50 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground/80 hover:bg-muted/50">Cancelar</button>
+            <button type="submit" disabled={saving} className="flex-1 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {saving ? 'Guardando...' : 'Guardar cambios'}
             </button>
@@ -207,18 +207,18 @@ function PatientProfileModal({
   const field = (label: string, value: string | null | undefined) =>
     value ? (
       <div>
-        <p className="text-xs text-gray-400 mb-0.5">{label}</p>
-        <p className="text-sm text-gray-800 font-medium">{value}</p>
+        <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+        <p className="text-sm text-foreground font-medium">{value}</p>
       </div>
     ) : null
 
   const listField = (label: string, values: string[]) =>
     values.length > 0 ? (
       <div>
-        <p className="text-xs text-gray-400 mb-1">{label}</p>
+        <p className="text-xs text-muted-foreground mb-1">{label}</p>
         <div className="flex flex-wrap gap-1.5">
           {values.map((v) => (
-            <span key={v} className="text-xs bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full">{v}</span>
+            <span key={v} className="text-xs bg-muted text-foreground/80 px-2.5 py-1 rounded-full">{v}</span>
           ))}
         </div>
       </div>
@@ -226,29 +226,29 @@ function PatientProfileModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#4E2DD2]/10 rounded-xl flex items-center justify-center text-[#4E2DD2] text-sm font-bold">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary text-sm font-bold">
               {getInitials(patient.firstName, patient.lastName)}
             </div>
             <div>
-              <p className="font-semibold text-gray-900">{patient.firstName} {patient.lastName}</p>
+              <p className="font-semibold text-foreground">{patient.firstName} {patient.lastName}</p>
               {patient.dateOfBirth && (
-                <p className="text-xs text-gray-500">{calculateAge(patient.dateOfBirth)} años · {BLOOD_TYPE_LABELS[patient.bloodType]}</p>
+                <p className="text-xs text-muted-foreground">{calculateAge(patient.dateOfBirth)} años · {BLOOD_TYPE_LABELS[patient.bloodType]}</p>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => { onClose(); onEdit() }}
-              className="flex items-center gap-1.5 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" /> Editar
             </button>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <X className="w-4 h-4 text-gray-500" />
+            <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
+              <X className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
         </div>
@@ -258,7 +258,7 @@ function PatientProfileModal({
 
           {/* Datos personales */}
           <section>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Datos personales</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Datos personales</h3>
             <div className="grid grid-cols-2 gap-4">
               {field('Nombre', `${patient.firstName} ${patient.lastName}`)}
               {field('Fecha de nacimiento', patient.dateOfBirth ? formatDate(patient.dateOfBirth) : null)}
@@ -271,7 +271,7 @@ function PatientProfileModal({
 
           {/* Contacto */}
           <section>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Contacto</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Contacto</h3>
             <div className="grid grid-cols-2 gap-4">
               {field('Teléfono', patient.phone)}
               {field('Correo electrónico', patient.email)}
@@ -284,7 +284,7 @@ function PatientProfileModal({
 
           {/* Historial médico */}
           <section>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Historial médico</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Historial médico</h3>
             <div className="space-y-3">
               {listField('Alergias', patient.allergies)}
               {listField('Condiciones crónicas', patient.chronicConditions)}
@@ -292,7 +292,7 @@ function PatientProfileModal({
               {listField('Antecedentes quirúrgicos', (patient as any).surgicalHistory ?? [])}
               {patient.allergies.length === 0 && patient.chronicConditions.length === 0 &&
                patient.currentMedications.length === 0 && ((patient as any).surgicalHistory ?? []).length === 0 && (
-                <p className="text-sm text-gray-400 italic">Sin antecedentes registrados</p>
+                <p className="text-sm text-muted-foreground italic">Sin antecedentes registrados</p>
               )}
             </div>
           </section>
@@ -300,7 +300,7 @@ function PatientProfileModal({
           {/* Contacto de emergencia */}
           {((patient as any).emergencyName || (patient as any).emergencyPhone) && (
             <section>
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Contacto de emergencia</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Contacto de emergencia</h3>
               <div className="grid grid-cols-2 gap-4">
                 {field('Nombre', (patient as any).emergencyName)}
                 {field('Teléfono', (patient as any).emergencyPhone)}
@@ -312,8 +312,8 @@ function PatientProfileModal({
           {/* Notas */}
           {(patient as any).notes && (
             <section>
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Notas</h3>
-              <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Notas</h3>
+              <p className="text-sm text-foreground/80 leading-relaxed bg-muted/50 rounded-xl p-3">
                 {(patient as any).notes}
               </p>
             </section>
@@ -321,8 +321,8 @@ function PatientProfileModal({
 
           {/* Audit */}
           {(patient as any).lastModifiedByName && (
-            <p className="text-xs text-gray-400 pb-2">
-              Modificado por <span className="font-medium text-gray-500">{(patient as any).lastModifiedByName}</span>
+            <p className="text-xs text-muted-foreground pb-2">
+              Modificado por <span className="font-medium text-muted-foreground">{(patient as any).lastModifiedByName}</span>
               {(patient as any).lastModifiedAt && <> · {formatDateTime((patient as any).lastModifiedAt)}</>}
             </p>
           )}
@@ -364,7 +364,7 @@ function VitalsStrip({ v }: { v: VitalSigns }) {
   return (
     <div className="flex flex-wrap gap-1.5 mt-2">
       {items.map((item) => (
-        <span key={item} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">{item}</span>
+        <span key={item} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">{item}</span>
       ))}
     </div>
   )
@@ -513,8 +513,8 @@ function ComplementarPanel({ note, onSaved, onClose }: {
     }
   }
 
-  const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4E2DD2]/40 focus:border-[#4E2DD2]'
-  const lbl = 'block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1'
+  const inp = 'w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary'
+  const lbl = 'block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1'
 
   function AccordionHeader({ id, label }: { id: string; label: string }) {
     const isOpen = openSections.has(id)
@@ -522,30 +522,30 @@ function ComplementarPanel({ note, onSaved, onClose }: {
       <button
         type="button"
         onClick={() => toggleSection(id)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors text-left"
       >
-        <span className="text-sm font-semibold text-gray-800">{label}</span>
+        <span className="text-sm font-semibold text-foreground">{label}</span>
         {isOpen
-          ? <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
-          : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+          ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+          : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
         }
       </button>
     )
   }
 
   return (
-    <div ref={panelRef} className="border-t-2 border-emerald-300 bg-emerald-50/40">
-      <div className="px-4 py-3 flex items-center justify-between border-b border-emerald-200 bg-emerald-100/60">
+    <div ref={panelRef} className="border-t-2 border-success/50 bg-success/5">
+      <div className="px-4 py-3 flex items-center justify-between border-b border-success/30 bg-success/10">
         <div className="flex items-center gap-2">
-          <PenLine className="w-4 h-4 text-emerald-700" />
-          <span className="text-sm font-semibold text-emerald-800">Complementar consulta</span>
+          <PenLine className="w-4 h-4 text-success" />
+          <span className="text-sm font-semibold text-success">Complementar consulta</span>
         </div>
-        <button onClick={onClose} className="p-1 hover:bg-emerald-200 rounded text-emerald-500 hover:text-emerald-700">
+        <button onClick={onClose} className="p-1 hover:bg-success/15 rounded text-success/70 hover:text-success">
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="divide-y divide-gray-200">
+      <div className="divide-y divide-border/50">
         {/* ── Signos vitales ── */}
         <div>
           <AccordionHeader id="vitals" label="Signos vitales" />
@@ -585,21 +585,21 @@ function ComplementarPanel({ note, onSaved, onClose }: {
               {diagnoses.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {diagnoses.map(d => (
-                    <div key={d.code} className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
-                      <span className="text-xs font-bold text-blue-700">{d.code}</span>
-                      <span className="text-xs text-blue-800">{d.description}</span>
+                    <div key={d.code} className="flex items-center gap-2 bg-primary/10 border border-primary rounded-lg px-3 py-1.5">
+                      <span className="text-xs font-bold text-primary">{d.code}</span>
+                      <span className="text-xs text-primary">{d.description}</span>
                       <select
                         value={d.type}
                         onChange={e => setDiagnoses(diagnoses.map(x =>
                           x.code === d.code ? { ...x, type: e.target.value as DiagItem['type'] } : x
                         ))}
-                        className="text-xs border-none bg-transparent text-blue-600 outline-none cursor-pointer"
+                        className="text-xs border-none bg-transparent text-primary outline-none cursor-pointer"
                       >
                         <option value="PRIMARY">Principal</option>
                         <option value="SECONDARY">Secundario</option>
                         <option value="RULE_OUT">A descartar</option>
                       </select>
-                      <button onClick={() => setDiagnoses(diagnoses.filter(x => x.code !== d.code))} className="text-blue-400 hover:text-red-500">
+                      <button onClick={() => setDiagnoses(diagnoses.filter(x => x.code !== d.code))} className="text-primary hover:text-destructive">
                         <X className="w-3 h-3" />
                       </button>
                     </div>
@@ -608,27 +608,27 @@ function ComplementarPanel({ note, onSaved, onClose }: {
               )}
               <div className="relative">
                 {diagSearching
-                  ? <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 animate-spin" />
-                  : <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  ? <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary animate-spin" />
+                  : <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 }
                 <input
                   type="text"
                   placeholder="Buscar código CIE-10 o descripción..."
                   value={diagSearch}
                   onChange={e => handleDiagSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4E2DD2]/40"
+                  className="w-full pl-10 pr-4 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
                 {diagResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg z-10 max-h-48 overflow-y-auto">
                     {diagResults.map(entry => (
                       <button
                         key={entry.code}
                         type="button"
                         onClick={() => addDiagnosis(entry)}
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-3"
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-primary/10 flex items-center gap-3"
                       >
-                        <span className="font-mono text-xs text-blue-600 w-16 shrink-0">{entry.code}</span>
-                        <span className="text-gray-800">{entry.description}</span>
+                        <span className="font-mono text-xs text-primary w-16 shrink-0">{entry.code}</span>
+                        <span className="text-foreground">{entry.description}</span>
                       </button>
                     ))}
                   </div>
@@ -673,8 +673,8 @@ function ComplementarPanel({ note, onSaved, onClose }: {
 
       {/* Error */}
       {error && (
-        <div className="mx-4 mb-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="mx-4 mb-3 bg-destructive/10 border border-destructive/15 rounded-lg px-4 py-2">
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
@@ -684,7 +684,7 @@ function ComplementarPanel({ note, onSaved, onClose }: {
           type="button"
           onClick={handleSaveDraft}
           disabled={isSaving || isSigning}
-          className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground/80 hover:bg-muted/50 disabled:opacity-50 transition-colors"
         >
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           {isSaving ? 'Guardando...' : 'Guardar borrador'}
@@ -693,7 +693,7 @@ function ComplementarPanel({ note, onSaved, onClose }: {
           type="button"
           onClick={handleSign}
           disabled={isSigning || isSaving}
-          className="flex-1 py-2.5 bg-[#4E2DD2] hover:bg-[#3d22a8] disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
+          className="flex-1 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
         >
           {isSigning
             ? <><Loader2 className="w-4 h-4 animate-spin" /> Firmando...</>
@@ -705,33 +705,33 @@ function ComplementarPanel({ note, onSaved, onClose }: {
       {/* Sign validation modal */}
       {showSignModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+          <div className="bg-card rounded-2xl shadow-xl max-w-sm w-full p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                <AlertCircle className="w-5 h-5 text-amber-600" />
+              <div className="w-10 h-10 rounded-full bg-warning/15 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5 text-warning" />
               </div>
-              <h3 className="text-base font-semibold text-gray-900">Secciones sin completar</h3>
+              <h3 className="text-base font-semibold text-foreground">Secciones sin completar</h3>
             </div>
-            <p className="text-sm text-gray-600 mb-3">Las siguientes secciones están vacías:</p>
+            <p className="text-sm text-muted-foreground mb-3">Las siguientes secciones están vacías:</p>
             <ul className="space-y-1.5 mb-4">
               {missingSections.map(s => (
-                <li key={s} className="flex items-center gap-2 text-sm text-gray-700">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                <li key={s} className="flex items-center gap-2 text-sm text-foreground/80">
+                  <span className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
                   {s}
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-gray-400 mb-5">La firma es válida aunque haya secciones vacías. Puedes completarlas antes o firmar de todas formas.</p>
+            <p className="text-xs text-muted-foreground mb-5">La firma es válida aunque haya secciones vacías. Puedes completarlas antes o firmar de todas formas.</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowSignModal(false)}
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground/80 hover:bg-muted/50 transition-colors"
               >
                 Volver y completar
               </button>
               <button
                 onClick={executeSign}
-                className="flex-1 px-4 py-2.5 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white rounded-xl text-sm font-semibold transition-colors"
+                className="flex-1 px-4 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-semibold transition-colors"
               >
                 Firmar de todas formas
               </button>
@@ -771,31 +771,31 @@ function ConsultaCard({ note: rawNote, onRefresh }: { note: ClinicalNote; onRefr
   const canComplement = !isSigned
 
   return (
-    <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
       {/* Audit header — clic en cualquier parte del header para expandir/colapsar */}
       <div className={cn(
-        'flex items-center justify-between px-4 py-3 border-b border-gray-300',
-        expanded ? 'bg-[#0D1B2E]' : 'bg-gray-200'
+        'flex items-center justify-between px-4 py-3 border-b border-border',
+        expanded ? 'bg-[#0D1B2E]' : 'bg-muted'
       )}>
         <button
           onClick={() => setExpanded(e => !e)}
           className="flex-1 flex items-center gap-2.5 text-left"
         >
-          <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0', expanded ? 'bg-white/15' : 'bg-[#4E2DD2]/10')}>
-            <UserCheck className={cn('w-3.5 h-3.5', expanded ? 'text-white' : 'text-[#4E2DD2]')} />
+          <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0', expanded ? 'bg-card/15' : 'bg-primary/10')}>
+            <UserCheck className={cn('w-3.5 h-3.5', expanded ? 'text-white' : 'text-primary')} />
           </div>
           <div>
-            <p className={cn('text-xs font-semibold', expanded ? 'text-white' : 'text-gray-900')}>
+            <p className={cn('text-xs font-semibold', expanded ? 'text-white' : 'text-foreground')}>
               Dr. {note.doctor?.firstName} {note.doctor?.lastName}
               {note.doctor?.specialty && (
-                <span className={cn('font-normal', expanded ? 'text-white/70' : 'text-gray-500')}> · {note.doctor.specialty}</span>
+                <span className={cn('font-normal', expanded ? 'text-white/70' : 'text-muted-foreground')}> · {note.doctor.specialty}</span>
               )}
             </p>
-            <p className={cn('text-xs flex items-center gap-1', expanded ? 'text-white/60' : 'text-gray-400')}>
+            <p className={cn('text-xs flex items-center gap-1', expanded ? 'text-white/60' : 'text-muted-foreground')}>
               <Clock className="w-3 h-3" />
               {formatDateTime(note.createdAt)}
               {note.signedAt && isSigned && (
-                <span className={cn('ml-1', expanded ? 'text-green-300' : 'text-green-600')}>· Firmado {formatDate(note.signedAt)}</span>
+                <span className={cn('ml-1', expanded ? 'text-green-300' : 'text-success')}>· Firmado {formatDate(note.signedAt)}</span>
               )}
             </p>
           </div>
@@ -804,7 +804,7 @@ function ConsultaCard({ note: rawNote, onRefresh }: { note: ClinicalNote; onRefr
           {note.isAiAssisted && (
             <span className={cn(
               'flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium',
-              expanded ? 'bg-blue-400/20 text-blue-200' : 'bg-blue-100 text-blue-700'
+              expanded ? 'bg-primary/20 text-blue-200' : 'bg-primary/15 text-primary'
             )}>
               <Brain className="w-3 h-3" />
               IA
@@ -813,8 +813,8 @@ function ConsultaCard({ note: rawNote, onRefresh }: { note: ClinicalNote; onRefr
           <span className={cn(
             'text-xs px-2.5 py-0.5 rounded-full font-medium',
             isSigned
-              ? expanded ? 'bg-green-400/20 text-green-300' : 'bg-green-100 text-green-700'
-              : expanded ? 'bg-amber-400/20 text-amber-300' : 'bg-amber-100 text-amber-700'
+              ? expanded ? 'bg-green-400/20 text-green-300' : 'bg-success/15 text-success'
+              : expanded ? 'bg-amber-400/20 text-amber-300' : 'bg-warning/15 text-warning'
           )}>
             {isSigned ? 'Firmada' : 'Borrador'}
           </span>
@@ -824,8 +824,8 @@ function ConsultaCard({ note: rawNote, onRefresh }: { note: ClinicalNote; onRefr
               className={cn(
                 'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors',
                 showComplementar
-                  ? 'bg-violet-200 text-violet-800 border-violet-300'
-                  : 'bg-violet-50 text-violet-700 hover:bg-violet-100 border-violet-200'
+                  ? 'bg-success/20 text-success border-success/40'
+                  : 'bg-success/10 text-success hover:bg-success/20 border-success/30'
               )}
             >
               <PenLine className="w-3 h-3" />
@@ -835,7 +835,7 @@ function ConsultaCard({ note: rawNote, onRefresh }: { note: ClinicalNote; onRefr
           <button onClick={() => setExpanded(e => !e)} className="ml-1">
             {expanded
               ? <ChevronUp className="w-4 h-4 text-white/70" />
-              : <ChevronDown className="w-4 h-4 text-gray-500" />}
+              : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </button>
         </div>
       </div>
@@ -843,7 +843,7 @@ function ConsultaCard({ note: rawNote, onRefresh }: { note: ClinicalNote; onRefr
       {/* Summary (always visible) */}
       <div className="px-4 py-3">
         {note.chiefComplaint && (
-          <p className="text-sm font-medium text-gray-900">{note.chiefComplaint}</p>
+          <p className="text-sm font-medium text-foreground">{note.chiefComplaint}</p>
         )}
         {note.vitalSigns && <VitalsStrip v={note.vitalSigns} />}
         {note.diagnoses?.length > 0 && (
@@ -851,7 +851,7 @@ function ConsultaCard({ note: rawNote, onRefresh }: { note: ClinicalNote; onRefr
             {note.diagnoses.map((d: { code: string; description: string; type: string }, i: number) => (
               <span key={i} className={cn(
                 'text-xs px-2 py-0.5 rounded font-medium',
-                d.type === 'PRIMARY' ? 'bg-[#4E2DD2]/10 text-[#4E2DD2]' : 'bg-gray-100 text-gray-600'
+                d.type === 'PRIMARY' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
               )}>
                 {d.code} · {d.description}
               </span>
@@ -862,34 +862,34 @@ function ConsultaCard({ note: rawNote, onRefresh }: { note: ClinicalNote; onRefr
 
       {/* Expanded detail */}
       {expanded && (
-        <div className="border-t border-gray-100 px-4 py-4 space-y-4">
+        <div className="border-t border-border px-4 py-4 space-y-4">
           {note.evolutionNotes && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Padecimiento actual</p>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.evolutionNotes}</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Padecimiento actual</p>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{note.evolutionNotes}</p>
             </div>
           )}
           {note.physicalExam && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Exploración física</p>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">{String(note.physicalExam)}</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Exploración física</p>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{String(note.physicalExam)}</p>
             </div>
           )}
           {note.treatmentPlan && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Plan de tratamiento</p>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">{note.treatmentPlan}</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Plan de tratamiento</p>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{note.treatmentPlan}</p>
             </div>
           )}
 
           {/* AI Summary — only for AI-assisted notes */}
           {note.isAiAssisted && note.aiSummary && (
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3">
+            <div className="bg-primary/10 border border-primary/30 rounded-xl p-3">
               <div className="flex items-center gap-1.5 mb-2">
-                <Brain className="w-3.5 h-3.5 text-blue-600" />
-                <p className="text-xs font-bold text-blue-700 uppercase tracking-wide">Resumen IA</p>
+                <Brain className="w-3.5 h-3.5 text-primary" />
+                <p className="text-xs font-bold text-primary uppercase tracking-wide">Resumen IA</p>
               </div>
-              <p className="text-sm text-gray-800 leading-relaxed">{note.aiSummary}</p>
+              <p className="text-sm text-foreground leading-relaxed">{note.aiSummary}</p>
             </div>
           )}
 
@@ -897,17 +897,17 @@ function ConsultaCard({ note: rawNote, onRefresh }: { note: ClinicalNote; onRefr
           {note.isAiAssisted && note.transcriptText && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Transcript de consulta</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Transcript de consulta</p>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowTranscript(t => !t)}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                    className="text-xs text-primary hover:text-primary font-medium"
                   >
                     {showTranscript ? 'Ocultar' : 'Ver transcript'}
                   </button>
                   <button
                     onClick={() => downloadTranscript(note)}
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground/80 font-medium"
                   >
                     <Download className="w-3 h-3" />
                     Descargar
@@ -915,8 +915,8 @@ function ConsultaCard({ note: rawNote, onRefresh }: { note: ClinicalNote; onRefr
                 </div>
               </div>
               {showTranscript && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 max-h-48 overflow-y-auto">
-                  <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap font-mono">
+                <div className="bg-muted/50 border border-border rounded-lg p-3 max-h-48 overflow-y-auto">
+                  <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap font-mono">
                     {note.transcriptText}
                   </p>
                 </div>
@@ -965,39 +965,39 @@ function ConsultasTab({
   return (
     <div className="space-y-5">
       {/* Medical background strip */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-card rounded-xl border border-border p-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3 text-red-400" /> Alergias
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3 text-destructive/60" /> Alergias
             </p>
             {patient.allergies.length > 0 ? (
               <div className="flex flex-wrap gap-1">
                 {patient.allergies.map(a => (
-                  <span key={a} className="text-xs bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">{a}</span>
+                  <span key={a} className="text-xs bg-destructive/10 text-destructive border border-destructive/15 px-2 py-0.5 rounded-full">{a}</span>
                 ))}
               </div>
-            ) : <p className="text-xs text-gray-400">Ninguna conocida</p>}
+            ) : <p className="text-xs text-muted-foreground">Ninguna conocida</p>}
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Enf. crónicas</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Enf. crónicas</p>
             {patient.chronicConditions.length > 0 ? (
               <div className="flex flex-wrap gap-1">
                 {patient.chronicConditions.map(c => (
-                  <span key={c} className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">{c}</span>
+                  <span key={c} className="text-xs bg-warning/10 text-warning border border-warning/15 px-2 py-0.5 rounded-full">{c}</span>
                 ))}
               </div>
-            ) : <p className="text-xs text-gray-400">Ninguna</p>}
+            ) : <p className="text-xs text-muted-foreground">Ninguna</p>}
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Medicamentos actuales</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Medicamentos actuales</p>
             {patient.currentMedications.length > 0 ? (
               <div className="flex flex-wrap gap-1">
                 {patient.currentMedications.map(m => (
-                  <span key={m} className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">{m}</span>
+                  <span key={m} className="text-xs bg-primary/10 text-primary border border-primary rounded-full px-2 py-0.5">{m}</span>
                 ))}
               </div>
-            ) : <p className="text-xs text-gray-400">Ninguno</p>}
+            ) : <p className="text-xs text-muted-foreground">Ninguno</p>}
           </div>
         </div>
       </div>
@@ -1006,20 +1006,20 @@ function ConsultasTab({
       {!newConsulta ? (
         <button
           onClick={() => setNewConsulta(true)}
-          className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-[#4E2DD2]/30 text-[#4E2DD2] hover:border-[#4E2DD2]/60 hover:bg-[#4E2DD2]/5 rounded-xl py-3 text-sm font-semibold transition-colors"
+          className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-primary/30 text-primary hover:border-primary/60 hover:bg-primary/5 rounded-xl py-3 text-sm font-semibold transition-colors"
         >
           <Plus className="w-4 h-4" />
           Iniciar nueva consulta
         </button>
       ) : (
-        <div className="bg-white rounded-xl border-2 border-[#4E2DD2]/20 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 bg-[#4E2DD2]/5 border-b border-[#4E2DD2]/10">
+        <div className="bg-card rounded-xl border-2 border-primary/20 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3 bg-primary/5 border-b border-primary/10">
             <div className="flex items-center gap-2">
-              <Stethoscope className="w-4 h-4 text-[#4E2DD2]" />
-              <span className="text-sm font-semibold text-[#4E2DD2]">Nueva consulta</span>
+              <Stethoscope className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-primary">Nueva consulta</span>
             </div>
-            <button onClick={() => setNewConsulta(false)} className="p-1 hover:bg-[#4E2DD2]/10 rounded">
-              <X className="w-4 h-4 text-[#4E2DD2]" />
+            <button onClick={() => setNewConsulta(false)} className="p-1 hover:bg-primary/10 rounded">
+              <X className="w-4 h-4 text-primary" />
             </button>
           </div>
           <div className="p-5">
@@ -1039,7 +1039,7 @@ function ConsultasTab({
       {/* Past consultations */}
       {sorted.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
             Historial de consultas ({sorted.length})
           </p>
           <div className="space-y-3">
@@ -1049,7 +1049,7 @@ function ConsultasTab({
       )}
 
       {sorted.length === 0 && !newConsulta && (
-        <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-dashed border-gray-200">
+        <div className="text-center py-12 text-muted-foreground text-sm bg-card rounded-xl border border-dashed border-border">
           <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
           No hay consultas registradas
         </div>
@@ -1090,7 +1090,7 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh, re
   }
 
   const STATUS_STYLE: Record<string, string> = {
-    ACTIVE: 'bg-green-100 text-green-700', COMPLETED: 'bg-gray-100 text-gray-500', CANCELLED: 'bg-red-100 text-red-600',
+    ACTIVE: 'bg-success/15 text-success', COMPLETED: 'bg-muted text-muted-foreground', CANCELLED: 'bg-destructive/15 text-destructive',
   }
 
   return (
@@ -1098,31 +1098,31 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh, re
       {!readOnly && (
         <div className="flex justify-end mb-4">
           <button onClick={() => setShowBuilder(true)}
-            className="flex items-center gap-2 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
             <Pill className="w-4 h-4" /> Nueva receta
           </button>
         </div>
       )}
 
       {prescriptions.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-12 text-muted-foreground text-sm bg-card rounded-xl border border-border">
           <Pill className="w-8 h-8 mx-auto mb-2 opacity-30" />No hay recetas registradas
         </div>
       ) : (
         <div className="space-y-3">
           {prescriptions.map((rx) => (
-            <div key={rx.id} className="bg-white rounded-2xl border border-gray-300 shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 bg-gray-200 border-b border-gray-300">
+            <div key={rx.id} className="bg-card rounded-2xl border border-border overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 bg-muted border-b border-border">
                 <div className="flex items-center gap-2">
-                  <UserCheck className="w-3.5 h-3.5 text-[#4E2DD2]" />
-                  <p className="text-xs text-gray-700 font-medium">
+                  <UserCheck className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-xs text-foreground/80 font-medium">
                     Dr. {rx.doctor?.firstName} {rx.doctor?.lastName}
-                    <span className="font-normal text-gray-400"> · {formatDate(rx.createdAt)}</span>
+                    <span className="font-normal text-muted-foreground"> · {formatDate(rx.createdAt)}</span>
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   {rx.sentViaWhatsApp && (
-                    <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">✓ Enviada</span>
+                    <span className="text-xs bg-success/10 text-success border border-success/15 px-2 py-0.5 rounded-full">✓ Enviada</span>
                   )}
                   <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${STATUS_STYLE[rx.status] ?? STATUS_STYLE['ACTIVE']!}`}>
                     {rx.status === 'ACTIVE' ? 'Activa' : rx.status === 'COMPLETED' ? 'Completada' : 'Cancelada'}
@@ -1132,30 +1132,30 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh, re
               <div className="px-4 py-3 space-y-2">
                 {rx.items?.map((item: any, i: number) => (
                   <div key={i} className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-[#4E2DD2] text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">{i + 1}</span>
+                    <span className="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">{i + 1}</span>
                     <div>
-                      <span className="text-sm font-semibold text-gray-900">{item.medicationName}</span>
-                      <span className="text-sm text-gray-500"> {item.dose}</span>
-                      <p className="text-xs text-gray-400 mt-0.5">{item.route} · {item.frequency} · {item.duration}{item.instructions && ` · ${item.instructions}`}</p>
+                      <span className="text-sm font-semibold text-foreground">{item.medicationName}</span>
+                      <span className="text-sm text-muted-foreground"> {item.dose}</span>
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.route} · {item.frequency} · {item.duration}{item.instructions && ` · ${item.instructions}`}</p>
                     </div>
                   </div>
                 ))}
-                {rx.instructions && <p className="text-xs text-gray-500 italic pt-2 border-t border-gray-100">{rx.instructions}</p>}
+                {rx.instructions && <p className="text-xs text-muted-foreground italic pt-2 border-t border-border">{rx.instructions}</p>}
                 {rx.followUpDate && (
-                  <div className="flex items-center gap-1.5 pt-2 border-t border-gray-100">
-                    <Calendar className="w-3.5 h-3.5 text-blue-400" />
-                    <span className="text-xs text-gray-500">Seguimiento: <span className="font-medium text-gray-700">{formatDate(rx.followUpDate)}</span></span>
+                  <div className="flex items-center gap-1.5 pt-2 border-t border-border">
+                    <Calendar className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs text-muted-foreground">Seguimiento: <span className="font-medium text-foreground/80">{formatDate(rx.followUpDate)}</span></span>
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2 px-4 py-2.5 border-t border-gray-100 bg-gray-50">
+              <div className="flex items-center gap-2 px-4 py-2.5 border-t border-border bg-muted/50">
                 <button onClick={() => router.push(`/recetas/${rx.id}`)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-white transition-colors">
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground/80 hover:bg-card transition-colors">
                   <Printer className="w-3.5 h-3.5" /> Ver / Imprimir
                 </button>
                 {!readOnly && rx.status === 'ACTIVE' && (
                   <button onClick={() => openEdit(rx)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-white transition-colors">
+                    className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground/80 hover:bg-card transition-colors">
                     <Pencil className="w-3.5 h-3.5" /> Editar
                   </button>
                 )}
@@ -1179,7 +1179,7 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh, re
 function renderInline(s: string): ReactNode[] {
   return s.split(/(\*\*[^*]+\*\*)/).map((p, idx) =>
     p.startsWith('**') && p.endsWith('**')
-      ? <strong key={idx} className="font-semibold text-gray-900">{p.slice(2, -2)}</strong>
+      ? <strong key={idx} className="font-semibold text-foreground">{p.slice(2, -2)}</strong>
       : <span key={idx}>{p}</span>
   )
 }
@@ -1191,11 +1191,11 @@ function MarkdownBlock({ text }: { text: string }) {
   while (i < lines.length) {
     const line = lines[i] ?? ''
     if (/^# /.test(line)) {
-      elements.push(<p key={i} className="text-sm font-bold text-[#4E2DD2] mt-3 mb-1">{line.slice(2)}</p>)
+      elements.push(<p key={i} className="text-sm font-bold text-primary mt-3 mb-1">{line.slice(2)}</p>)
     } else if (/^#{1,3} /.test(line)) {
-      elements.push(<p key={i} className="text-xs font-bold text-gray-600 uppercase tracking-wide mt-3 mb-1">{line.replace(/^#+\s/, '')}</p>)
+      elements.push(<p key={i} className="text-xs font-bold text-muted-foreground uppercase tracking-wide mt-3 mb-1">{line.replace(/^#+\s/, '')}</p>)
     } else if (/^-{3,}$/.test(line.trim())) {
-      elements.push(<hr key={i} className="border-[#4E2DD2]/10 my-2" />)
+      elements.push(<hr key={i} className="border-primary/10 my-2" />)
     } else if (/^\|/.test(line) && i + 1 < lines.length && /^\|[\s\-|:]+\|/.test(lines[i + 1] ?? '')) {
       const headers = line.split('|').map(s => s.trim()).filter(Boolean)
       i += 2
@@ -1205,15 +1205,15 @@ function MarkdownBlock({ text }: { text: string }) {
         i++
       }
       elements.push(
-        <div key={`t${i}`} className="overflow-x-auto rounded-lg border border-[#4E2DD2]/10 my-2">
+        <div key={`t${i}`} className="overflow-x-auto rounded-lg border border-primary/10 my-2">
           <table className="w-full text-xs">
-            <thead className="bg-[#4E2DD2]/5">
-              <tr>{headers.map((h, j) => <th key={j} className="px-3 py-2 text-left font-semibold text-[#4E2DD2]">{renderInline(h)}</th>)}</tr>
+            <thead className="bg-primary/5">
+              <tr>{headers.map((h, j) => <th key={j} className="px-3 py-2 text-left font-semibold text-primary">{renderInline(h)}</th>)}</tr>
             </thead>
             <tbody>
               {rows.map((row, ri) => (
-                <tr key={ri} className={ri % 2 === 0 ? '' : 'bg-gray-50/50'}>
-                  {row.map((cell, ci) => <td key={ci} className="px-3 py-1.5 text-gray-700 border-t border-gray-100">{renderInline(cell)}</td>)}
+                <tr key={ri} className={ri % 2 === 0 ? '' : 'bg-muted/50'}>
+                  {row.map((cell, ci) => <td key={ci} className="px-3 py-1.5 text-foreground/80 border-t border-border">{renderInline(cell)}</td>)}
                 </tr>
               ))}
             </tbody>
@@ -1222,11 +1222,11 @@ function MarkdownBlock({ text }: { text: string }) {
       )
       continue
     } else if (/^[-•–]\s/.test(line)) {
-      elements.push(<p key={i} className="text-sm text-gray-700 pl-3 border-l-2 border-[#4E2DD2]/20 my-1">{renderInline(line.replace(/^[-•–]\s/, ''))}</p>)
+      elements.push(<p key={i} className="text-sm text-foreground/80 pl-3 border-l-2 border-primary/20 my-1">{renderInline(line.replace(/^[-•–]\s/, ''))}</p>)
     } else if (line.trim() === '') {
       elements.push(<div key={i} className="h-1.5" />)
     } else {
-      elements.push(<p key={i} className="text-sm text-gray-700 leading-relaxed">{renderInline(line)}</p>)
+      elements.push(<p key={i} className="text-sm text-foreground/80 leading-relaxed">{renderInline(line)}</p>)
     }
     i++
   }
@@ -1267,16 +1267,16 @@ function AISummarizeProgress() {
     return () => clearInterval(interval)
   }, [stages.length])
   return (
-    <div className="bg-[#4E2DD2]/5 border border-[#4E2DD2]/15 rounded-xl p-4 space-y-3">
+    <div className="bg-primary/5 border border-primary/15 rounded-xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#4E2DD2] animate-pulse" />
-          <p className="text-xs font-semibold text-[#4E2DD2]">Analizando con IA</p>
+          <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+          <p className="text-xs font-semibold text-primary">Analizando con IA</p>
         </div>
-        <p className="text-xs text-[#4E2DD2]/50">~18s</p>
+        <p className="text-xs text-primary/50">~18s</p>
       </div>
       <ProgressBar durationSecs={18} />
-      <p className="text-xs text-[#4E2DD2]/70">{stages[stageIdx] ?? ''}</p>
+      <p className="text-xs text-primary/70">{stages[stageIdx] ?? ''}</p>
     </div>
   )
 }
@@ -1285,18 +1285,18 @@ function AISummarizeProgress() {
 function UploadProgress({ stage, fileName }: { stage: 'uploading' | 'analyzing'; fileName: string }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-        <FlaskConical className="w-5 h-5 text-orange-400 shrink-0" />
-        <p className="text-sm text-gray-600 flex-1 truncate">{fileName}</p>
+      <div className="flex items-center gap-3 bg-muted/50 rounded-xl px-4 py-3">
+        <FlaskConical className="w-5 h-5 text-warning shrink-0" />
+        <p className="text-sm text-muted-foreground flex-1 truncate">{fileName}</p>
       </div>
       {stage === 'uploading' ? (
         <div className="space-y-2 px-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Upload className="w-3.5 h-3.5 text-gray-500" />
-              <p className="text-xs font-semibold text-gray-600">Subiendo PDF</p>
+              <Upload className="w-3.5 h-3.5 text-muted-foreground" />
+              <p className="text-xs font-semibold text-muted-foreground">Subiendo PDF</p>
             </div>
-            <p className="text-xs text-gray-400">~4s</p>
+            <p className="text-xs text-muted-foreground">~4s</p>
           </div>
           <ProgressBar durationSecs={4} color="#6b7280" />
         </div>
@@ -1337,30 +1337,30 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
   }
 
   const STATUS_STYLE: Record<string, string> = {
-    PENDING:  'bg-gray-100 text-gray-600',
-    RECEIVED: 'bg-yellow-100 text-yellow-700',
-    REVIEWED: 'bg-green-100 text-green-700',
-    NOTIFIED: 'bg-blue-100 text-blue-700',
+    PENDING:  'bg-muted text-muted-foreground',
+    RECEIVED: 'bg-warning/15 text-warning',
+    REVIEWED: 'bg-success/15 text-success',
+    NOTIFIED: 'bg-primary/15 text-primary',
   }
   const STATUS_LABEL: Record<string, string> = {
     PENDING: 'Pendiente', RECEIVED: 'Recibido', REVIEWED: 'Revisado', NOTIFIED: 'Notificado',
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
       {/* Header */}
       <button
         onClick={() => setExpanded(e => !e)}
         className={cn(
-          'w-full flex items-center justify-between px-4 py-3 border-b border-gray-300 transition-colors text-left',
-          expanded ? 'bg-[#0D1B2E]' : 'bg-gray-200 hover:bg-gray-300'
+          'w-full flex items-center justify-between px-4 py-3 border-b border-border transition-colors text-left',
+          expanded ? 'bg-[#0D1B2E]' : 'bg-muted hover:bg-muted'
         )}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <FlaskConical className={cn('w-4 h-4 shrink-0', expanded ? 'text-orange-300' : 'text-orange-400')} />
+          <FlaskConical className={cn('w-4 h-4 shrink-0', expanded ? 'text-orange-300' : 'text-warning')} />
           <div className="min-w-0">
-            <p className={cn('text-sm font-semibold truncate', expanded ? 'text-white' : 'text-gray-900')}>{result.title}</p>
-            <p className={cn('text-xs', expanded ? 'text-white/60' : 'text-gray-400')}>
+            <p className={cn('text-sm font-semibold truncate', expanded ? 'text-white' : 'text-foreground')}>{result.title}</p>
+            <p className={cn('text-xs', expanded ? 'text-white/60' : 'text-muted-foreground')}>
               {result.laboratoryName && `${result.laboratoryName} · `}{formatDate(result.createdAt)}
             </p>
           </div>
@@ -1369,8 +1369,8 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
           <span className={cn(
             'text-xs px-2 py-0.5 rounded-full font-medium',
             expanded
-              ? 'bg-white/20 text-white'
-              : (STATUS_STYLE[result.status] ?? 'bg-gray-100 text-gray-600')
+              ? 'bg-card/20 text-white'
+              : (STATUS_STYLE[result.status] ?? 'bg-muted text-muted-foreground')
           )}>
             {STATUS_LABEL[result.status] ?? result.status}
           </span>
@@ -1380,8 +1380,8 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
               className={cn(
                 'flex items-center gap-1 px-2 py-0.5 text-xs rounded-lg font-medium transition-colors',
                 expanded
-                  ? 'text-white/80 hover:bg-white/10'
-                  : 'text-[#4E2DD2] hover:bg-[#4E2DD2]/10'
+                  ? 'text-white/80 hover:bg-card/10'
+                  : 'text-primary hover:bg-primary/10'
               )}
             >
               <FileText className="w-3.5 h-3.5" /> Ver PDF
@@ -1389,7 +1389,7 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
           )}
           {expanded
             ? <ChevronUp className="w-4 h-4 text-white/70" />
-            : <ChevronDown className="w-4 h-4 text-gray-500" />
+            : <ChevronDown className="w-4 h-4 text-muted-foreground" />
           }
         </div>
       </button>
@@ -1397,16 +1397,16 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
       {/* PDF viewer modal */}
       {showPdf && (result.fileUrl ?? result.externalUrl) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl flex flex-col w-full max-w-4xl h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-              <p className="text-sm font-semibold text-gray-900 truncate">{result.title}</p>
+          <div className="bg-card rounded-2xl shadow-2xl flex flex-col w-full max-w-4xl h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+              <p className="text-sm font-semibold text-foreground truncate">{result.title}</p>
               <div className="flex items-center gap-2">
                 <a href={result.fileUrl ?? result.externalUrl ?? '#'} target="_blank" rel="noopener noreferrer"
-                   className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100">
+                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground/80 px-2 py-1 rounded hover:bg-muted">
                   <ExternalLink className="w-3.5 h-3.5" /> Abrir en nueva pestaña
                 </a>
-                <button onClick={() => setShowPdf(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                  <X className="w-4 h-4 text-gray-500" />
+                <button onClick={() => setShowPdf(false)} className="p-1.5 hover:bg-muted rounded-lg">
+                  <X className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
             </div>
@@ -1421,9 +1421,9 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
 
       {/* Preview: AI analysis badge */}
       {!expanded && result.llmSummary && (
-        <div className="px-4 py-2.5 border-b border-gray-100 flex items-center gap-2">
-          <Sparkles className="w-3 h-3 text-[#4E2DD2] shrink-0" />
-          <p className="text-xs text-[#4E2DD2] font-medium">Análisis IA disponible · Expandir para ver</p>
+        <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
+          <Sparkles className="w-3 h-3 text-primary shrink-0" />
+          <p className="text-xs text-primary font-medium">Análisis IA disponible · Expandir para ver</p>
         </div>
       )}
 
@@ -1433,10 +1433,10 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
           {summarizing ? (
             <AISummarizeProgress />
           ) : result.llmSummary ? (
-            <div className="bg-[#4E2DD2]/5 border border-[#4E2DD2]/15 rounded-xl p-4">
+            <div className="bg-primary/5 border border-primary/15 rounded-xl p-4">
               <div className="flex items-center gap-1.5 mb-3">
-                <Sparkles className="w-3.5 h-3.5 text-[#4E2DD2]" />
-                <p className="text-xs font-bold text-[#4E2DD2] uppercase tracking-wide">Análisis IA</p>
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                <p className="text-xs font-bold text-primary uppercase tracking-wide">Análisis IA</p>
               </div>
               <MarkdownBlock text={result.llmSummary} />
             </div>
@@ -1444,19 +1444,19 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
             <>
               <button
                 onClick={handleSummarize}
-                className="w-full flex items-center justify-center gap-2 border border-dashed border-[#4E2DD2]/30 text-[#4E2DD2] hover:bg-[#4E2DD2]/5 rounded-xl py-3 text-sm font-medium transition-colors"
+                className="w-full flex items-center justify-center gap-2 border border-dashed border-primary/30 text-primary hover:bg-primary/5 rounded-xl py-3 text-sm font-medium transition-colors"
               >
                 <Sparkles className="w-4 h-4" /> Analizar con IA
               </button>
               {summarizeError && (
-                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{summarizeError}</p>
+                <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">{summarizeError}</p>
               )}
             </>
           ) : null}
 
           {/* Doctor notes */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
               Notas del médico
             </label>
             <textarea
@@ -1464,13 +1464,13 @@ function LabResultCard({ result, onRefresh }: { result: LabResult; onRefresh: ()
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Observaciones, interpretación clínica, indicaciones..."
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4E2DD2]/30 focus:border-[#4E2DD2] resize-none"
+              className="w-full px-3 py-2 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
             />
             {notes !== (result.notes ?? '') && (
               <button
                 onClick={handleSaveNotes}
                 disabled={savingNotes}
-                className="mt-2 flex items-center gap-1.5 px-3 py-1.5 bg-[#4E2DD2] text-white text-xs font-medium rounded-lg disabled:opacity-50"
+                className="mt-2 flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-medium rounded-lg disabled:opacity-50"
               >
                 {savingNotes ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                 Guardar notas
@@ -1556,8 +1556,8 @@ function LabTab({ patientId, results, onRefresh, editMode, onExitEdit }: { patie
   return (
     <div className="space-y-5">
       {/* Upload zone */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <p className="text-sm font-semibold text-gray-800 mb-3">Subir resultado de laboratorio</p>
+      <div className="bg-card rounded-xl border border-border p-5">
+        <p className="text-sm font-semibold text-foreground mb-3">Subir resultado de laboratorio</p>
 
         {!file ? (
           <div
@@ -1568,39 +1568,39 @@ function LabTab({ patientId, results, onRefresh, editMode, onExitEdit }: { patie
             className={cn(
               'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors',
               dragOver
-                ? 'border-[#4E2DD2] bg-[#4E2DD2]/5'
-                : 'border-gray-200 hover:border-[#4E2DD2]/40 hover:bg-gray-50'
+                ? 'border-primary bg-primary/5'
+                : 'border-border hover:border-primary/40 hover:bg-muted/50'
             )}
           >
-            <Upload className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-            <p className="text-sm font-medium text-gray-600">Arrastra el PDF aquí o haz clic para seleccionar</p>
-            <p className="text-xs text-gray-400 mt-1">Solo archivos PDF</p>
+            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground/60" />
+            <p className="text-sm font-medium text-muted-foreground">Arrastra el PDF aquí o haz clic para seleccionar</p>
+            <p className="text-xs text-muted-foreground mt-1">Solo archivos PDF</p>
             <input ref={inputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileChange} />
           </div>
         ) : uploading || analyzing ? (
           <UploadProgress stage={uploading ? 'uploading' : 'analyzing'} fileName={file.name} />
         ) : (
           <div className="space-y-3">
-            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-              <FlaskConical className="w-5 h-5 text-orange-400 shrink-0" />
-              <p className="text-sm text-gray-800 flex-1 truncate">{file.name}</p>
-              <button onClick={() => setFile(null)} className="p-1 hover:bg-gray-200 rounded">
-                <X className="w-3.5 h-3.5 text-gray-400" />
+            <div className="flex items-center gap-3 bg-muted/50 rounded-xl px-4 py-3">
+              <FlaskConical className="w-5 h-5 text-warning shrink-0" />
+              <p className="text-sm text-foreground flex-1 truncate">{file.name}</p>
+              <button onClick={() => setFile(null)} className="p-1 hover:bg-muted rounded">
+                <X className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Título del estudio</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Título del estudio</label>
               <input
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder="ej. Biometría Hemática Completa"
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4E2DD2]/30 focus:border-[#4E2DD2]"
+                className="w-full px-3 py-2 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               />
             </div>
-            {uploadError && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{uploadError}</p>}
+            {uploadError && <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">{uploadError}</p>}
             <button
               onClick={handleUpload}
-              className="w-full flex items-center justify-center gap-2 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
             >
               <Sparkles className="w-4 h-4" /> Subir y analizar con IA
             </button>
@@ -1610,19 +1610,19 @@ function LabTab({ patientId, results, onRefresh, editMode, onExitEdit }: { patie
 
       {/* Results list */}
       {results.length === 0 ? (
-        <div className="text-center py-10 text-gray-400 text-sm bg-white rounded-xl border border-dashed border-gray-200">
+        <div className="text-center py-10 text-muted-foreground text-sm bg-card rounded-xl border border-dashed border-border">
           No hay resultados de laboratorio
         </div>
       ) : (
         <div className="space-y-3">
           {/* Delete toolbar — only in edit mode */}
           {editMode && selected.size > 0 && (
-            <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
-              <p className="text-sm text-red-700 font-medium">{selected.size} estudio{selected.size > 1 ? 's' : ''} seleccionado{selected.size > 1 ? 's' : ''}</p>
+            <div className="flex items-center justify-between bg-destructive/10 border border-destructive/15 rounded-xl px-4 py-2.5">
+              <p className="text-sm text-destructive font-medium">{selected.size} estudio{selected.size > 1 ? 's' : ''} seleccionado{selected.size > 1 ? 's' : ''}</p>
               <button
                 onClick={handleDeleteSelected}
                 disabled={deleting}
-                className="flex items-center gap-1.5 text-xs bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium px-3 py-1.5 rounded-lg"
+                className="flex items-center gap-1.5 text-xs bg-destructive hover:bg-destructive/90 disabled:opacity-50 text-white font-medium px-3 py-1.5 rounded-lg"
               >
                 {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
                 Eliminar
@@ -1636,7 +1636,7 @@ function LabTab({ patientId, results, onRefresh, editMode, onExitEdit }: { patie
                   onClick={() => toggleSelect(r.id)}
                   className={cn(
                     'mt-3.5 shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors',
-                    selected.has(r.id) ? 'bg-red-500 border-red-500' : 'border-gray-300 hover:border-red-400'
+                    selected.has(r.id) ? 'bg-destructive border-destructive' : 'border-border hover:border-destructive'
                   )}
                 >
                   {selected.has(r.id) && <X className="w-3 h-3 text-white" />}
@@ -1709,7 +1709,7 @@ export default function PatientDetailPage() {
   if (loading || !patient) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#4E2DD2] border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -1730,11 +1730,11 @@ export default function PatientDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             <button onClick={() => setShowEdit(true)}
-              className="flex items-center gap-1.5 bg-[#4E2DD2] hover:bg-[#3d22a8] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+              className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
               <Pencil className="w-3.5 h-3.5" /> Editar
             </button>
             <button onClick={() => router.push('/pacientes')}
-              className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 text-sm">
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm">
               <ArrowLeft className="w-4 h-4" /> Volver
             </button>
           </div>
@@ -1743,21 +1743,21 @@ export default function PatientDetailPage() {
 
       <div className="flex-1 overflow-auto">
         {/* Patient hero */}
-        <div className="bg-white border-b border-gray-200 px-6 py-5">
+        <div className="bg-card border-b border-border px-6 py-5">
           <div className="flex items-start gap-5">
             <div className="flex flex-col items-center gap-2 shrink-0">
-              <div className="w-16 h-16 bg-[#4E2DD2]/20 rounded-2xl flex items-center justify-center text-[#4E2DD2] text-xl font-bold">
+              <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center text-primary text-xl font-bold">
                 {getInitials(patient.firstName, patient.lastName)}
               </div>
               <button
                 onClick={() => setShowProfile(true)}
-                className="text-xs text-[#4E2DD2] hover:text-[#3d22a8] font-medium whitespace-nowrap transition-colors"
+                className="text-xs text-primary hover:text-primary font-medium whitespace-nowrap transition-colors"
               >
                 Ver perfil
               </button>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap gap-4 text-sm text-gray-600 mt-1">
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mt-1">
                 <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{patient.phone}</span>
                 {patient.email && <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{patient.email}</span>}
                 {patient.dateOfBirth && <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />{formatDate(patient.dateOfBirth)}</span>}
@@ -1765,13 +1765,13 @@ export default function PatientDetailPage() {
               </div>
               {patient.allergies.length > 0 && (
                 <div className="flex items-center gap-1.5 mt-2">
-                  <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                  <span className="text-xs text-red-700 font-medium">Alergias: {patient.allergies.join(', ')}</span>
+                  <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
+                  <span className="text-xs text-destructive font-medium">Alergias: {patient.allergies.join(', ')}</span>
                 </div>
               )}
               {(patient as any).lastModifiedByName && (
-                <p className="text-xs text-gray-400 mt-1.5">
-                  Modificado por <span className="font-medium text-gray-500">{(patient as any).lastModifiedByName}</span>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  Modificado por <span className="font-medium text-muted-foreground">{(patient as any).lastModifiedByName}</span>
                   {(patient as any).lastModifiedAt && (
                     <> · {formatDateTime((patient as any).lastModifiedAt)}</>
                   )}
@@ -1785,15 +1785,15 @@ export default function PatientDetailPage() {
                 { label: 'Lab',       value: patient._count.labResults },
               ].map((s) => (
                 <div key={s.label} className="text-center">
-                  <p className="text-lg font-bold text-gray-900">{s.value}</p>
-                  <p className="text-xs text-gray-500">{s.label}</p>
+                  <p className="text-lg font-bold text-foreground">{s.value}</p>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex items-center mt-5 border-b border-gray-100 -mb-px">
+          <div className="flex items-center mt-5 border-b border-border -mb-px">
             <div className="flex gap-1 flex-1">
               {TABS.map((tab) => (
                 <button
@@ -1802,8 +1802,8 @@ export default function PatientDetailPage() {
                   className={cn(
                     'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors',
                     activeTab === tab.key
-                      ? 'border-[#4E2DD2] text-[#4E2DD2]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground/80'
                   )}
                 >
                   {tab.icon}
@@ -1811,7 +1811,7 @@ export default function PatientDetailPage() {
                   {tab.count !== undefined && tab.count > 0 && (
                     <span className={cn(
                       'text-xs rounded-full px-1.5 py-0.5 font-semibold min-w-[1.25rem] text-center',
-                      activeTab === tab.key ? 'bg-[#4E2DD2]/10 text-[#4E2DD2]' : 'bg-gray-100 text-gray-500'
+                      activeTab === tab.key ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
                     )}>
                       {tab.count}
                     </span>
@@ -1825,8 +1825,8 @@ export default function PatientDetailPage() {
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 mb-1 rounded-lg text-xs font-medium transition-colors',
                   labEditMode
-                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                    ? 'bg-destructive/10 text-destructive hover:bg-destructive/15'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground/80'
                 )}
               >
                 {labEditMode ? <><X className="w-3.5 h-3.5" /> Cancelar</> : <><Pencil className="w-3.5 h-3.5" /> Editar</>}

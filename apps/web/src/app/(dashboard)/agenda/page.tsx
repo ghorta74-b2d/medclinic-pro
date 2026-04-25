@@ -174,7 +174,7 @@ export default function AgendaPage() {
         actions={
           <button
             onClick={() => setShowNewDialog(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             Nueva cita
@@ -187,38 +187,38 @@ export default function AgendaPage() {
         <div className="flex items-center gap-3 mb-6 flex-wrap">
           {/* Navigation */}
           <div className="flex items-center gap-1">
-            <button onClick={() => navigate('prev')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
+            <button onClick={() => navigate('prev')} className="p-2 hover:bg-muted rounded-lg transition-colors">
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => setSelectedDate(new Date())}
               className={cn(
                 'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                isToday ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200 text-gray-600'
+                isToday ? 'bg-primary/15 text-primary' : 'hover:bg-muted text-muted-foreground'
               )}
             >
               Hoy
             </button>
-            <button onClick={() => navigate('next')} className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
+            <button onClick={() => navigate('next')} className="p-2 hover:bg-muted rounded-lg transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>
             <input
               type="date"
               value={dateStr}
               onChange={(e) => e.target.value && setSelectedDate(new Date(e.target.value + 'T12:00:00'))}
-              className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 ml-1"
+              className="text-sm border border-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary ml-1"
             />
           </div>
 
           {/* View mode tabs */}
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 ml-auto">
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-1 ml-auto">
             {(['dia', 'semana', 'mes'] as ViewMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
                 className={cn(
                   'px-3 py-1.5 rounded-md text-sm font-medium transition-colors capitalize',
-                  viewMode === mode ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  viewMode === mode ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground/80'
                 )}
               >
                 {mode === 'dia' ? 'Día' : mode === 'semana' ? 'Semana' : 'Mes'}
@@ -230,7 +230,7 @@ export default function AgendaPage() {
           {(isStaff || isAdmin) && (
             <div className="flex items-center gap-1">
               {doctorsLoading ? (
-                <span className="flex items-center gap-1.5 text-xs text-gray-400 px-2">
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground px-2">
                   <Loader2 className="w-3 h-3 animate-spin" /> Cargando médicos...
                 </span>
               ) : doctors.length > 0 ? (
@@ -239,7 +239,7 @@ export default function AgendaPage() {
                     onClick={() => setSelectedDoctorId(null)}
                     className={cn(
                       'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                      selectedDoctorId === null ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
+                      selectedDoctorId === null ? 'bg-primary text-white' : 'bg-card border border-border text-muted-foreground hover:bg-muted/50'
                     )}
                   >
                     Todos
@@ -250,7 +250,7 @@ export default function AgendaPage() {
                       onClick={() => setSelectedDoctorId(doc.id)}
                       className={cn(
                         'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                        selectedDoctorId === doc.id ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
+                        selectedDoctorId === doc.id ? 'bg-primary text-white' : 'bg-card border border-border text-muted-foreground hover:bg-muted/50'
                       )}
                     >
                       Dr. {doc.lastName}
@@ -258,7 +258,7 @@ export default function AgendaPage() {
                   ))}
                 </>
               ) : (
-                <span className="text-xs text-gray-400 px-2 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+                <span className="text-xs text-muted-foreground px-2 py-1.5 bg-muted/50 rounded-lg border border-border">
                   Vista: clínica completa
                 </span>
               )}

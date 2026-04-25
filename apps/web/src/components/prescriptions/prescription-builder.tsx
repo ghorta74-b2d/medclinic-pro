@@ -145,14 +145,14 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
     }
   }
 
-  const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const inputClass = 'w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary'
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-semibold text-gray-900">{isEditing ? 'Editar receta' : 'Nueva receta médica'}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+      <div className="bg-card rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10">
+          <h2 className="text-lg font-semibold text-foreground">{isEditing ? 'Editar receta' : 'Nueva receta médica'}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -160,36 +160,36 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Patient — locked when editing */}
           {isEditing ? (
-            <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-              <p className="text-xs text-blue-500 font-medium mb-0.5">Paciente</p>
-              <p className="text-sm font-semibold text-gray-900">{existing?.patientName}</p>
+            <div className="bg-primary/10 border border-primary/15 rounded-lg px-3 py-2">
+              <p className="text-xs text-primary font-medium mb-0.5">Paciente</p>
+              <p className="text-sm font-semibold text-foreground">{existing?.patientName}</p>
             </div>
           ) : !defaultPatientId && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">Paciente *</label>
               {selectedPatientId ? (
-                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <span className="text-sm font-medium text-green-800">{selectedPatientName}</span>
+                <div className="flex items-center gap-2 bg-success/10 border border-success/30 rounded-lg px-3 py-2">
+                  <span className="text-sm font-medium text-success">{selectedPatientName}</span>
                   <button
                     type="button"
                     onClick={() => { setSelectedPatientId(''); setSelectedPatientName(''); setPatientSearch('') }}
-                    className="ml-auto text-green-600 hover:text-red-500"
+                    className="ml-auto text-success hover:text-destructive"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ) : (
                 <div className="relative">
-                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Buscar paciente..."
                     value={patientSearch}
                     onChange={(e) => setPatientSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                   {patients.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg z-10">
                       {patients.map((p) => (
                         <button
                           key={p.id}
@@ -200,10 +200,10 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
                             setPatientSearch('')
                             setPatients([])
                           }}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 flex justify-between"
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-primary/10 flex justify-between"
                         >
                           <span>{p.firstName} {p.lastName}</span>
-                          <span className="text-gray-400 text-xs">{p.phone}</span>
+                          <span className="text-muted-foreground text-xs">{p.phone}</span>
                         </button>
                       ))}
                     </div>
@@ -216,11 +216,11 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
           {/* Medication items */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-semibold text-gray-800">Medicamentos</label>
+              <label className="text-sm font-semibold text-foreground">Medicamentos</label>
               <button
                 type="button"
                 onClick={addItem}
-                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                className="flex items-center gap-1.5 text-xs text-primary hover:text-primary font-medium"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Agregar medicamento
@@ -229,11 +229,11 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
 
             <div className="space-y-4">
               {items.map((item, idx) => (
-                <div key={idx} className="border border-gray-300 shadow-sm rounded-xl p-4 bg-gray-50">
+                <div key={idx} className="border border-border rounded-xl p-4 bg-muted/50">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-gray-500 uppercase">Medicamento {idx + 1}</span>
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Medicamento {idx + 1}</span>
                     {items.length > 1 && (
-                      <button type="button" onClick={() => removeItem(idx)} className="text-gray-400 hover:text-red-500">
+                      <button type="button" onClick={() => removeItem(idx)} className="text-muted-foreground hover:text-destructive">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}
@@ -242,7 +242,7 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Medication name with autocomplete */}
                     <div className="relative sm:col-span-2">
-                      <label className="block text-xs text-gray-500 mb-1">Nombre del medicamento *</label>
+                      <label className="block text-xs text-muted-foreground mb-1">Nombre del medicamento *</label>
                       <input
                         type="text"
                         value={medSearch[idx] ?? ''}
@@ -251,16 +251,16 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
                         className={inputClass}
                       />
                       {(medResults[idx]?.length ?? 0) > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg z-10 max-h-40 overflow-y-auto">
                           {medResults[idx]!.map((med, mi) => (
                             <button
                               key={mi}
                               type="button"
                               onClick={() => selectMedication(idx, med)}
-                              className="w-full px-3 py-2 text-left text-xs hover:bg-blue-50 flex flex-col"
+                              className="w-full px-3 py-2 text-left text-xs hover:bg-primary/10 flex flex-col"
                             >
                               <span className="font-medium">{med.name} {med.concentration}</span>
-                              <span className="text-gray-400">{med.brandName} · {med.presentation} · {med.route}</span>
+                              <span className="text-muted-foreground">{med.brandName} · {med.presentation} · {med.route}</span>
                             </button>
                           ))}
                         </div>
@@ -268,40 +268,40 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
                     </div>
 
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Dosis *</label>
+                      <label className="block text-xs text-muted-foreground mb-1">Dosis *</label>
                       <input value={item.dose} onChange={(e) => updateItem(idx, 'dose', e.target.value)}
                         placeholder="500mg" className={inputClass} />
                     </div>
 
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Vía de administración</label>
+                      <label className="block text-xs text-muted-foreground mb-1">Vía de administración</label>
                       <select value={item.route} onChange={(e) => updateItem(idx, 'route', e.target.value)} className={inputClass}>
                         {ROUTES.map((r) => <option key={r} value={r}>{r}</option>)}
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Frecuencia</label>
+                      <label className="block text-xs text-muted-foreground mb-1">Frecuencia</label>
                       <select value={item.frequency} onChange={(e) => updateItem(idx, 'frequency', e.target.value)} className={inputClass}>
                         {FREQUENCIES.map((f) => <option key={f} value={f}>{f}</option>)}
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Duración</label>
+                      <label className="block text-xs text-muted-foreground mb-1">Duración</label>
                       <select value={item.duration} onChange={(e) => updateItem(idx, 'duration', e.target.value)} className={inputClass}>
                         {DURATIONS.map((d) => <option key={d} value={d}>{d}</option>)}
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Cantidad total</label>
+                      <label className="block text-xs text-muted-foreground mb-1">Cantidad total</label>
                       <input value={item.quantity} onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
                         placeholder="21 tabletas" className={inputClass} />
                     </div>
 
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Indicaciones específicas</label>
+                      <label className="block text-xs text-muted-foreground mb-1">Indicaciones específicas</label>
                       <input value={item.instructions} onChange={(e) => updateItem(idx, 'instructions', e.target.value)}
                         placeholder="Tomar con alimentos..." className={inputClass} />
                     </div>
@@ -313,7 +313,7 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
 
           {/* General instructions */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Indicaciones generales</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-1">Indicaciones generales</label>
             <textarea
               rows={2}
               value={instructions}
@@ -325,22 +325,22 @@ export function PrescriptionBuilder({ onClose, onCreated, patientId: defaultPati
 
           {/* Follow-up */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de seguimiento</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-1">Fecha de seguimiento</label>
             <input
               type="date"
               value={followUpDate}
               onChange={(e) => setFollowUpDate(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
-          {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          {error && <p className="text-destructive text-sm bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>}
 
           <div className="flex gap-3">
-            <button type="button" onClick={onClose} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <button type="button" onClick={onClose} className="flex-1 py-2 border border-border rounded-lg text-sm font-medium text-foreground/80 hover:bg-muted/50">
               Cancelar
             </button>
-            <button type="submit" disabled={loading} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
+            <button type="submit" disabled={loading} className="flex-1 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
               {loading ? (isEditing ? 'Guardando...' : 'Creando...') : (isEditing ? 'Guardar cambios' : 'Crear receta')}
             </button>
           </div>

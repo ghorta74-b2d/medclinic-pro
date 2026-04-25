@@ -23,13 +23,13 @@ interface DashboardData {
 }
 
 const STATUS_CLASSES: Record<string, string> = {
-  DRAFT: 'bg-gray-100 text-gray-600',
-  SENT: 'bg-blue-100 text-blue-700',
-  PAID: 'bg-green-100 text-green-700',
-  PARTIALLY_PAID: 'bg-yellow-100 text-yellow-700',
-  OVERDUE: 'bg-red-100 text-red-700',
-  CANCELLED: 'bg-gray-100 text-gray-400',
-  REFUNDED: 'bg-purple-100 text-purple-700',
+  DRAFT: 'bg-muted text-muted-foreground',
+  SENT: 'bg-primary/15 text-primary',
+  PAID: 'bg-success/15 text-success',
+  PARTIALLY_PAID: 'bg-warning/15 text-warning',
+  OVERDUE: 'bg-destructive/15 text-destructive',
+  CANCELLED: 'bg-muted text-muted-foreground/60',
+  REFUNDED: 'bg-primary/15 text-primary',
 }
 
 export default function BillingPage() {
@@ -84,7 +84,7 @@ export default function BillingPage() {
         actions={
           <button
             onClick={() => setShowNew(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg"
           >
             <Plus className="w-4 h-4" />
             Nueva factura
@@ -97,21 +97,21 @@ export default function BillingPage() {
         {stats && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {[
-              { label: 'Facturado (mes)', value: formatCurrency(stats.totalBilled), icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
-              { label: 'Cobrado (mes)', value: formatCurrency(stats.totalCollected), icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
-              { label: 'Por cobrar', value: formatCurrency(stats.pendingAmount), icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-              { label: 'Facturas (mes)', value: String(stats.invoiceCount), icon: CreditCard, color: 'text-purple-600', bg: 'bg-purple-50' },
+              { label: 'Facturado (mes)', value: formatCurrency(stats.totalBilled), icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10' },
+              { label: 'Cobrado (mes)', value: formatCurrency(stats.totalCollected), icon: DollarSign, color: 'text-success', bg: 'bg-success/10' },
+              { label: 'Por cobrar', value: formatCurrency(stats.pendingAmount), icon: Clock, color: 'text-warning', bg: 'bg-warning/10' },
+              { label: 'Facturas (mes)', value: String(stats.invoiceCount), icon: CreditCard, color: 'text-primary', bg: 'bg-primary/10' },
             ].map((s) => {
               const Icon = s.icon
               return (
-                <div key={s.label} className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
+                <div key={s.label} className="bg-card rounded-xl border border-border p-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 ${s.bg} rounded-lg flex items-center justify-center`}>
                       <Icon className={`w-5 h-5 ${s.color}`} />
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-gray-900">{s.value}</p>
-                      <p className="text-xs text-gray-500">{s.label}</p>
+                      <p className="text-lg font-bold text-foreground">{s.value}</p>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
                     </div>
                   </div>
                 </div>
@@ -125,7 +125,7 @@ export default function BillingPage() {
           {FILTERS.map((f) => (
             <button key={f.value} onClick={() => setFilter(f.value)}
               className={cn('px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                filter === f.value ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:border-blue-400')}>
+                filter === f.value ? 'bg-primary text-white' : 'bg-card border border-border text-muted-foreground hover:border-primary')}>
               {f.label}
             </button>
           ))}
@@ -133,53 +133,53 @@ export default function BillingPage() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         ) : invoices.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-            <CreditCard className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-            <p className="text-sm text-gray-400">No hay facturas</p>
+          <div className="text-center py-16 bg-card rounded-xl border border-border">
+            <CreditCard className="w-10 h-10 mx-auto mb-3 text-muted-foreground/60" />
+            <p className="text-sm text-muted-foreground">No hay facturas</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Factura</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Paciente</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Pagado</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Estado</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Acciones</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Factura</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Paciente</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Total</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Pagado</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Estado</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border/50">
                 {invoices.map((invoice) => {
                   const remaining = Number(invoice.total) - Number(invoice.paidAmount)
                   const isPending = ['SENT', 'PARTIALLY_PAID', 'OVERDUE', 'DRAFT'].includes(invoice.status)
 
                   return (
-                    <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={invoice.id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-4 py-3">
-                        <p className="text-sm font-mono font-medium text-gray-900">{invoice.invoiceNumber}</p>
-                        <p className="text-xs text-gray-400">{formatDate(invoice.issuedAt)}</p>
+                        <p className="text-sm font-mono font-medium text-foreground">{invoice.invoiceNumber}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(invoice.issuedAt)}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-gray-900">
+                        <p className="text-sm text-foreground">
                           {invoice.patient?.firstName} {invoice.patient?.lastName}
                         </p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-foreground">
                           {formatCurrency(Number(invoice.total), invoice.currency)}
                         </p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-gray-700">
+                        <p className="text-sm text-foreground/80">
                           {formatCurrency(Number(invoice.paidAmount), invoice.currency)}
                         </p>
                         {remaining > 0 && (
-                          <p className="text-xs text-orange-600">
+                          <p className="text-xs text-warning">
                             Pendiente: {formatCurrency(remaining, invoice.currency)}
                           </p>
                         )}
@@ -195,7 +195,7 @@ export default function BillingPage() {
                             <>
                               <button
                                 onClick={() => setPayingInvoice(invoice)}
-                                className="text-xs text-gray-600 border border-gray-300 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 font-medium"
+                                className="text-xs text-muted-foreground border border-border px-2.5 py-1.5 rounded-lg hover:bg-muted/50 font-medium"
                               >
                                 Registrar pago
                               </button>
@@ -203,7 +203,7 @@ export default function BillingPage() {
                                 <button
                                   onClick={() => handleSendPaymentLink(invoice)}
                                   disabled={actionLoading[invoice.id] === 'link'}
-                                  className="flex items-center gap-1.5 text-xs text-green-700 border border-green-300 px-2.5 py-1.5 rounded-lg hover:bg-green-50 font-medium disabled:opacity-50"
+                                  className="flex items-center gap-1.5 text-xs text-success border border-success/50 px-2.5 py-1.5 rounded-lg hover:bg-success/10 font-medium disabled:opacity-50"
                                 >
                                   {actionLoading[invoice.id] === 'link'
                                     ? <Loader2 className="w-3 h-3 animate-spin" />
@@ -214,7 +214,7 @@ export default function BillingPage() {
                               )}
                               {invoice.stripePaymentLinkUrl && (
                                 <a href={invoice.stripePaymentLinkUrl} target="_blank" rel="noopener noreferrer"
-                                   className="text-xs text-blue-600 hover:underline border border-blue-200 px-2.5 py-1.5 rounded-lg">
+                                   className="text-xs text-primary hover:underline border border-primary px-2.5 py-1.5 rounded-lg">
                                   Ver liga
                                 </a>
                               )}

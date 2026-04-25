@@ -156,17 +156,17 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
     }
   }
 
-  const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-  const labelClass = 'block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide'
-  const sectionClass = 'bg-white rounded-xl border border-gray-300 shadow-sm p-5'
+  const inputClass = 'w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary'
+  const labelClass = 'block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide'
+  const sectionClass = 'bg-card rounded-xl border border-border p-5'
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
       {/* Patient allergies warning */}
       {patient && patient.allergies.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3">
-          <X className="w-4 h-4 text-red-500 shrink-0" />
-          <p className="text-sm text-red-800">
+        <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3 flex items-center gap-3">
+          <X className="w-4 h-4 text-destructive shrink-0" />
+          <p className="text-sm text-destructive">
             <strong>Alergias del paciente:</strong> {patient.allergies.join(', ')}
           </p>
         </div>
@@ -186,7 +186,7 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
 
       {/* Vital signs */}
       <div className={sectionClass}>
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">Signos vitales</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-4">Signos vitales</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { key: 'weightKg', label: 'Peso (kg)', placeholder: '65.5' },
@@ -227,27 +227,27 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
 
       {/* Diagnoses — CIE-10 */}
       <div className={sectionClass}>
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Diagnósticos (CIE-10)</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Diagnósticos (CIE-10)</h3>
 
         {/* Selected */}
         {diagnoses.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">
             {diagnoses.map((d) => (
-              <div key={d.code} className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
-                <span className="text-xs font-bold text-blue-700">{d.code}</span>
-                <span className="text-xs text-blue-800">{d.description}</span>
+              <div key={d.code} className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
+                <span className="text-xs font-bold text-primary">{d.code}</span>
+                <span className="text-xs text-primary">{d.description}</span>
                 <select
                   value={d.type}
                   onChange={(e) => setDiagnoses(diagnoses.map((x) =>
                     x.code === d.code ? { ...x, type: e.target.value as Diagnosis['type'] } : x
                   ))}
-                  className="text-xs border-none bg-transparent text-blue-600 outline-none"
+                  className="text-xs border-none bg-transparent text-primary outline-none"
                 >
                   <option value="PRIMARY">Principal</option>
                   <option value="SECONDARY">Secundario</option>
                   <option value="RULE_OUT">A descartar</option>
                 </select>
-                <button onClick={() => removeDiagnosis(d.code)} className="text-blue-400 hover:text-red-500">
+                <button onClick={() => removeDiagnosis(d.code)} className="text-muted-foreground hover:text-destructive">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -258,27 +258,27 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
         {/* Search */}
         <div className="relative">
           {diagSearching
-            ? <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 animate-spin" />
-            : <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            ? <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary animate-spin" />
+            : <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           }
           <input
             type="text"
             placeholder="Buscar código CIE-10 o descripción..."
             value={diagSearch}
             onChange={(e) => handleDiagSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-10 pr-4 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
           {diagResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+            <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg z-10 max-h-48 overflow-y-auto">
               {diagResults.map((entry) => (
                 <button
                   key={entry.code}
                   type="button"
                   onClick={() => addDiagnosis(entry)}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-3"
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-primary/10 flex items-center gap-3"
                 >
-                  <span className="font-mono text-xs text-blue-600 w-16 shrink-0">{entry.code}</span>
-                  <span className="text-gray-800">{entry.description}</span>
+                  <span className="font-mono text-xs text-primary w-16 shrink-0">{entry.code}</span>
+                  <span className="text-foreground">{entry.description}</span>
                 </button>
               ))}
             </div>
@@ -312,8 +312,8 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3">
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
@@ -324,10 +324,10 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
             type="button"
             onClick={handleSave}
             disabled={saving || signing}
-            className="flex items-center gap-2 px-6 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-6 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground/80 hover:bg-muted/50 disabled:opacity-50 transition-colors"
           >
             {saved
-              ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+              ? <CheckCircle2 className="w-4 h-4 text-success" />
               : saving
               ? <Loader2 className="w-4 h-4 animate-spin" />
               : null}
@@ -337,14 +337,14 @@ export function ClinicalNoteEditor({ patientId, appointmentId, patient, onSaved 
             type="button"
             onClick={handleSign}
             disabled={signing || saving}
-            className="flex-1 py-2.5 bg-[#4E2DD2] hover:bg-[#3d22a8] disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
+            className="flex-1 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
           >
             {signing
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Firmando...</>
               : <><CheckCircle2 className="w-4 h-4" /> Firmar nota</>}
           </button>
         </div>
-        <p className="text-xs text-gray-400 text-center">
+        <p className="text-xs text-muted-foreground/60 text-center">
           <strong>Guardar borrador</strong> guarda sin finalizar · <strong>Firmar nota</strong> guarda y cierra la consulta (no editable después)
         </p>
       </div>

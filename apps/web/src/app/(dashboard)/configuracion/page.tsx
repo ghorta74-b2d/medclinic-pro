@@ -44,11 +44,11 @@ function ClinicTab() {
     <div className="max-w-lg space-y-4">
       {fields.map(({ key, label, placeholder }) => (
         <div key={key}>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+          <label className="block text-sm font-medium text-foreground/80 mb-1">{label}</label>
           <input type="text" value={form[key as keyof typeof form]}
             onChange={(e) => setForm({ ...form, [key]: e.target.value })}
             placeholder={placeholder}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
         </div>
       ))}
       <button disabled={saving}
@@ -59,7 +59,7 @@ function ClinicTab() {
             .catch((e: any) => alert(e.message ?? 'Error'))
             .finally(() => setSaving(false))
         }}
-        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50">
+        className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50">
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
         Guardar cambios
       </button>
@@ -69,9 +69,9 @@ function ClinicTab() {
 
 // ── Plan badge ────────────────────────────────────────────────────
 const PLAN_COLORS: Record<string, string> = {
-  BASIC:      'bg-gray-100 text-gray-700',
-  PRO:        'bg-blue-100 text-blue-700',
-  ENTERPRISE: 'bg-purple-100 text-purple-700',
+  BASIC:      'bg-muted text-foreground/80',
+  PRO:        'bg-primary/15 text-primary',
+  ENTERPRISE: 'bg-primary/15 text-primary',
 }
 
 // ── Users / Team Management ──────────────────────────────────────
@@ -189,7 +189,7 @@ function UsuariosTab() {
     }
   }
 
-  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /></div>
+  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
 
   const plan = data?.plan ?? 'BASIC'
   const limits = data?.limits ?? { DOCTOR: 1, STAFF: 1 }
@@ -203,17 +203,17 @@ function UsuariosTab() {
       {error && (
         <div className={cn(
           'px-4 py-2.5 rounded-lg text-sm font-medium',
-          error.startsWith('✓') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+          error.startsWith('✓') ? 'bg-success/10 text-success border border-success/15' : 'bg-destructive/10 text-destructive border border-destructive/15'
         )}>
           {error}
         </div>
       )}
 
       {/* Plan quota summary */}
-      <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
+      <div className="bg-card rounded-xl border border-border p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-900">Usuarios de tu plan</h3>
-          <span className={cn('text-xs font-semibold px-2.5 py-0.5 rounded-full', PLAN_COLORS[plan] ?? 'bg-gray-100 text-gray-700')}>
+          <h3 className="text-sm font-semibold text-foreground">Usuarios de tu plan</h3>
+          <span className={cn('text-xs font-semibold px-2.5 py-0.5 rounded-full', PLAN_COLORS[plan] ?? 'bg-muted text-foreground/80')}>
             Plan {plan}
           </span>
         </div>
@@ -225,18 +225,18 @@ function UsuariosTab() {
             const pct  = Math.min(100, (used / max) * 100)
             const full = used >= max
             return (
-              <div className={cn('rounded-lg p-3', full ? 'bg-red-50' : 'bg-blue-50')}>
+              <div className={cn('rounded-lg p-3', full ? 'bg-destructive/10' : 'bg-primary/10')}>
                 <div className="flex items-center gap-2 mb-1">
-                  <Stethoscope className={cn('w-4 h-4', full ? 'text-red-500' : 'text-blue-600')} />
-                  <p className={cn('text-xs font-medium', full ? 'text-red-700' : 'text-blue-800')}>Médicos y Admins</p>
+                  <Stethoscope className={cn('w-4 h-4', full ? 'text-destructive' : 'text-primary')} />
+                  <p className={cn('text-xs font-medium', full ? 'text-destructive' : 'text-primary')}>Médicos y Admins</p>
                 </div>
-                <p className={cn('text-2xl font-bold', full ? 'text-red-600' : 'text-blue-700')}>
-                  {used}<span className={cn('text-sm font-normal', full ? 'text-red-400' : 'text-blue-400')}> / {max}</span>
+                <p className={cn('text-2xl font-bold', full ? 'text-destructive' : 'text-primary')}>
+                  {used}<span className={cn('text-sm font-normal', full ? 'text-muted-foreground/60' : 'text-muted-foreground/60')}> / {max}</span>
                 </p>
-                <div className={cn('w-full rounded-full h-1.5 mt-2', full ? 'bg-red-200' : 'bg-blue-200')}>
-                  <div className={cn('h-1.5 rounded-full transition-all', full ? 'bg-red-500' : 'bg-blue-500')} style={{ width: `${pct}%` }} />
+                <div className={cn('w-full rounded-full h-1.5 mt-2', full ? 'bg-destructive/15' : 'bg-primary/15')}>
+                  <div className={cn('h-1.5 rounded-full transition-all', full ? 'bg-destructive' : 'bg-primary')} style={{ width: `${pct}%` }} />
                 </div>
-                {full && <p className="text-xs text-red-600 mt-1.5 font-medium">Límite alcanzado</p>}
+                {full && <p className="text-xs text-destructive mt-1.5 font-medium">Límite alcanzado</p>}
               </div>
             )
           })()}
@@ -247,18 +247,18 @@ function UsuariosTab() {
             const pct  = Math.min(100, (used / max) * 100)
             const full = used >= max
             return (
-              <div className={cn('rounded-lg p-3', full ? 'bg-red-50' : 'bg-orange-50')}>
+              <div className={cn('rounded-lg p-3', full ? 'bg-destructive/10' : 'bg-warning/10')}>
                 <div className="flex items-center gap-2 mb-1">
-                  <Shield className={cn('w-4 h-4', full ? 'text-red-500' : 'text-orange-600')} />
-                  <p className={cn('text-xs font-medium', full ? 'text-red-700' : 'text-orange-800')}>Administrativos</p>
+                  <Shield className={cn('w-4 h-4', full ? 'text-destructive' : 'text-warning')} />
+                  <p className={cn('text-xs font-medium', full ? 'text-destructive' : 'text-warning')}>Administrativos</p>
                 </div>
-                <p className={cn('text-2xl font-bold', full ? 'text-red-600' : 'text-orange-700')}>
-                  {used}<span className={cn('text-sm font-normal', full ? 'text-red-400' : 'text-orange-400')}> / {max}</span>
+                <p className={cn('text-2xl font-bold', full ? 'text-destructive' : 'text-warning')}>
+                  {used}<span className={cn('text-sm font-normal', full ? 'text-muted-foreground/60' : 'text-muted-foreground/60')}> / {max}</span>
                 </p>
-                <div className={cn('w-full rounded-full h-1.5 mt-2', full ? 'bg-red-200' : 'bg-orange-200')}>
-                  <div className={cn('h-1.5 rounded-full transition-all', full ? 'bg-red-500' : 'bg-orange-500')} style={{ width: `${pct}%` }} />
+                <div className={cn('w-full rounded-full h-1.5 mt-2', full ? 'bg-destructive/15' : 'bg-warning/15')}>
+                  <div className={cn('h-1.5 rounded-full transition-all', full ? 'bg-destructive' : 'bg-warning')} style={{ width: `${pct}%` }} />
                 </div>
-                {full && <p className="text-xs text-red-600 mt-1.5 font-medium">Límite alcanzado</p>}
+                {full && <p className="text-xs text-destructive mt-1.5 font-medium">Límite alcanzado</p>}
               </div>
             )
           })()}
@@ -266,59 +266,59 @@ function UsuariosTab() {
       </div>
 
       {/* Users table */}
-      <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900">Equipo</h3>
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">Equipo</h3>
           <button onClick={() => { setShowInvite(true); setError('') }}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg">
+            className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-medium px-3 py-1.5 rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Invitar usuario
           </button>
         </div>
 
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-muted/50 border-b border-border">
             <tr>
               {['Nombre', 'Email', 'Rol', 'Estado', 'Acciones'].map(h => (
-                <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-border/50">
             {[...doctors, ...staff].map((user: any) => {
               const isPending = !user.authUserId
               const isDoctor  = user.role === 'DOCTOR' || user.role === 'ADMIN'
               const isEditing = editingId === user.id
               return (
-                <tr key={user.id} className={cn('hover:bg-gray-50', !user.isActive && 'opacity-50')}>
+                <tr key={user.id} className={cn('hover:bg-muted/50', !user.isActive && 'opacity-50')}>
                   <td className="px-4 py-3">
                     {isEditing ? (
                       <div className="flex flex-col gap-1">
                         <div className="flex gap-1">
                           <input value={editForm.firstName} onChange={e => setEditForm(f => ({ ...f, firstName: e.target.value }))}
-                            className="w-full border border-blue-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Nombre" />
+                            className="w-full border border-primary rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Nombre" />
                           <input value={editForm.lastName} onChange={e => setEditForm(f => ({ ...f, lastName: e.target.value }))}
-                            className="w-full border border-blue-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Apellido" />
+                            className="w-full border border-primary rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Apellido" />
                         </div>
                         {isDoctor && (
                           <input value={editForm.specialty} onChange={e => setEditForm(f => ({ ...f, specialty: e.target.value }))}
-                            className="w-full border border-blue-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Especialidad" />
+                            className="w-full border border-primary rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Especialidad" />
                         )}
                       </div>
                     ) : (
                       <>
-                        <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
+                        <p className="text-sm font-medium text-foreground">{user.firstName} {user.lastName}</p>
                         {user.role === 'DOCTOR' && user.specialty && user.specialty.trim().length > 1 && (
-                          <p className="text-xs text-gray-400">{user.specialty.trim()}</p>
+                          <p className="text-xs text-muted-foreground">{user.specialty.trim()}</p>
                         )}
                       </>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{user.email}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{user.email}</td>
                   <td className="px-4 py-3">
                     <span className={cn(
                       'inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full',
-                      user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
-                      isDoctor ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                      user.role === 'ADMIN' ? 'bg-primary/15 text-primary' :
+                      isDoctor ? 'bg-primary/15 text-primary' : 'bg-warning/15 text-warning'
                     )}>
                       {user.role === 'ADMIN' ? <Shield className="w-3 h-3" /> : isDoctor ? <Stethoscope className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
                       {user.role === 'ADMIN' ? 'Admin' : isDoctor ? 'Médico' : 'Administrativo'}
@@ -326,15 +326,15 @@ function UsuariosTab() {
                   </td>
                   <td className="px-4 py-3">
                     {isPending ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-warning bg-warning/15 px-2 py-0.5 rounded-full">
                         <Mail className="w-3 h-3" /> Pendiente
                       </span>
                     ) : user.isActive ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-success bg-success/15 px-2 py-0.5 rounded-full">
                         <UserCheck className="w-3 h-3" /> Activo
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                         <UserX className="w-3 h-3" /> Inactivo
                       </span>
                     )}
@@ -343,12 +343,12 @@ function UsuariosTab() {
                     {isEditing ? (
                       <div className="flex items-center gap-1.5">
                         <button onClick={() => handleSaveEdit(user)} disabled={actionId === user.id + '_edit'}
-                          className="text-xs text-white bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded-lg disabled:opacity-50 flex items-center gap-1">
+                          className="text-xs text-white bg-primary hover:bg-primary/90 px-2.5 py-1 rounded-lg disabled:opacity-50 flex items-center gap-1">
                           {actionId === user.id + '_edit' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                           Guardar
                         </button>
                         <button onClick={() => setEditingId(null)}
-                          className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded-lg border border-gray-200">
+                          className="text-xs text-muted-foreground hover:text-foreground/80 px-2 py-1 rounded-lg border border-border">
                           <X className="w-3 h-3" />
                         </button>
                       </div>
@@ -359,13 +359,13 @@ function UsuariosTab() {
                           <button
                             onClick={() => { setEditingId(user.id); setEditForm({ firstName: user.firstName, lastName: user.lastName, specialty: user.specialty ?? '' }) }}
                             title="Editar nombre / especialidad"
-                            className="text-gray-400 hover:text-blue-600 p-1 rounded">
+                            className="text-muted-foreground hover:text-primary p-1 rounded">
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleResend(user)}
                             disabled={actionId === user.id + '_resend'}
-                            className="text-xs text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1">
+                            className="text-xs text-primary hover:underline disabled:opacity-50 flex items-center gap-1">
                             {actionId === user.id + '_resend' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
                             {isPending ? 'Reenviar' : 'Reenviar acceso'}
                           </button>
@@ -373,7 +373,7 @@ function UsuariosTab() {
                             <button
                               onClick={() => handleToggleActive(user)}
                               disabled={actionId === user.id}
-                              className={cn('text-xs hover:underline disabled:opacity-50', user.isActive ? 'text-red-500' : 'text-green-600')}>
+                              className={cn('text-xs hover:underline disabled:opacity-50', user.isActive ? 'text-destructive' : 'text-success')}>
                               {actionId === user.id
                                 ? <Loader2 className="w-3 h-3 animate-spin inline" />
                                 : user.isActive ? 'Desactivar' : 'Activar'}
@@ -388,7 +388,7 @@ function UsuariosTab() {
                                 onClick={() => handleChangeRole(user, 'ADMIN')}
                                 disabled={actionId === user.id + '_role'}
                                 title="Promover a Administrador"
-                                className="text-xs text-purple-600 hover:underline disabled:opacity-50 flex items-center gap-1">
+                                className="text-xs text-primary hover:underline disabled:opacity-50 flex items-center gap-1">
                                 {actionId === user.id + '_role' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
                                 Hacer Admin
                               </button>
@@ -398,7 +398,7 @@ function UsuariosTab() {
                                 onClick={() => handleChangeRole(user, 'DOCTOR')}
                                 disabled={actionId === user.id + '_role'}
                                 title="Quitar permisos de Admin"
-                                className="text-xs text-gray-500 hover:text-blue-600 hover:underline disabled:opacity-50 flex items-center gap-1">
+                                className="text-xs text-muted-foreground hover:text-primary hover:underline disabled:opacity-50 flex items-center gap-1">
                                 {actionId === user.id + '_role' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Stethoscope className="w-3 h-3" />}
                                 Quitar Admin
                               </button>
@@ -408,7 +408,7 @@ function UsuariosTab() {
                                 onClick={() => handleDelete(user)}
                                 disabled={actionId === user.id + '_delete'}
                                 title="Eliminar usuario"
-                                className="text-gray-400 hover:text-red-600 p-1 rounded disabled:opacity-50">
+                                className="text-muted-foreground hover:text-destructive p-1 rounded disabled:opacity-50">
                                 {actionId === user.id + '_delete' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                               </button>
                             )}
@@ -421,7 +421,7 @@ function UsuariosTab() {
               )
             })}
             {(data?.users ?? []).length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">No hay usuarios registrados</td></tr>
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">No hay usuarios registrados</td></tr>
             )}
           </tbody>
         </table>
@@ -429,39 +429,39 @@ function UsuariosTab() {
 
       {/* Invite form */}
       {showInvite && (
-        <div className="bg-white rounded-xl border border-blue-200 p-4 space-y-4">
-          <p className="text-sm font-semibold text-gray-900">Invitar nuevo usuario</p>
+        <div className="bg-card rounded-xl border border-primary p-4 space-y-4">
+          <p className="text-sm font-semibold text-foreground">Invitar nuevo usuario</p>
 
           {/* Role selector */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { value: 'DOCTOR', label: 'Médico',          desc: 'Acceso completo a la plataforma',       icon: Stethoscope, color: 'border-blue-400 bg-blue-50',   activeColor: 'text-blue-600' },
-              { value: 'STAFF',  label: 'Administrativo',  desc: 'Dashboard, Agenda, Pacientes y Cobros', icon: Shield,       color: 'border-orange-400 bg-orange-50', activeColor: 'text-orange-600' },
+              { value: 'DOCTOR', label: 'Médico',          desc: 'Acceso completo a la plataforma',       icon: Stethoscope, color: 'border-primary bg-primary/10',   activeColor: 'text-primary' },
+              { value: 'STAFF',  label: 'Administrativo',  desc: 'Dashboard, Agenda, Pacientes y Cobros', icon: Shield,       color: 'border-warning bg-warning/10', activeColor: 'text-warning' },
               ...(callerRole === 'ADMIN' ? [
-                { value: 'ADMIN',  label: 'Administrador',  desc: 'Gestión completa de la clínica y usuarios', icon: Shield, color: 'border-purple-400 bg-purple-50', activeColor: 'text-purple-600' },
+                { value: 'ADMIN',  label: 'Administrador',  desc: 'Gestión completa de la clínica y usuarios', icon: Shield, color: 'border-primary bg-primary/10', activeColor: 'text-primary' },
               ] : []),
             ].map(opt => (
               <button key={opt.value}
                 onClick={() => setForm(f => ({ ...f, role: opt.value }))}
                 className={cn('text-left p-3 rounded-xl border-2 transition-all',
-                  form.role === opt.value ? opt.color : 'border-gray-200 hover:border-gray-300')}>
+                  form.role === opt.value ? opt.color : 'border-border hover:border-border')}>
                 <div className="flex items-center gap-2 mb-1">
-                  <opt.icon className={cn('w-4 h-4', form.role === opt.value ? opt.activeColor : 'text-gray-400')} />
-                  <p className="text-sm font-semibold text-gray-900">{opt.label}</p>
+                  <opt.icon className={cn('w-4 h-4', form.role === opt.value ? opt.activeColor : 'text-muted-foreground')} />
+                  <p className="text-sm font-semibold text-foreground">{opt.label}</p>
                 </div>
-                <p className="text-xs text-gray-500">{opt.desc}</p>
+                <p className="text-xs text-muted-foreground">{opt.desc}</p>
               </button>
             ))}
           </div>
 
           {/* Quota warning */}
           {form.role === 'DOCTOR' && (data?.doctorCount ?? 0) >= limits.DOCTOR && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+            <div className="bg-destructive/10 border border-destructive/15 rounded-lg px-3 py-2 text-xs text-destructive">
               ⚠️ Has alcanzado el límite de médicos de tu plan ({limits.DOCTOR}). Actualiza tu plan para agregar más.
             </div>
           )}
           {form.role === 'STAFF' && (data?.staffCount ?? 0) >= limits.STAFF && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+            <div className="bg-destructive/10 border border-destructive/15 rounded-lg px-3 py-2 text-xs text-destructive">
               ⚠️ Has alcanzado el límite de administrativos de tu plan ({limits.STAFF}). Actualiza tu plan para agregar más.
             </div>
           )}
@@ -478,36 +478,36 @@ function UsuariosTab() {
               ] : []),
             ].map(({ key, label, placeholder }) => (
               <div key={key}>
-                <label className="block text-xs text-gray-500 mb-1">{label}</label>
+                <label className="block text-xs text-muted-foreground mb-1">{label}</label>
                 <input
                   value={form[key as keyof typeof form]}
                   onChange={(e) => setForm(f => ({ ...f, [key]: e.target.value }))}
                   placeholder={placeholder}
-                  className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-border rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
               </div>
             ))}
           </div>
 
-          {error && <p className="text-xs text-red-600">{error}</p>}
+          {error && <p className="text-xs text-destructive">{error}</p>}
 
           <div className="flex gap-2">
             <button onClick={handleInvite} disabled={saving}
-              className="flex items-center gap-2 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              className="flex items-center gap-2 bg-primary text-white text-sm px-4 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50">
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
               Enviar invitación
             </button>
             <button onClick={() => { setShowInvite(false); setError('') }}
-              className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">
+              className="text-sm px-4 py-2 rounded-lg border border-border text-muted-foreground hover:bg-muted/50">
               Cancelar
             </button>
           </div>
-          <p className="text-xs text-gray-400">El usuario recibirá un email con un link para activar su cuenta.</p>
+          <p className="text-xs text-muted-foreground">El usuario recibirá un email con un link para activar su cuenta.</p>
         </div>
       )}
 
       {/* Plan info */}
-      <div className="bg-gray-50 rounded-xl border border-gray-300 shadow-sm p-4">
-        <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Límites por plan</p>
+      <div className="bg-muted/50 rounded-xl border border-border p-4">
+        <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Límites por plan</p>
         <div className="grid grid-cols-3 gap-3 text-center">
           {[
             { plan: 'BASIC',      doctors: 1, staff: 1 },
@@ -516,11 +516,11 @@ function UsuariosTab() {
           ].map(p => (
             <div key={p.plan} className={cn(
               'rounded-lg p-3 border',
-              plan === p.plan ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'
+              plan === p.plan ? 'border-primary bg-primary/10' : 'border-border bg-card'
             )}>
-              <p className={cn('text-xs font-bold mb-1', plan === p.plan ? 'text-blue-700' : 'text-gray-500')}>{p.plan}</p>
-              <p className="text-xs text-gray-600">{p.doctors} médico{p.doctors > 1 ? 's' : ''}</p>
-              <p className="text-xs text-gray-600">{p.staff} administrativo{p.staff > 1 ? 's' : ''}</p>
+              <p className={cn('text-xs font-bold mb-1', plan === p.plan ? 'text-primary' : 'text-muted-foreground')}>{p.plan}</p>
+              <p className="text-xs text-muted-foreground">{p.doctors} médico{p.doctors > 1 ? 's' : ''}</p>
+              <p className="text-xs text-muted-foreground">{p.staff} administrativo{p.staff > 1 ? 's' : ''}</p>
             </div>
           ))}
         </div>
@@ -632,42 +632,42 @@ function HorariosTab() {
     }
   }
 
-  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /></div>
+  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
 
   return (
     <div className="max-w-lg space-y-6">
-      <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-gray-200 border-b border-gray-300">
-          <p className="text-sm font-semibold text-gray-800">Horario de atención semanal</p>
-          <p className="text-xs text-gray-500 mt-0.5">Define los días y horas en que se pueden agendar citas</p>
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="px-4 py-3 bg-muted border-b border-border">
+          <p className="text-sm font-semibold text-foreground">Horario de atención semanal</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Define los días y horas en que se pueden agendar citas</p>
         </div>
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-border/50">
           {DAYS.map(({ key, label }) => {
             const day = week[key] ?? { enabled: false, start: '09:00', end: '18:00' }
             return (
               <div key={key} className="flex items-center gap-3 px-4 py-3">
                 {/* Toggle */}
                 <button type="button" onClick={() => toggleDay(key)}
-                  className={`relative w-9 h-5 rounded-full transition-colors shrink-0 overflow-hidden ${day.enabled ? 'bg-blue-600' : 'bg-gray-200'}`}>
-                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${day.enabled ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+                  className={`relative w-9 h-5 rounded-full transition-colors shrink-0 overflow-hidden ${day.enabled ? 'bg-primary' : 'bg-muted'}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${day.enabled ? 'translate-x-[18px]' : 'translate-x-0'}`} />
                 </button>
                 {/* Día */}
-                <span className={`w-24 text-sm font-medium ${day.enabled ? 'text-gray-800' : 'text-gray-400'}`}>{label}</span>
+                <span className={`w-24 text-sm font-medium ${day.enabled ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
                 {/* Horas */}
                 {day.enabled ? (
                   <div className="flex items-center gap-2 flex-1">
                     <select value={day.start} onChange={e => setDayTime(key, 'start', e.target.value)}
-                      className="flex-1 text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      className="flex-1 text-sm border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary">
                       {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
-                    <span className="text-xs text-gray-400">a</span>
+                    <span className="text-xs text-muted-foreground">a</span>
                     <select value={day.end} onChange={e => setDayTime(key, 'end', e.target.value)}
-                      className="flex-1 text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      className="flex-1 text-sm border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary">
                       {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                 ) : (
-                  <span className="text-sm text-gray-400 italic">Cerrado</span>
+                  <span className="text-sm text-muted-foreground italic">Cerrado</span>
                 )}
               </div>
             )
@@ -676,14 +676,14 @@ function HorariosTab() {
       </div>
 
       {/* Duración de consulta */}
-      <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
-        <p className="text-sm font-semibold text-gray-800 mb-1">Duración de consulta por defecto</p>
-        <p className="text-xs text-gray-500 mb-3">Tiempo que se bloquea en agenda por cada cita</p>
+      <div className="bg-card rounded-xl border border-border p-4">
+        <p className="text-sm font-semibold text-foreground mb-1">Duración de consulta por defecto</p>
+        <p className="text-xs text-muted-foreground mb-3">Tiempo que se bloquea en agenda por cada cita</p>
         <div className="flex gap-2 flex-wrap">
           {DURATION_OPTIONS.map(d => (
             <button key={d} type="button" onClick={() => setDuration(d)}
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                duration === d ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-blue-400'
+                duration === d ? 'bg-primary text-white border-primary' : 'border-border text-muted-foreground hover:border-primary'
               }`}>
               {d < 60 ? `${d} min` : d === 60 ? '1 hora' : `${d/60} horas`}
             </button>
@@ -692,7 +692,7 @@ function HorariosTab() {
       </div>
 
       <button onClick={handleSave} disabled={saving}
-        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-50 transition-colors">
+        className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-50 transition-colors">
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
         {saved ? '✓ Guardado' : 'Guardar horario'}
       </button>
@@ -709,20 +709,20 @@ function AppointmentTypesTab() {
       .then((res: any) => { setTypes(res?.data ?? []); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
-  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /></div>
+  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
   return (
     <div className="max-w-2xl space-y-3">
       {types.map((t, i) => (
-        <div key={i} className="bg-white rounded-xl border border-gray-300 shadow-sm p-4 flex items-center gap-4">
+        <div key={i} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
           <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900">{t.name}</p>
-            <p className="text-xs text-gray-400">{t.durationMinutes} min · ${t.price} MXN</p>
+            <p className="text-sm font-medium text-foreground">{t.name}</p>
+            <p className="text-xs text-muted-foreground">{t.durationMinutes} min · ${t.price} MXN</p>
           </div>
-          {t.description && <p className="text-xs text-gray-500 max-w-xs truncate">{t.description}</p>}
+          {t.description && <p className="text-xs text-muted-foreground max-w-xs truncate">{t.description}</p>}
         </div>
       ))}
-      {types.length === 0 && <p className="text-sm text-gray-400 text-center py-8">No hay tipos de cita configurados</p>}
+      {types.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No hay tipos de cita configurados</p>}
     </div>
   )
 }
@@ -803,53 +803,53 @@ function CatalogoTab() {
     finally { setSeeding(false) }
   }
 
-  const inputCls = 'w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const inputCls = 'w-full border border-border rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary'
 
-  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /></div>
+  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
 
   return (
     <div className="max-w-2xl space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500">Servicios que aparecen en el selector al crear una factura</p>
+        <p className="text-xs text-muted-foreground">Servicios que aparecen en el selector al crear una factura</p>
         <button onClick={() => setShowNew(true)}
-          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg">
+          className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-medium px-3 py-1.5 rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Agregar servicio
         </button>
       </div>
 
       {/* New service form */}
       {showNew && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
-          <p className="text-sm font-semibold text-gray-800">Nuevo servicio</p>
+        <div className="bg-primary/10 border border-primary rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-foreground">Nuevo servicio</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="block text-xs text-gray-500 mb-1">Nombre *</label>
+              <label className="block text-xs text-muted-foreground mb-1">Nombre *</label>
               <input value={newForm.name} onChange={(e) => setNewForm(f => ({ ...f, name: e.target.value }))}
                 placeholder="Consulta de primera vez" className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Precio (MXN) *</label>
+              <label className="block text-xs text-muted-foreground mb-1">Precio (MXN) *</label>
               <input type="text" inputMode="decimal" value={newForm.price}
                 onChange={(e) => setNewForm(f => ({ ...f, price: e.target.value.replace(/[^0-9.]/g, '') }))}
                 placeholder="800" className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Categoría</label>
+              <label className="block text-xs text-muted-foreground mb-1">Categoría</label>
               <input value={newForm.category} onChange={(e) => setNewForm(f => ({ ...f, category: e.target.value }))}
                 placeholder="Consulta" className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">IVA</label>
-              <div className="flex rounded-lg overflow-hidden border border-gray-300 text-sm">
+              <label className="block text-xs text-muted-foreground mb-1">IVA</label>
+              <div className="flex rounded-lg overflow-hidden border border-border text-sm">
                 <button type="button" onClick={() => setNewForm(f => ({ ...f, taxRate: '0' }))}
                   className={cn('flex-1 py-1.5 text-center font-medium transition-colors',
-                    newForm.taxRate === '0' ? 'bg-gray-700 text-white' : 'bg-white text-gray-500 hover:bg-gray-50')}>
+                    newForm.taxRate === '0' ? 'bg-foreground/80 text-white' : 'bg-card text-muted-foreground hover:bg-muted/50')}>
                   No
                 </button>
                 <button type="button" onClick={() => setNewForm(f => ({ ...f, taxRate: '0.16' }))}
                   className={cn('flex-1 py-1.5 text-center font-medium transition-colors',
-                    newForm.taxRate === '0.16' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50')}>
+                    newForm.taxRate === '0.16' ? 'bg-primary text-white' : 'bg-card text-muted-foreground hover:bg-muted/50')}>
                   16%
                 </button>
               </div>
@@ -857,12 +857,12 @@ function CatalogoTab() {
           </div>
           <div className="flex gap-2">
             <button onClick={handleCreate} disabled={saving || !newForm.name || !newForm.price}
-              className="flex items-center gap-1.5 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              className="flex items-center gap-1.5 bg-primary text-white text-sm px-4 py-2 rounded-lg hover:bg-primary/90 disabled:opacity-50">
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               Guardar
             </button>
             <button onClick={() => setShowNew(false)}
-              className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">
+              className="text-sm px-4 py-2 rounded-lg border border-border text-muted-foreground hover:bg-muted/50">
               Cancelar
             </button>
           </div>
@@ -870,18 +870,18 @@ function CatalogoTab() {
       )}
 
       {/* Services table */}
-      <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-muted/50 border-b border-border">
             <tr>
               {['Servicio', 'Categoría', 'Precio', 'IVA', ''].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-border/50">
             {services.map((s) => editId === s.id ? (
-              <tr key={s.id} className="bg-blue-50">
+              <tr key={s.id} className="bg-primary/10">
                 <td className="px-4 py-2">
                   <input value={editForm.name} onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
                     className={inputCls} />
@@ -896,36 +896,36 @@ function CatalogoTab() {
                     className={inputCls} />
                 </td>
                 <td className="px-4 py-2">
-                  <div className="flex rounded-lg overflow-hidden border border-gray-300 text-xs w-20">
+                  <div className="flex rounded-lg overflow-hidden border border-border text-xs w-20">
                     <button type="button" onClick={() => setEditForm(f => ({ ...f, taxRate: '0' }))}
                       className={cn('flex-1 py-1.5 text-center font-medium',
-                        editForm.taxRate === '0' ? 'bg-gray-700 text-white' : 'bg-white text-gray-500')}>No</button>
+                        editForm.taxRate === '0' ? 'bg-foreground/80 text-white' : 'bg-card text-muted-foreground')}>No</button>
                     <button type="button" onClick={() => setEditForm(f => ({ ...f, taxRate: '0.16' }))}
                       className={cn('flex-1 py-1.5 text-center font-medium',
-                        editForm.taxRate === '0.16' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500')}>16%</button>
+                        editForm.taxRate === '0.16' ? 'bg-primary text-white' : 'bg-card text-muted-foreground')}>16%</button>
                   </div>
                 </td>
                 <td className="px-4 py-2">
                   <div className="flex gap-1.5">
                     <button onClick={() => handleUpdate(s.id)} disabled={saving}
-                      className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                      className="p-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50">
                       {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                     </button>
                     <button onClick={() => setEditId(null)}
-                      className="p-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-500">
+                      className="p-1.5 border border-border rounded-lg hover:bg-muted/50 text-muted-foreground">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </td>
               </tr>
             ) : (
-              <tr key={s.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.name}</td>
-                <td className="px-4 py-3 text-sm text-gray-500">{s.category ?? '—'}</td>
-                <td className="px-4 py-3 text-sm text-gray-700">${Number(s.price).toFixed(2)}</td>
+              <tr key={s.id} className="hover:bg-muted/50">
+                <td className="px-4 py-3 text-sm font-medium text-foreground">{s.name}</td>
+                <td className="px-4 py-3 text-sm text-muted-foreground">{s.category ?? '—'}</td>
+                <td className="px-4 py-3 text-sm text-foreground/80">${Number(s.price).toFixed(2)}</td>
                 <td className="px-4 py-3">
                   <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full',
-                    Number(s.taxRate) > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500')}>
+                    Number(s.taxRate) > 0 ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground')}>
                     {Number(s.taxRate) > 0 ? '16%' : 'Sin IVA'}
                   </span>
                 </td>
@@ -935,11 +935,11 @@ function CatalogoTab() {
                       setEditId(s.id)
                       setEditForm({ name: s.name, price: String(Number(s.price)), category: s.category ?? '', taxRate: String(Number(s.taxRate)) })
                     }}
-                      className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-600">
+                      className="p-1.5 border border-border rounded-lg hover:bg-muted text-muted-foreground hover:text-primary">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button onClick={() => handleDelete(s.id)}
-                      className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-red-500">
+                      className="p-1.5 border border-border rounded-lg hover:bg-muted text-muted-foreground hover:text-destructive">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -949,9 +949,9 @@ function CatalogoTab() {
             {services.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center">
-                  <p className="text-sm text-gray-400 mb-3">Sin servicios en el catálogo</p>
+                  <p className="text-sm text-muted-foreground mb-3">Sin servicios en el catálogo</p>
                   <button onClick={handleSeedDefaults} disabled={seeding}
-                    className="flex items-center gap-2 mx-auto bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50">
+                    className="flex items-center gap-2 mx-auto bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50">
                     {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     Cargar 5 servicios por defecto
                   </button>
@@ -964,7 +964,7 @@ function CatalogoTab() {
 
       {services.length > 0 && (
         <button onClick={handleSeedDefaults} disabled={seeding}
-          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 disabled:opacity-50">
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground/80 disabled:opacity-50">
           {seeding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
           Agregar servicios por defecto
         </button>
@@ -979,7 +979,7 @@ function WhatsAppTab() {
   const [saving, setSaving] = useState(false)
   return (
     <div className="max-w-lg space-y-4">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+      <div className="bg-primary/10 border border-primary rounded-lg p-3 text-sm text-primary">
         Configura las credenciales de la Meta WhatsApp Business API para habilitar el agente de WhatsApp.
       </div>
       {[
@@ -988,19 +988,19 @@ function WhatsAppTab() {
         { key: 'waVerifyToken',   label: 'Verify Token (webhook)', placeholder: 'mi-token-secreto', type: 'password' },
       ].map(({ key, label, placeholder, type }) => (
         <div key={key}>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+          <label className="block text-sm font-medium text-foreground/80 mb-1">{label}</label>
           <input type={type} value={config[key as keyof typeof config]}
             onChange={(e) => setConfig({ ...config, [key]: e.target.value })}
             placeholder={placeholder}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
         </div>
       ))}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">URL del webhook</label>
-        <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 font-mono">/api/webhooks/whatsapp</div>
+        <label className="block text-sm font-medium text-foreground/80 mb-1">URL del webhook</label>
+        <div className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-muted/50 text-muted-foreground font-mono">/api/webhooks/whatsapp</div>
       </div>
       <button onClick={() => { setSaving(true); setTimeout(() => { alert('Guardado'); setSaving(false) }, 600) }} disabled={saving}
-        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50">
+        className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50">
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Guardar
       </button>
     </div>
@@ -1012,7 +1012,7 @@ function PagosTab() {
   const [saving, setSaving] = useState(false)
   return (
     <div className="max-w-lg space-y-4">
-      <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+      <div className="bg-success/10 border border-success/15 rounded-lg p-3 text-sm text-success">
         Conecta Stripe para generar ligas de pago y recibir notificaciones de pagos completados.
       </div>
       {[
@@ -1020,17 +1020,17 @@ function PagosTab() {
         { label: 'Stripe Webhook Secret',  placeholder: 'whsec_xxxxxxxxxxxx' },
       ].map(({ label, placeholder }) => (
         <div key={label}>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+          <label className="block text-sm font-medium text-foreground/80 mb-1">{label}</label>
           <input type="password" placeholder={placeholder}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
         </div>
       ))}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">URL del webhook de Stripe</label>
-        <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 font-mono">/api/webhooks/stripe</div>
+        <label className="block text-sm font-medium text-foreground/80 mb-1">URL del webhook de Stripe</label>
+        <div className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-muted/50 text-muted-foreground font-mono">/api/webhooks/stripe</div>
       </div>
       <button disabled={saving} onClick={() => { setSaving(true); setTimeout(() => { alert('Guardado'); setSaving(false) }, 600) }}
-        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50">
+        className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50">
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Guardar
       </button>
     </div>
@@ -1050,16 +1050,16 @@ function PlantillasTab() {
   return (
     <div className="max-w-2xl space-y-3">
       {templates.map((t) => (
-        <div key={t.id} className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
+        <div key={t.id} className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Activa</span>
+            <p className="text-sm font-semibold text-foreground">{t.name}</p>
+            <span className="text-xs bg-success/15 text-success px-2 py-0.5 rounded-full">Activa</span>
           </div>
           <textarea defaultValue={t.msg} rows={2}
-            className="w-full text-xs text-gray-600 border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50" />
+            className="w-full text-xs text-muted-foreground border border-border rounded-lg px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-primary resize-none bg-muted/50" />
         </div>
       ))}
-      <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg">
+      <button className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg">
         <Save className="w-4 h-4" /> Guardar plantillas
       </button>
     </div>
@@ -1070,8 +1070,8 @@ function PlantillasTab() {
 function PrivacidadTab() {
   return (
     <div className="max-w-lg space-y-6">
-      <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4 space-y-4">
-        <h3 className="text-sm font-semibold text-gray-900">LFPDPPP — Ley Federal de Protección de Datos</h3>
+      <div className="bg-card rounded-xl border border-border p-4 space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">LFPDPPP — Ley Federal de Protección de Datos</h3>
         <div className="space-y-3">
           {[
             { label: 'Consentimiento de datos personales', desc: 'Requerir aceptación al registrar paciente' },
@@ -1080,20 +1080,20 @@ function PrivacidadTab() {
           ].map(({ label, desc }) => (
             <div key={label} className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-700">{label}</p>
-                <p className="text-xs text-gray-400">{desc}</p>
+                <p className="text-sm font-medium text-foreground/80">{label}</p>
+                <p className="text-xs text-muted-foreground">{desc}</p>
               </div>
-              <div className="w-9 h-5 bg-green-500 rounded-full shrink-0 flex items-center justify-end px-0.5 cursor-pointer">
-                <div className="w-4 h-4 bg-white rounded-full shadow" />
+              <div className="w-9 h-5 bg-success rounded-full shrink-0 flex items-center justify-end px-0.5 cursor-pointer">
+                <div className="w-4 h-4 bg-card rounded-full shadow" />
               </div>
             </div>
           ))}
         </div>
       </div>
-      <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-2">URL del aviso de privacidad</h3>
+      <div className="bg-card rounded-xl border border-border p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-2">URL del aviso de privacidad</h3>
         <input type="url" placeholder="https://tuclinica.mx/privacidad"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
       </div>
     </div>
   )
@@ -1143,11 +1143,11 @@ export default function ConfiguracionPage() {
     <>
       <Header title="Configuración" subtitle="Administra los ajustes de tu clínica" />
       <div className="flex-1 p-3 sm:p-6 overflow-auto">
-        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 flex-wrap">
+        <div className="flex gap-1 bg-muted rounded-xl p-1 mb-6 flex-wrap">
           {visibleTabs.map((tab) => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                activeTab === tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
+                activeTab === tab.id ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground/80')}>
               {tab.label}
             </button>
           ))}

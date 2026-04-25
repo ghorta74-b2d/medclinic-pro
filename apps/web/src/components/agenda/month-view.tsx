@@ -29,13 +29,13 @@ function getMonthGrid(ref: Date): (Date | null)[] {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  SCHEDULED: 'bg-blue-400',
-  CONFIRMED: 'bg-green-400',
-  CHECKED_IN: 'bg-yellow-400',
-  IN_PROGRESS: 'bg-orange-400',
-  COMPLETED: 'bg-gray-300',
-  CANCELLED: 'bg-red-300',
-  NO_SHOW: 'bg-red-300',
+  SCHEDULED: 'bg-primary',
+  CONFIRMED: 'bg-success',
+  CHECKED_IN: 'bg-warning',
+  IN_PROGRESS: 'bg-warning',
+  COMPLETED: 'bg-muted-foreground/60',
+  CANCELLED: 'bg-destructive/70',
+  NO_SHOW: 'bg-destructive/70',
 }
 
 export function MonthView({ appointments, loading, referenceDate, onDayClick }: MonthViewProps) {
@@ -52,8 +52,8 @@ export function MonthView({ appointments, loading, referenceDate, onDayClick }: 
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-8 flex justify-center">
-        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div className="bg-card rounded-xl border border-border p-8 flex justify-center">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -64,23 +64,23 @@ export function MonthView({ appointments, loading, referenceDate, onDayClick }: 
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
       {/* Header */}
-      <div className="grid grid-cols-7 border-b border-gray-200">
+      <div className="grid grid-cols-7 border-b border-border">
         {DAY_LABELS.map((label) => (
           <div key={label} className="px-2 py-3 text-center">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
           </div>
         ))}
       </div>
 
       {/* Grid */}
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-border/50">
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 divide-x divide-gray-100">
+          <div key={wi} className="grid grid-cols-7 divide-x divide-border/50">
             {week.map((day, di) => {
               if (!day) {
-                return <div key={di} className="min-h-[100px] bg-gray-50/50" />
+                return <div key={di} className="min-h-[100px] bg-muted/50" />
               }
               const key = day.toISOString().split('T')[0]!
               const isToday = key === todayStr
@@ -92,14 +92,14 @@ export function MonthView({ appointments, loading, referenceDate, onDayClick }: 
                   key={di}
                   onClick={() => onDayClick(day)}
                   className={cn(
-                    'min-h-[100px] p-2 text-left hover:bg-blue-50/50 transition-colors flex flex-col',
+                    'min-h-[100px] p-2 text-left hover:bg-primary/10/50 transition-colors flex flex-col',
                     !isCurrentMonth && 'opacity-40',
-                    isToday && 'bg-blue-50'
+                    isToday && 'bg-primary/10'
                   )}
                 >
                   <span className={cn(
                     'text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mb-1',
-                    isToday ? 'bg-blue-600 text-white' : 'text-gray-700'
+                    isToday ? 'bg-primary text-white' : 'text-foreground/80'
                   )}>
                     {day.getDate()}
                   </span>
@@ -110,7 +110,7 @@ export function MonthView({ appointments, loading, referenceDate, onDayClick }: 
                         onClick={(e) => { e.stopPropagation(); router.push(`/agenda/${apt.id}`) }}
                         className={cn(
                           'w-2 h-2 rounded-full hover:scale-125 transition-transform',
-                          STATUS_COLOR[apt.status] ?? 'bg-gray-300'
+                          STATUS_COLOR[apt.status] ?? 'bg-muted-foreground/60'
                         )}
                         title={apt.patient
                           ? `${apt.patient.firstName} ${apt.patient.lastName}`
@@ -118,11 +118,11 @@ export function MonthView({ appointments, loading, referenceDate, onDayClick }: 
                       />
                     ))}
                     {dayApts.length > 3 && (
-                      <span className="text-xs text-gray-400 leading-none">+{dayApts.length - 3}</span>
+                      <span className="text-xs text-muted-foreground leading-none">+{dayApts.length - 3}</span>
                     )}
                   </div>
                   {dayApts.length > 0 && (
-                    <p className="text-xs text-gray-400 mt-auto">
+                    <p className="text-xs text-muted-foreground mt-auto">
                       {dayApts.length} cita{dayApts.length !== 1 ? 's' : ''}
                     </p>
                   )}

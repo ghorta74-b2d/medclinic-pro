@@ -7,6 +7,7 @@ import { api } from '@/lib/api'
 import { calculateAge, getInitials } from '@/lib/utils'
 import type { Patient, Appointment } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
+import { ThemeToggle } from '@/components/theme/theme-toggle'
 
 interface HeaderProps {
   title: string
@@ -71,17 +72,17 @@ function GlobalSearch() {
     <>
       {loading ? (
         <div className="flex items-center justify-center py-6">
-          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+          <Loader2 className="w-4 h-4 animate-spin text-primary" />
         </div>
       ) : !hasResults ? (
-        <p className="text-sm text-gray-400 text-center py-6">
+        <p className="text-sm text-muted-foreground text-center py-6">
           No se encontraron resultados para &quot;{query}&quot;
         </p>
       ) : (
         <div>
           {results!.patients.length > 0 && (
             <div>
-              <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">
+              <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 border-b border-border">
                 Pacientes
               </p>
               {results!.patients.map((patient) => (
@@ -92,16 +93,16 @@ function GlobalSearch() {
                     setOpen(false)
                     closeMobile()
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left"
                 >
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 text-xs font-bold shrink-0">
+                  <div className="w-8 h-8 bg-primary/15 rounded-full flex items-center justify-center text-primary text-xs font-bold shrink-0">
                     {getInitials(patient.firstName, patient.lastName)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {patient.firstName} {patient.lastName}
                     </p>
-                    <p className="text-xs text-gray-400 truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {patient.phone}
                       {patient.dateOfBirth ? ` · ${calculateAge(patient.dateOfBirth)} años` : ''}
                     </p>
@@ -117,15 +118,15 @@ function GlobalSearch() {
 
   return (
     <>
-      {/* ── Mobile search overlay ───────────────────────────────────── */}
+      {/* Mobile search overlay */}
       {mobileOpen && (
-        <div className="sm:hidden fixed inset-0 z-50 bg-white flex flex-col">
-          <div className="flex items-center gap-2 px-3 py-3 border-b border-gray-200">
-            <button onClick={closeMobile} className="p-1.5 rounded-lg hover:bg-gray-100 shrink-0">
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+        <div className="sm:hidden fixed inset-0 z-50 bg-background flex flex-col">
+          <div className="flex items-center gap-2 px-3 py-3 border-b border-border">
+            <button onClick={closeMobile} className="p-1.5 rounded-lg hover:bg-muted shrink-0">
+              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
             </button>
-            <div className="flex-1 flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2">
-              <Search className="w-4 h-4 text-gray-400 shrink-0" />
+            <div className="flex-1 flex items-center gap-2 bg-muted rounded-lg px-3 py-2">
+              <Search className="w-4 h-4 text-muted-foreground shrink-0" />
               <input
                 ref={mobileInputRef}
                 type="text"
@@ -133,12 +134,12 @@ function GlobalSearch() {
                 value={query}
                 onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
                 autoFocus
-                className="bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none w-full"
+                className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none w-full"
               />
-              {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400 shrink-0" />}
+              {loading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground shrink-0" />}
               {query && !loading && (
                 <button onClick={() => { setQuery(''); setResults(null) }}>
-                  <X className="w-3 h-3 text-gray-400" />
+                  <X className="w-3 h-3 text-muted-foreground" />
                 </button>
               )}
             </div>
@@ -151,35 +152,35 @@ function GlobalSearch() {
         </div>
       )}
 
-      {/* ── Desktop search (hidden below sm) ───────────────────────── */}
+      {/* Desktop search */}
       <div ref={ref} className="relative hidden sm:block">
-        <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 sm:w-52 lg:w-72">
-          <Search className="w-4 h-4 text-gray-400 shrink-0" />
+        <div className="flex items-center gap-2 bg-muted rounded-lg px-3 py-2 sm:w-52 lg:w-72">
+          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
             type="text"
             placeholder="Buscar pacientes, citas..."
             value={query}
             onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
             onFocus={() => setOpen(true)}
-            className="bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none w-full"
+            className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none w-full"
           />
-          {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400 shrink-0" />}
+          {loading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground shrink-0" />}
           {query && !loading && (
             <button onClick={() => { setQuery(''); setResults(null) }}>
-              <X className="w-3 h-3 text-gray-400" />
+              <X className="w-3 h-3 text-muted-foreground" />
             </button>
           )}
         </div>
         {open && query.length >= 2 && (
-          <div className="absolute top-full right-0 mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+          <div className="absolute top-full right-0 mt-1 w-80 bg-popover border border-border rounded-xl shadow-lg z-50 overflow-hidden">
             <ResultsList />
           </div>
         )}
       </div>
 
-      {/* ── Mobile search icon button (hidden above sm) ─────────────── */}
+      {/* Mobile search icon */}
       <button
-        className="sm:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+        className="sm:hidden p-2 rounded-lg hover:bg-muted text-muted-foreground"
         onClick={() => setMobileOpen(true)}
         aria-label="Buscar"
       >
@@ -229,75 +230,71 @@ function ProfileModal({ profile, onClose }: { profile: UserProfile; onClose: () 
   const hasChanges = email !== profile.email || phone !== profile.phone
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Mi perfil</h2>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg">
-            <X className="w-4 h-4 text-gray-500" />
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-card rounded-2xl shadow-2xl border border-border w-full max-w-sm">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <h2 className="text-base font-semibold text-foreground">Mi perfil</h2>
+          <button onClick={onClose} className="p-1.5 hover:bg-muted rounded-lg">
+            <X className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
 
         <div className="p-5 space-y-5">
-          {/* Avatar + name */}
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-[#4E2DD2] rounded-full flex items-center justify-center text-white text-lg font-bold shrink-0">
+            <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-lg font-bold shrink-0">
               {profile.initials}
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">{profile.fullName}</p>
-              <p className="text-xs text-gray-400 mt-0.5">Cuenta activa</p>
+              <p className="text-sm font-semibold text-foreground">{profile.fullName}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Cuenta activa</p>
             </div>
           </div>
 
-          {/* Email */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
               Correo electrónico
             </label>
-            <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-[#4E2DD2] focus-within:ring-1 focus-within:ring-[#4E2DD2]/20">
-              <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+            <div className="flex items-center gap-2 border border-input rounded-xl px-3 py-2.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+              <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 text-sm text-gray-900 focus:outline-none bg-transparent"
+                className="flex-1 text-sm text-foreground focus:outline-none bg-transparent placeholder:text-muted-foreground"
                 placeholder="correo@ejemplo.com"
               />
             </div>
             {email !== profile.email && (
-              <p className="text-xs text-amber-600 mt-1">
+              <p className="text-xs text-warning mt-1">
                 Se enviará un correo de confirmación a la nueva dirección.
               </p>
             )}
           </div>
 
-          {/* Phone */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
               Celular
             </label>
-            <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-[#4E2DD2] focus-within:ring-1 focus-within:ring-[#4E2DD2]/20">
-              <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+            <div className="flex items-center gap-2 border border-input rounded-xl px-3 py-2.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+              <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="flex-1 text-sm text-gray-900 focus:outline-none bg-transparent"
+                className="flex-1 text-sm text-foreground focus:outline-none bg-transparent placeholder:text-muted-foreground"
                 placeholder="+52 55 0000 0000"
               />
             </div>
           </div>
 
           {error && (
-            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
           )}
 
           <button
             onClick={handleSave}
             disabled={!hasChanges || saving}
-            className="w-full flex items-center justify-center gap-2 bg-[#4E2DD2] text-white text-sm font-semibold py-2.5 rounded-xl disabled:opacity-40 transition-opacity"
+            className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground text-sm font-semibold py-2.5 rounded-xl disabled:opacity-40 transition-opacity hover:bg-primary/90"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -312,7 +309,6 @@ function ProfileModal({ profile, onClose }: { profile: UserProfile; onClose: () 
   )
 }
 
-// ── NotificationCenter ─────────────────────────────────────────────────────────
 interface AppNotification {
   id: string
   type: string
@@ -325,9 +321,9 @@ interface AppNotification {
 }
 
 const NOTIF_ICON_COLOR: Record<string, string> = {
-  APPOINTMENT_TAKEOVER:        'bg-orange-100 text-orange-600',
-  APPOINTMENT_REASSIGNED_FROM: 'bg-yellow-100 text-yellow-700',
-  APPOINTMENT_REASSIGNED_TO:   'bg-blue-100 text-blue-600',
+  APPOINTMENT_TAKEOVER:        'bg-warning/15 text-warning',
+  APPOINTMENT_REASSIGNED_FROM: 'bg-warning/15 text-warning',
+  APPOINTMENT_REASSIGNED_TO:   'bg-primary/15 text-primary',
 }
 
 function relativeTime(dateStr: string): string {
@@ -348,7 +344,6 @@ function NotificationCenter() {
   const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  // Poll unread count every 30s
   const fetchCount = useCallback(async () => {
     try {
       const res = await api.notifications.unreadCount() as { data: { count: number } }
@@ -362,7 +357,6 @@ function NotificationCenter() {
     return () => clearInterval(interval)
   }, [fetchCount])
 
-  // Load full list when opened
   useEffect(() => {
     if (!open) return
     setLoading(true)
@@ -374,7 +368,6 @@ function NotificationCenter() {
       .finally(() => setLoading(false))
   }, [open])
 
-  // Close on outside click
   useEffect(() => {
     function handle(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
@@ -405,68 +398,66 @@ function NotificationCenter() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+        className="relative p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+          <span className="absolute top-1 right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-2xl z-50 overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-popover border border-border rounded-2xl shadow-2xl z-50 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2">
-              <Bell className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-semibold text-gray-900">Notificaciones</span>
+              <Bell className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-semibold text-foreground">Notificaciones</span>
               {unreadCount > 0 && (
-                <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>
+                <span className="bg-destructive text-destructive-foreground text-xs font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>
               )}
             </div>
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium">
+                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium">
                 <CheckCheck className="w-3.5 h-3.5" />
                 Marcar leídas
               </button>
             )}
           </div>
 
-          {/* List */}
           <div className="max-h-80 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
               </div>
             ) : notifications.length === 0 ? (
               <div className="text-center py-10">
-                <Bell className="w-8 h-8 mx-auto mb-2 text-gray-200" />
-                <p className="text-xs text-gray-400">Sin notificaciones</p>
+                <Bell className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
+                <p className="text-xs text-muted-foreground">Sin notificaciones</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-border/50">
                 {notifications.map(n => (
                   <button
                     key={n.id}
                     onClick={() => handleClick(n)}
                     className={cn(
-                      'w-full px-4 py-3 text-left flex items-start gap-3 hover:bg-gray-50 transition-colors',
-                      !n.read && 'bg-blue-50/50'
+                      'w-full px-4 py-3 text-left flex items-start gap-3 hover:bg-muted/50 transition-colors',
+                      !n.read && 'bg-primary/5'
                     )}>
-                    <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5', NOTIF_ICON_COLOR[n.type] ?? 'bg-gray-100 text-gray-500')}>
+                    <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5', NOTIF_ICON_COLOR[n.type] ?? 'bg-muted text-muted-foreground')}>
                       <RefreshCw className="w-3.5 h-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={cn('text-xs font-semibold text-gray-900 truncate', !n.read && 'text-blue-900')}>
+                      <p className={cn('text-xs font-semibold text-foreground truncate', !n.read && 'text-primary')}>
                         {n.title}
                       </p>
-                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{n.message}</p>
-                      <p className="text-[10px] text-gray-400 mt-1">{relativeTime(n.createdAt)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{n.message}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-1">{relativeTime(n.createdAt)}</p>
                     </div>
-                    {!n.read && <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />}
+                    {!n.read && <span className="w-2 h-2 bg-primary rounded-full shrink-0 mt-1.5" />}
                   </button>
                 ))}
               </div>
@@ -512,7 +503,7 @@ function UserAvatar() {
     <>
       <button
         onClick={() => setShowProfile(true)}
-        className="w-8 h-8 bg-[#4E2DD2] rounded-full flex items-center justify-center text-white text-xs font-bold hover:opacity-90 transition-opacity"
+        className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-bold hover:opacity-90 transition-opacity"
         title="Mi perfil"
       >
         {initials}
@@ -526,37 +517,32 @@ function UserAvatar() {
 
 export function Header({ title, subtitle, actions }: HeaderProps) {
   return (
-    <header className="bg-white border-b border-gray-200">
-      {/* ── Main row ──────────────────────────────────────────────── */}
+    <header className="bg-background border-b border-border">
       <div className="px-3 sm:px-4 lg:px-6 py-3 flex items-center gap-2 sm:gap-3">
-        {/* Hamburger — visible only below lg */}
         <button
-          className="lg:hidden p-1.5 hover:bg-gray-100 rounded-lg shrink-0 text-gray-600"
+          className="lg:hidden p-1.5 hover:bg-muted rounded-lg shrink-0 text-muted-foreground"
           onClick={() => document.dispatchEvent(new CustomEvent('toggle-sidebar'))}
           aria-label="Menú"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Title */}
         <div className="min-w-0 flex-1">
-          <h1 className="text-base sm:text-xl font-semibold text-gray-900 truncate">{title}</h1>
+          <h1 className="text-base sm:text-xl font-semibold text-foreground truncate">{title}</h1>
           {subtitle && (
-            <p className="text-xs sm:text-sm text-gray-500 mt-0.5 truncate hidden sm:block">{subtitle}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate hidden sm:block">{subtitle}</p>
           )}
         </div>
 
-        {/* Right group: search + actions (desktop) + notifications + avatar */}
         <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 shrink-0">
           <GlobalSearch />
-          {/* Actions inline — desktop only */}
           {actions && <div className="hidden sm:flex items-center gap-2">{actions}</div>}
+          <ThemeToggle />
           <NotificationCenter />
           <UserAvatar />
         </div>
       </div>
 
-      {/* ── Actions second row — mobile only ──────────────────────── */}
       {actions && (
         <div className="sm:hidden px-3 pb-3 flex items-center gap-2">
           {actions}

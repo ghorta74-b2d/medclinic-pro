@@ -31,16 +31,15 @@ interface DashboardResponse {
 }
 
 const STATUS_DOT: Record<string, string> = {
-  SCHEDULED: 'bg-blue-400',
-  CONFIRMED: 'bg-green-400',
-  CHECKED_IN: 'bg-yellow-400',
-  IN_PROGRESS: 'bg-orange-400',
-  COMPLETED: 'bg-gray-300',
-  CANCELLED: 'bg-red-300',
-  NO_SHOW: 'bg-red-300',
+  SCHEDULED: 'bg-primary',
+  CONFIRMED: 'bg-success',
+  CHECKED_IN: 'bg-warning',
+  IN_PROGRESS: 'bg-warning',
+  COMPLETED: 'bg-muted-foreground',
+  CANCELLED: 'bg-destructive',
+  NO_SHOW: 'bg-destructive',
 }
 
-// Simple SVG bar chart for revenue
 function RevenueChart({ data }: { data: { date: string; amount: number }[] }) {
   if (!data || data.length === 0) return null
   const max = Math.max(...data.map(d => d.amount), 1)
@@ -56,19 +55,18 @@ function RevenueChart({ data }: { data: { date: string; amount: number }[] }) {
           const barH = Math.max((d.amount / max) * H, 4)
           const x = i * (BAR_W + GAP)
           const y = H - barH
-          // Use T12:00:00 to avoid UTC midnight shifting day label in Mexico timezone
           const label = new Date(`${d.date}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }).replace('.', '')
           return (
             <g key={d.date}>
               <rect x={x} y={y} width={BAR_W} height={barH}
-                rx={4} fill="#3B82F6" fillOpacity={0.85} />
+                rx={4} className="fill-primary" fillOpacity={0.85} />
               <text x={x + BAR_W / 2} y={H + 16}
-                textAnchor="middle" fontSize={10} fill="#9CA3AF">
+                textAnchor="middle" fontSize={10} className="fill-muted-foreground">
                 {label}
               </text>
               {d.amount > 0 && (
                 <text x={x + BAR_W / 2} y={y - 4}
-                  textAnchor="middle" fontSize={9} fill="#6B7280">
+                  textAnchor="middle" fontSize={9} className="fill-muted-foreground">
                   {d.amount >= 1000 ? `$${(d.amount / 1000).toFixed(0)}k` : `$${d.amount}`}
                 </text>
               )}
@@ -88,15 +86,12 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [showNewApt, setShowNewApt] = useState(false)
   const [showNewPat, setShowNewPat] = useState(false)
-  // Bootstrap from sessionStorage — instant on return visits (0 API calls)
   const [userRole, setUserRole] = useState<string | null>(() => sessionCache.getRole())
   const [ownDoctorId, setOwnDoctorId] = useState<string | null>(() => sessionCache.getDoctorId())
-  // ADMIN only: lista de doctores + filtro seleccionado (null = clínica completa)
   const [doctors, setDoctors] = useState<{ id: string; firstName: string; lastName: string; specialty?: string | null }[]>([])
   const [selectedFilterDoctorId, setSelectedFilterDoctorId] = useState<string | null>(
-    () => sessionCache.getDoctorId() // default: own data
+    () => sessionCache.getDoctorId()
   )
-  // roleReady: true immediately if sessionStorage has data (return visits)
   const [roleReady, setRoleReady] = useState(() => !!sessionCache.getRole())
 
   const today = new Date()
@@ -110,7 +105,6 @@ export default function DashboardPage() {
     const effectiveDoctor = userRole === 'ADMIN' ? selectedFilterDoctorId : ownDoctorId
     const cacheKey = `_dash_${effectiveDoctor ?? 'all'}_${todayStr}`
 
-    // Stale-while-revalidate: show cached dashboard data instantly
     const cached = readCache<{ appointments: Appointment[]; stats: DashboardStats }>(cacheKey)
     if (cached) {
       setAppointments(cached.appointments)
@@ -118,7 +112,6 @@ export default function DashboardPage() {
       setLoading(false)
     }
 
-    // Always fetch fresh data in background
     try {
       const from = new Date(todayLocal)
       const to = new Date(todayLocal); to.setHours(23, 59, 59, 999)
@@ -141,7 +134,6 @@ export default function DashboardPage() {
       const newStats = dashRes.status === 'fulfilled' ? dashRes.value.data : null
       if (newApts)  setAppointments(newApts)
       if (newStats) setStats(newStats)
-      // Only cache when both calls succeed
       if (newApts && newStats) writeCache(cacheKey, { appointments: newApts, stats: newStats })
     } catch (err) {
       console.error(err)
@@ -150,16 +142,13 @@ export default function DashboardPage() {
     }
   }, [ownDoctorId, roleReady, userRole, selectedFilterDoctorId])
 
-  // Resolve role + doctorId — skips all API calls on return visits via sessionStorage
   useEffect(() => {
-    // Load doctors list for ADMIN (uses response cache — fast after first call)
     if (sessionCache.getRole() === 'ADMIN' && doctors.length === 0) {
       api.configuracion.doctors().then((res: unknown) => {
         setDoctors((res as { data: { id: string; firstName: string; lastName: string; specialty?: string | null }[] }).data ?? [])
       }).catch(() => {})
     }
 
-    // Already resolved from sessionStorage → no API calls needed
     if (sessionCache.getRole()) return
 
     async function initRole() {
@@ -169,7 +158,6 @@ export default function DashboardPage() {
         setUserRole(role)
 
         if (role !== 'STAFF') {
-          // doctorId is in the JWT — no getSchedule() API call needed
           const myId = await getOwnDoctorId()
           if (myId) {
             sessionCache.setDoctorId(myId)
@@ -182,7 +170,7 @@ export default function DashboardPage() {
           }
         }
       } catch {
-        // Safe fallback: show all data without doctor filter
+        // Safe fallback
       } finally {
         setRoleReady(true)
       }
@@ -194,8 +182,6 @@ export default function DashboardPage() {
 
   const todayStr = formatDate(today, "EEEE, d 'de' MMMM yyyy")
   const now = new Date()
-  // Show appointments that haven't ended yet (started within the last 60 min = possibly ongoing)
-  // or are scheduled in the future. Hide fully past ones.
   const ONGOING_WINDOW_MS = 60 * 60 * 1000
   const upcomingApts = appointments
     .filter(a => {
@@ -205,7 +191,6 @@ export default function DashboardPage() {
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
     .slice(0, 6)
 
-  // Fallback stats from appointments if API not available
   const patientsToday = stats?.patientsToday ?? upcomingApts.length
   const unconfirmed = stats?.unconfirmedCount ?? appointments.filter(a => a.status === 'SCHEDULED').length
 
@@ -215,60 +200,54 @@ export default function DashboardPage() {
       value: loading ? '—' : String(patientsToday),
       sub: stats?.patientsTodayDelta != null ? `+${stats.patientsTodayDelta} vs ayer` : `${appointments.length} citas`,
       icon: Users,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
-      border: 'border-blue-100',
+      color: 'text-primary',
+      bg: 'bg-primary/10',
     },
     {
       label: 'Ingresos del día',
       value: loading ? '—' : formatCurrency(stats?.revenueToday ?? 0),
       sub: stats?.revenueTodayDelta != null ? `+${stats.revenueTodayDelta}% vs promedio` : 'En tiempo real',
       icon: TrendingUp,
-      color: 'text-green-600',
-      bg: 'bg-green-50',
-      border: 'border-green-100',
+      color: 'text-success',
+      bg: 'bg-success/10',
     },
     {
       label: 'Citas por confirmar',
       value: loading ? '—' : String(unconfirmed),
       sub: 'Requieren confirmación',
       icon: Clock,
-      color: 'text-orange-600',
-      bg: 'bg-orange-50',
-      border: 'border-orange-100',
+      color: 'text-warning',
+      bg: 'bg-warning/10',
     },
     {
       label: 'Ingresos del mes',
       value: loading ? '—' : formatCurrency(stats?.totalCollected ?? 0),
       sub: 'Acumulado del mes',
       icon: TrendingUp,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50',
-      border: 'border-purple-100',
+      color: 'text-primary',
+      bg: 'bg-primary/10',
     },
   ]
 
-  // ADMIN = clinic administrator, STAFF = Administrativo in UI — both get admin layout
   const isAdmin = userRole === 'ADMIN' || userRole === 'STAFF'
 
   const quickActions = isAdmin
     ? [
-        { label: 'Nueva cita',      icon: Plus,        color: 'bg-blue-600 hover:bg-blue-700 text-white',    onClick: () => setShowNewApt(true) },
-        { label: 'Nuevo paciente',  icon: UserPlus,    color: 'bg-green-600 hover:bg-green-700 text-white',  onClick: () => setShowNewPat(true) },
-        { label: 'Registrar pago',  icon: CreditCard,  color: 'bg-purple-600 hover:bg-purple-700 text-white', onClick: () => router.push('/cobros') },
-        { label: 'Link de pago',    icon: Link2,       color: 'bg-orange-500 hover:bg-orange-600 text-white', onClick: () => router.push('/cobros') },
-        { label: 'Enviar WhatsApp', icon: MessageSquare, color: 'bg-emerald-600 hover:bg-emerald-700 text-white', onClick: () => {} },
+        { label: 'Nueva cita',      icon: Plus,        color: 'bg-primary hover:bg-primary/90 text-primary-foreground',     onClick: () => setShowNewApt(true) },
+        { label: 'Nuevo paciente',  icon: UserPlus,    color: 'bg-success hover:bg-success/90 text-success-foreground',     onClick: () => setShowNewPat(true) },
+        { label: 'Registrar pago',  icon: CreditCard,  color: 'bg-secondary hover:bg-secondary/80 text-secondary-foreground', onClick: () => router.push('/cobros') },
+        { label: 'Link de pago',    icon: Link2,       color: 'bg-warning/15 hover:bg-warning/25 text-warning',              onClick: () => router.push('/cobros') },
+        { label: 'Enviar WhatsApp', icon: MessageSquare, color: 'bg-success/15 hover:bg-success/25 text-success',            onClick: () => {} },
       ]
     : [
-        { label: 'Nueva cita',      icon: Plus,        color: 'bg-blue-600 hover:bg-blue-700 text-white',    onClick: () => setShowNewApt(true) },
-        { label: 'Nuevo paciente',  icon: UserPlus,    color: 'bg-green-600 hover:bg-green-700 text-white',  onClick: () => setShowNewPat(true) },
-        { label: 'Nota clínica',    icon: FileText,    color: 'bg-purple-600 hover:bg-purple-700 text-white', onClick: () => router.push('/expediente') },
-        { label: 'Liga de pago',    icon: Link2,       color: 'bg-orange-500 hover:bg-orange-600 text-white', onClick: () => router.push('/cobros') },
-        { label: 'Telemedicina',    icon: Video,       color: 'bg-teal-600 hover:bg-teal-700 text-white',    onClick: () => router.push('/telemedicina') },
-        { label: 'Enviar WhatsApp', icon: MessageSquare, color: 'bg-emerald-600 hover:bg-emerald-700 text-white', onClick: () => {} },
+        { label: 'Nueva cita',      icon: Plus,        color: 'bg-primary hover:bg-primary/90 text-primary-foreground',     onClick: () => setShowNewApt(true) },
+        { label: 'Nuevo paciente',  icon: UserPlus,    color: 'bg-success hover:bg-success/90 text-success-foreground',     onClick: () => setShowNewPat(true) },
+        { label: 'Nota clínica',    icon: FileText,    color: 'bg-secondary hover:bg-secondary/80 text-secondary-foreground', onClick: () => router.push('/expediente') },
+        { label: 'Liga de pago',    icon: Link2,       color: 'bg-warning/15 hover:bg-warning/25 text-warning',              onClick: () => router.push('/cobros') },
+        { label: 'Telemedicina',    icon: Video,       color: 'bg-primary/15 hover:bg-primary/25 text-primary',              onClick: () => router.push('/telemedicina') },
+        { label: 'Enviar WhatsApp', icon: MessageSquare, color: 'bg-success/15 hover:bg-success/25 text-success',            onClick: () => {} },
       ]
 
-  // Build chart in local timezone from raw API payments (avoids UTC vs local day mismatch)
   const chartData = (() => {
     const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
     const dayMap: Record<string, number> = {}
@@ -292,24 +271,22 @@ export default function DashboardPage() {
 
       <div className="flex-1 p-3 sm:p-6 overflow-auto space-y-4 sm:space-y-6">
 
-        {/* Selector de vista — solo ADMIN (doctor superadmin de la clínica) */}
+        {/* Doctor filter — ADMIN only */}
         {userRole === 'ADMIN' && doctors.length > 0 && (
           <div className="flex items-center gap-3">
-            <span className="text-xs font-medium text-gray-500">Viendo datos de:</span>
+            <span className="text-xs font-medium text-muted-foreground">Viendo datos de:</span>
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Clínica completa */}
               <button
                 onClick={() => setSelectedFilterDoctorId(null)}
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all',
                   selectedFilterDoctorId === null
-                    ? 'bg-[#0D1B2E] text-white border-[#0D1B2E]'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card text-muted-foreground border-border hover:border-primary/50'
                 )}>
                 <Building2 className="w-3.5 h-3.5" />
                 Clínica completa
               </button>
-              {/* Un botón por doctor */}
               {doctors.map(d => {
                 const isOwn = d.id === ownDoctorId
                 const isSelected = selectedFilterDoctorId === d.id
@@ -320,12 +297,12 @@ export default function DashboardPage() {
                     className={cn(
                       'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all',
                       isSelected
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-card text-muted-foreground border-border hover:border-primary/50'
                     )}>
                     <Stethoscope className="w-3.5 h-3.5" />
                     {d.firstName} {d.lastName}
-                    {isOwn && <span className={cn('text-xs ml-0.5', isSelected ? 'text-blue-200' : 'text-gray-400')}>(tú)</span>}
+                    {isOwn && <span className={cn('text-xs ml-0.5', isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground/60')}>(tú)</span>}
                   </button>
                 )
               })}
@@ -338,15 +315,15 @@ export default function DashboardPage() {
           {kpis.map((kpi) => {
             const Icon = kpi.icon
             return (
-              <div key={kpi.label} className={`bg-white rounded-xl border ${kpi.border} p-4 shadow-sm`}>
+              <div key={kpi.label} className="bg-card rounded-xl border border-border p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{kpi.value}</p>
-                    <p className="text-sm font-medium text-gray-700 mt-0.5">{kpi.label}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{kpi.sub}</p>
+                    <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
+                    <p className="text-sm font-medium text-foreground/80 mt-0.5">{kpi.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{kpi.sub}</p>
                   </div>
-                  <div className={`w-10 h-10 ${kpi.bg} rounded-xl flex items-center justify-center shrink-0`}>
-                    <Icon className={`w-5 h-5 ${kpi.color}`} />
+                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', kpi.bg)}>
+                    <Icon className={cn('w-5 h-5', kpi.color)} />
                   </div>
                 </div>
               </div>
@@ -355,40 +332,40 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Left column: appointments + chart */}
+          {/* Left column */}
           <div className="xl:col-span-2 space-y-6">
             {/* Upcoming appointments */}
-            <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-900">Próximas consultas de hoy</h2>
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-foreground">Próximas consultas de hoy</h2>
                 <button onClick={() => router.push('/agenda')}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                  className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1">
                   Ver agenda <ChevronRight className="w-3 h-3" />
                 </button>
               </div>
               {loading ? (
                 <div className="flex justify-center py-8">
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
                 </div>
               ) : upcomingApts.length === 0 ? (
-                <p className="text-center text-sm text-gray-400 py-10">No hay citas pendientes hoy</p>
+                <p className="text-center text-sm text-muted-foreground py-10">No hay citas pendientes hoy</p>
               ) : (
-                <div className="divide-y divide-gray-50">
+                <div className="divide-y divide-border/50">
                   {upcomingApts.map((apt) => (
                     <button
                       key={apt.id}
                       onClick={() => router.push(`/agenda`)}
-                      className="w-full px-4 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors text-left"
+                      className="w-full px-4 py-3 flex items-center gap-4 hover:bg-muted/40 transition-colors text-left"
                     >
                       <div className="w-14 text-right shrink-0">
-                        <p className="text-sm font-semibold text-gray-900">{formatTime(apt.startsAt)}</p>
+                        <p className="text-sm font-semibold text-foreground">{formatTime(apt.startsAt)}</p>
                       </div>
-                      <div className={cn('w-2 h-2 rounded-full shrink-0', STATUS_DOT[apt.status] ?? 'bg-gray-300')} />
+                      <div className={cn('w-2 h-2 rounded-full shrink-0', STATUS_DOT[apt.status] ?? 'bg-muted-foreground')} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {apt.patient ? `${apt.patient.firstName} ${apt.patient.lastName}` : 'Paciente'}
                         </p>
-                        <p className="text-xs text-gray-400 truncate">
+                        <p className="text-xs text-muted-foreground truncate">
                           {apt.doctor ? `${apt.doctor.firstName} ${apt.doctor.lastName}` : ''}{apt.chiefComplaint ? ` · ${apt.chiefComplaint}` : ''}
                         </p>
                       </div>
@@ -396,8 +373,8 @@ export default function DashboardPage() {
                         const isOngoing = new Date(apt.startsAt) <= now
                         if (isOngoing) {
                           return (
-                            <span className="shrink-0 text-xs px-2 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700 flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse inline-block" />
+                            <span className="shrink-0 text-xs px-2 py-0.5 rounded-full font-medium bg-warning/15 text-warning flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse inline-block" />
                               En curso
                             </span>
                           )
@@ -405,10 +382,10 @@ export default function DashboardPage() {
                         return (
                           <span className={cn(
                             'shrink-0 text-xs px-2 py-0.5 rounded-full font-medium',
-                            apt.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
-                            apt.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
-                            apt.status === 'CHECKED_IN' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-gray-100 text-gray-600'
+                            apt.status === 'CONFIRMED'  ? 'bg-success/15 text-success' :
+                            apt.status === 'SCHEDULED'  ? 'bg-primary/15 text-primary' :
+                            apt.status === 'CHECKED_IN' ? 'bg-warning/15 text-warning' :
+                            'bg-muted text-muted-foreground'
                           )}>
                             {STATUS_LABELS[apt.status as keyof typeof STATUS_LABELS] ?? apt.status}
                           </span>
@@ -421,11 +398,11 @@ export default function DashboardPage() {
             </div>
 
             {/* Revenue chart */}
-            <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
+            <div className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-gray-900">Ingresos últimos 7 días</h2>
+                <h2 className="text-sm font-semibold text-foreground">Ingresos últimos 7 días</h2>
                 <button onClick={() => router.push('/cobros')}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                  className="text-xs text-primary hover:text-primary/80 font-medium">
                   Ver cobros
                 </button>
               </div>
@@ -433,11 +410,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Right column: quick actions + AI feed */}
+          {/* Right column */}
           <div className="space-y-6">
             {/* Quick actions */}
-            <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
-              <h2 className="text-sm font-semibold text-gray-900 mb-3">Acciones rápidas</h2>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <h2 className="text-sm font-semibold text-foreground mb-3">Acciones rápidas</h2>
               <div className="grid grid-cols-2 gap-2">
                 {quickActions.map((action) => {
                   const Icon = action.icon
@@ -460,18 +437,18 @@ export default function DashboardPage() {
 
             {/* AI activity feed — hidden for ADMIN role */}
             {!isAdmin && (
-              <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                  <Bot className="w-4 h-4 text-blue-600" />
-                  <h2 className="text-sm font-semibold text-gray-900">Asistente IA · Actividad reciente</h2>
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+                  <Bot className="w-4 h-4 text-primary" />
+                  <h2 className="text-sm font-semibold text-foreground">Asistente IA · Actividad reciente</h2>
                 </div>
                 <div className="px-4 py-8 text-center">
-                  <Bot className="w-8 h-8 mx-auto mb-2 text-gray-200" />
-                  <p className="text-xs text-gray-400">Sin actividad reciente</p>
+                  <Bot className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
+                  <p className="text-xs text-muted-foreground">Sin actividad reciente</p>
                 </div>
-                <div className="px-4 py-2 border-t border-gray-100">
+                <div className="px-4 py-2 border-t border-border">
                   <button onClick={() => router.push('/asistente-ia')}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                    className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1">
                     Ver todos los eventos <ChevronRight className="w-3 h-3" />
                   </button>
                 </div>

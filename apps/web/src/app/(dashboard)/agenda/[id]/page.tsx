@@ -28,13 +28,13 @@ const STATUS_LABEL: Record<AppointmentStatus, string> = {
 }
 
 const STATUS_COLOR: Record<AppointmentStatus, string> = {
-  SCHEDULED:   'bg-blue-100 text-blue-700',
-  CONFIRMED:   'bg-green-100 text-green-700',
-  CHECKED_IN:  'bg-yellow-100 text-yellow-700',
-  IN_PROGRESS: 'bg-orange-100 text-orange-700',
-  COMPLETED:   'bg-gray-100 text-gray-600',
-  CANCELLED:   'bg-red-100 text-red-700',
-  NO_SHOW:     'bg-red-100 text-red-700',
+  SCHEDULED:   'bg-primary/15 text-primary',
+  CONFIRMED:   'bg-success/15 text-success',
+  CHECKED_IN:  'bg-warning/15 text-warning',
+  IN_PROGRESS: 'bg-warning/15 text-warning',
+  COMPLETED:   'bg-muted text-muted-foreground',
+  CANCELLED:   'bg-destructive/15 text-destructive',
+  NO_SHOW:     'bg-destructive/15 text-destructive',
 }
 
 const MODE_LABEL: Record<string, string> = {
@@ -54,23 +54,23 @@ function getActions(status: AppointmentStatus): Action[] {
   switch (status) {
     case 'SCHEDULED':
       return [
-        { label: 'Confirmar cita', nextStatus: 'CONFIRMED',   style: 'bg-green-600 hover:bg-green-700 text-white', icon: <CheckCircle2 className="w-4 h-4" /> },
-        { label: 'Cancelar',       nextStatus: 'CANCELLED',   style: 'border border-red-300 text-red-600 hover:bg-red-50', icon: <XCircle className="w-4 h-4" /> },
+        { label: 'Confirmar cita', nextStatus: 'CONFIRMED',   style: 'bg-success hover:bg-success/90 text-white', icon: <CheckCircle2 className="w-4 h-4" /> },
+        { label: 'Cancelar',       nextStatus: 'CANCELLED',   style: 'border border-red-300 text-destructive hover:bg-destructive/10', icon: <XCircle className="w-4 h-4" /> },
       ]
     case 'CONFIRMED':
       return [
-        { label: 'Registrar llegada', nextStatus: 'CHECKED_IN', style: 'bg-yellow-500 hover:bg-yellow-600 text-white', icon: <CheckCircle2 className="w-4 h-4" /> },
-        { label: 'Cancelar',          nextStatus: 'CANCELLED',  style: 'border border-red-300 text-red-600 hover:bg-red-50', icon: <XCircle className="w-4 h-4" /> },
+        { label: 'Registrar llegada', nextStatus: 'CHECKED_IN', style: 'bg-warning hover:bg-warning/90 text-white', icon: <CheckCircle2 className="w-4 h-4" /> },
+        { label: 'Cancelar',          nextStatus: 'CANCELLED',  style: 'border border-red-300 text-destructive hover:bg-destructive/10', icon: <XCircle className="w-4 h-4" /> },
       ]
     case 'CHECKED_IN':
       return [
-        { label: 'Iniciar consulta', nextStatus: 'IN_PROGRESS', style: 'bg-orange-500 hover:bg-orange-600 text-white', icon: <Stethoscope className="w-4 h-4" /> },
-        { label: 'Cancelar',         nextStatus: 'CANCELLED',   style: 'border border-red-300 text-red-600 hover:bg-red-50', icon: <XCircle className="w-4 h-4" /> },
+        { label: 'Iniciar consulta', nextStatus: 'IN_PROGRESS', style: 'bg-warning hover:bg-warning/90 text-white', icon: <Stethoscope className="w-4 h-4" /> },
+        { label: 'Cancelar',         nextStatus: 'CANCELLED',   style: 'border border-red-300 text-destructive hover:bg-destructive/10', icon: <XCircle className="w-4 h-4" /> },
       ]
     case 'IN_PROGRESS':
       return [
-        { label: 'Completar consulta', nextStatus: 'COMPLETED', style: 'bg-blue-600 hover:bg-blue-700 text-white', icon: <CheckCircle2 className="w-4 h-4" /> },
-        { label: 'No asistió',         nextStatus: 'NO_SHOW',   style: 'border border-gray-300 text-gray-600 hover:bg-gray-50', icon: <AlertTriangle className="w-4 h-4" /> },
+        { label: 'Completar consulta', nextStatus: 'COMPLETED', style: 'bg-primary hover:bg-primary/90 text-white', icon: <CheckCircle2 className="w-4 h-4" /> },
+        { label: 'No asistió',         nextStatus: 'NO_SHOW',   style: 'border border-border text-muted-foreground hover:bg-muted/50', icon: <AlertTriangle className="w-4 h-4" /> },
       ]
     default:
       return []
@@ -138,7 +138,7 @@ function ReassignPanel({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors">
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-border text-muted-foreground hover:bg-muted/50 hover:border-border transition-colors">
         <RefreshCw className="w-4 h-4" />
         Reasignar cita
       </button>
@@ -146,19 +146,19 @@ function ReassignPanel({
   }
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
+    <div className="bg-muted/50 border border-border rounded-xl p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-gray-800">Reasignar a otro médico</p>
-        <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 text-xs">Cancelar</button>
+        <p className="text-sm font-semibold text-foreground">Reasignar a otro médico</p>
+        <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground/80 text-xs">Cancelar</button>
       </div>
 
       {/* Doctor selector */}
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">Médico</label>
+        <label className="block text-xs font-medium text-muted-foreground mb-1">Médico</label>
         <select
           value={newDoctorId}
           onChange={e => setNewDoctorId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
           <option value="">Seleccionar médico...</option>
           {otherDoctors.map(d => (
             <option key={d.id} value={d.id}>Dr. {d.firstName} {d.lastName}{d.specialty ? ` · ${d.specialty}` : ''}</option>
@@ -169,12 +169,12 @@ function ReassignPanel({
       {/* Date for new slot */}
       {newDoctorId && (
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Fecha</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Fecha</label>
           <input
             type="date"
             value={newDate}
             onChange={e => setNewDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
       )}
@@ -182,15 +182,15 @@ function ReassignPanel({
       {/* Available slots */}
       {newDoctorId && (
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-2">
-            Horario <span className="font-normal text-gray-400">(opcional — si no seleccionas, se mantiene el horario actual)</span>
+          <label className="block text-xs font-medium text-muted-foreground mb-2">
+            Horario <span className="font-normal text-muted-foreground">(opcional — si no seleccionas, se mantiene el horario actual)</span>
           </label>
           {loadingSlots ? (
-            <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando disponibilidad...
             </div>
           ) : slots.length === 0 ? (
-            <p className="text-xs text-gray-400">No hay slots disponibles para esa fecha</p>
+            <p className="text-xs text-muted-foreground">No hay slots disponibles para esa fecha</p>
           ) : (
             <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
               {slots.map(s => {
@@ -203,8 +203,8 @@ function ReassignPanel({
                     className={cn(
                       'px-2.5 py-1 rounded-lg text-xs font-medium border transition-all',
                       isSelected
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-card text-foreground/80 border-border hover:border-primary'
                     )}>
                     {formatTime(s.startsAt)}
                   </button>
@@ -215,12 +215,12 @@ function ReassignPanel({
         </div>
       )}
 
-      {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+      {error && <p className="text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>}
 
       <button
         onClick={handleReassign}
         disabled={!newDoctorId || saving}
-        className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors">
+        className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors">
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
         {saving ? 'Reasignando...' : 'Confirmar reasignación'}
       </button>
@@ -376,7 +376,7 @@ export default function AppointmentDetailPage() {
       <>
         <Header title="Detalle de cita" />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       </>
     )
@@ -387,8 +387,8 @@ export default function AppointmentDetailPage() {
       <>
         <Header title="Detalle de cita" />
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
-          <p className="text-gray-500">{error}</p>
-          <button onClick={() => router.back()} className="text-blue-600 hover:underline text-sm">
+          <p className="text-muted-foreground">{error}</p>
+          <button onClick={() => router.back()} className="text-primary hover:underline text-sm">
             ← Volver a la agenda
           </button>
         </div>
@@ -423,14 +423,14 @@ export default function AppointmentDetailPage() {
       {/* Takeover modal */}
       {showTakeoverModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6">
             <div className="flex items-start gap-3 mb-5">
-              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5 text-orange-600" />
+              <div className="w-10 h-10 bg-warning/15 rounded-full flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-warning" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Cita de otro médico</h3>
-                <p className="text-sm text-gray-500 mt-1">
+                <h3 className="font-semibold text-foreground">Cita de otro médico</h3>
+                <p className="text-sm text-muted-foreground mt-1">
                   Esta cita está asignada a <strong>Dr. {doctor?.firstName} {doctor?.lastName}</strong>.
                   Se notificará al doctor y quedará registrado en el log.
                 </p>
@@ -439,13 +439,13 @@ export default function AppointmentDetailPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setShowTakeoverModal(false)}
-                className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+                className="flex-1 py-2.5 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted/50">
                 Cancelar
               </button>
               <button
                 onClick={handleTakeover}
                 disabled={takeoverLoading}
-                className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors">
+                className="flex-1 py-2.5 bg-warning hover:bg-warning/90 disabled:opacity-50 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors">
                 {takeoverLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
                 Atender paciente
               </button>
@@ -460,7 +460,7 @@ export default function AppointmentDetailPage() {
           {/* Back + Status */}
           <div className="flex items-center justify-between">
             <button onClick={() => router.push('/agenda')}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="w-4 h-4" /> Agenda
             </button>
             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_COLOR[status]}`}>
@@ -469,19 +469,19 @@ export default function AppointmentDetailPage() {
           </div>
 
           {/* ── Paciente ── */}
-          <div className="bg-white rounded-2xl border border-gray-300 shadow-sm p-5">
+          <div className="bg-card rounded-2xl border border-border p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                  <User className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                  <User className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900 text-lg">
+                  <p className="font-semibold text-foreground text-lg">
                     {patient ? `${patient.firstName} ${patient.lastName}` : 'Paciente'}
                   </p>
                   {patient?.phone && (
                     <a href={`tel:${patient.phone}`}
-                      className="flex items-center gap-1 text-sm text-gray-500 hover:text-blue-600 mt-0.5">
+                      className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mt-0.5">
                       <Phone className="w-3 h-3" /> {patient.phone}
                     </a>
                   )}
@@ -490,7 +490,7 @@ export default function AppointmentDetailPage() {
               {patient?.id && (
                 <button
                   onClick={() => router.push(`/pacientes/${patient.id}`)}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors shrink-0">
+                  className="text-xs text-primary hover:text-primary font-medium border border-primary px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors shrink-0">
                   Ver expediente
                 </button>
               )}
@@ -498,29 +498,29 @@ export default function AppointmentDetailPage() {
           </div>
 
           {/* ── Detalles de la cita ── */}
-          <div className="bg-white rounded-2xl border border-gray-300 shadow-sm p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Información de la cita</h3>
+          <div className="bg-card rounded-2xl border border-border p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground/80 uppercase tracking-wide">Información de la cita</h3>
 
             <div className="grid grid-cols-2 gap-4">
-              <Detail icon={<Calendar className="w-4 h-4 text-blue-500" />} label="Fecha">
+              <Detail icon={<Calendar className="w-4 h-4 text-primary" />} label="Fecha">
                 {formatDate(appt.startsAt, 'EEEE d MMM yyyy')}
               </Detail>
-              <Detail icon={<Clock className="w-4 h-4 text-blue-500" />} label="Horario">
+              <Detail icon={<Clock className="w-4 h-4 text-primary" />} label="Horario">
                 {formatTime(appt.startsAt)} – {formatTime(appt.endsAt)}
-                <span className="text-xs text-gray-400 ml-1">({durationMins} min)</span>
+                <span className="text-xs text-muted-foreground ml-1">({durationMins} min)</span>
               </Detail>
-              <Detail icon={<Stethoscope className="w-4 h-4 text-blue-500" />} label="Doctor">
+              <Detail icon={<Stethoscope className="w-4 h-4 text-primary" />} label="Doctor">
                 {doctor ? `Dr. ${doctor.firstName} ${doctor.lastName}` : '—'}
-                {doctor?.specialty && <span className="block text-xs text-gray-400">{doctor.specialty}</span>}
+                {doctor?.specialty && <span className="block text-xs text-muted-foreground">{doctor.specialty}</span>}
                 {isAdmin && !isOwnAppt && (
-                  <span className="block text-xs text-orange-500 font-medium mt-0.5">Asignado a otro médico</span>
+                  <span className="block text-xs text-warning font-medium mt-0.5">Asignado a otro médico</span>
                 )}
               </Detail>
-              <Detail icon={<MapPin className="w-4 h-4 text-blue-500" />} label="Modalidad">
+              <Detail icon={<MapPin className="w-4 h-4 text-primary" />} label="Modalidad">
                 {MODE_LABEL[appt.mode] ?? appt.mode}
               </Detail>
               {appt.appointmentType && (
-                <Detail icon={<ClipboardList className="w-4 h-4 text-blue-500" />} label="Tipo">
+                <Detail icon={<ClipboardList className="w-4 h-4 text-primary" />} label="Tipo">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: appt.appointmentType.color }} />
                     {appt.appointmentType.name}
@@ -528,19 +528,19 @@ export default function AppointmentDetailPage() {
                 </Detail>
               )}
               {appt.chiefComplaint && (
-                <Detail icon={<FileText className="w-4 h-4 text-blue-500" />} label="Motivo">
+                <Detail icon={<FileText className="w-4 h-4 text-primary" />} label="Motivo">
                   {appt.chiefComplaint}
                 </Detail>
               )}
             </div>
 
             {appt.cancellationReason && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
+              <div className="bg-destructive/10 border border-red-200 rounded-lg px-3 py-2 text-sm text-destructive">
                 <span className="font-medium">Motivo de cancelación:</span> {appt.cancellationReason}
               </div>
             )}
             {appt.internalNotes && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700">
+              <div className="bg-muted/50 border border-border rounded-lg px-3 py-2 text-sm text-foreground/80">
                 <span className="font-medium">Notas internas:</span> {appt.internalNotes}
               </div>
             )}
@@ -551,21 +551,21 @@ export default function AppointmentDetailPage() {
             <div className="grid grid-cols-2 gap-3">
               {appt.clinicalNote && (
                 <button onClick={() => router.push(`/expediente/${appt.clinicalNote.id}`)}
-                  className="bg-white rounded-xl border border-gray-300 shadow-sm p-4 flex items-center gap-3 hover:border-blue-300 hover:bg-blue-50 transition-colors text-left">
-                  <FileText className="w-5 h-5 text-blue-500 shrink-0" />
+                  className="bg-card rounded-xl border border-border p-4 flex items-center gap-3 hover:border-primary hover:bg-primary/10 transition-colors text-left">
+                  <FileText className="w-5 h-5 text-primary shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Nota clínica</p>
-                    <p className="text-xs text-gray-400 capitalize">{appt.clinicalNote.status?.toLowerCase()}</p>
+                    <p className="text-sm font-medium text-foreground">Nota clínica</p>
+                    <p className="text-xs text-muted-foreground capitalize">{appt.clinicalNote.status?.toLowerCase()}</p>
                   </div>
                 </button>
               )}
               {appt.invoice && (
                 <button onClick={() => router.push(`/cobros`)}
-                  className="bg-white rounded-xl border border-gray-300 shadow-sm p-4 flex items-center gap-3 hover:border-green-300 hover:bg-green-50 transition-colors text-left">
-                  <ReceiptText className="w-5 h-5 text-green-500 shrink-0" />
+                  className="bg-card rounded-xl border border-border p-4 flex items-center gap-3 hover:border-success hover:bg-success/10 transition-colors text-left">
+                  <ReceiptText className="w-5 h-5 text-success shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Factura</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-sm font-medium text-foreground">Factura</p>
+                    <p className="text-xs text-muted-foreground">
                       {appt.invoice.status} · ${appt.invoice.total?.toLocaleString('es-MX')} MXN
                     </p>
                   </div>
@@ -576,28 +576,28 @@ export default function AppointmentDetailPage() {
 
           {/* ── Acciones ── */}
           {!isFinal && (
-            <div className="bg-white rounded-2xl border border-gray-300 shadow-sm p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Acciones</h3>
+            <div className="bg-card rounded-2xl border border-border p-5 space-y-3">
+              <h3 className="text-sm font-semibold text-foreground/80 uppercase tracking-wide">Acciones</h3>
 
               {error && (
-                <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+                <p className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>
               )}
 
               {showCancelForm && (
                 <div className="space-y-2">
-                  <label className="block text-sm text-gray-700 font-medium">Motivo de cancelación</label>
+                  <label className="block text-sm text-foreground/80 font-medium">Motivo de cancelación</label>
                   <input type="text" value={cancelReason}
                     onChange={e => setCancelReason(e.target.value)}
                     placeholder="Ej. Paciente canceló por viaje..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-destructive" />
                   <div className="flex gap-2">
                     <button onClick={() => setShowCancelForm(false)}
-                      className="flex-1 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">
+                      className="flex-1 py-2 text-sm border border-border rounded-lg text-muted-foreground hover:bg-muted/50">
                       Atrás
                     </button>
                     <button onClick={() => handleAction('CANCELLED')}
                       disabled={!!actionLoading}
-                      className="flex-1 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 flex items-center justify-center gap-2">
+                      className="flex-1 py-2 text-sm bg-destructive hover:bg-destructive/90 text-white rounded-lg disabled:opacity-50 flex items-center justify-center gap-2">
                       {actionLoading === 'CANCELLED' ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
                       Confirmar cancelación
                     </button>
@@ -609,7 +609,7 @@ export default function AppointmentDetailPage() {
                 <div className="flex gap-2 flex-wrap">
                   {/* Wait for role to load before rendering sensitive action buttons */}
                   {!roleReady ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Cargando...
                     </div>
@@ -619,14 +619,14 @@ export default function AppointmentDetailPage() {
                       <button
                         onClick={() => setShowTakeoverModal(true)}
                         disabled={!!actionLoading}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white transition-colors disabled:opacity-50">
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-warning hover:bg-warning/90 text-white transition-colors disabled:opacity-50">
                         <UserCheck className="w-4 h-4" />
                         Atender cita
                       </button>
                       <button
                         onClick={() => handleAction('CANCELLED')}
                         disabled={!!actionLoading}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-red-300 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50">
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-red-300 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50">
                         <XCircle className="w-4 h-4" />
                         Cancelar
                       </button>
@@ -649,7 +649,7 @@ export default function AppointmentDetailPage() {
 
               {/* Feature 3: ADMIN / STAFF can reassign appointment */}
               {canReassign && !showCancelForm && (
-                <div className="pt-2 border-t border-gray-100">
+                <div className="pt-2 border-t border-border">
                   <ReassignPanel
                     appt={appt}
                     clinicDoctors={clinicDoctors}
@@ -662,7 +662,7 @@ export default function AppointmentDetailPage() {
 
           {isFinal && (
             <div className="text-center py-4">
-              <p className="text-sm text-gray-400">Esta cita está cerrada</p>
+              <p className="text-sm text-muted-foreground">Esta cita está cerrada</p>
             </div>
           )}
 
@@ -678,8 +678,8 @@ function Detail({ icon, label, children }: { icon: React.ReactNode; label: strin
     <div className="flex items-start gap-2.5">
       <div className="mt-0.5 shrink-0">{icon}</div>
       <div>
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</p>
-        <div className="text-sm text-gray-900 mt-0.5">{children}</div>
+        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
+        <div className="text-sm text-foreground mt-0.5">{children}</div>
       </div>
     </div>
   )

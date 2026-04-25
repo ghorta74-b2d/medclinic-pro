@@ -33,13 +33,13 @@ interface DashboardData {
 type ViewMode = 'dia' | 'semana' | 'mes'
 
 const STATUS_CLASSES: Record<string, string> = {
-  DRAFT: 'bg-gray-100 text-gray-600',
-  SENT: 'bg-blue-100 text-blue-700',
-  PAID: 'bg-green-100 text-green-700',
-  PARTIALLY_PAID: 'bg-yellow-100 text-yellow-700',
-  OVERDUE: 'bg-red-100 text-red-700',
-  CANCELLED: 'bg-gray-100 text-gray-400',
-  REFUNDED: 'bg-purple-100 text-purple-700',
+  DRAFT: 'bg-muted text-muted-foreground',
+  SENT: 'bg-primary/15 text-primary',
+  PAID: 'bg-success/15 text-success',
+  PARTIALLY_PAID: 'bg-warning/15 text-warning',
+  OVERDUE: 'bg-destructive/15 text-destructive',
+  CANCELLED: 'bg-muted text-muted-foreground/60',
+  REFUNDED: 'bg-primary/15 text-primary',
 }
 
 // Responsive bar chart — uses flexbox so it always fills the container
@@ -47,7 +47,7 @@ interface ChartBar { key: string; amount: number; label: string }
 
 function RevenueChart({ bars }: { bars: ChartBar[] }) {
   if (!bars || bars.length === 0) {
-    return <div className="flex items-center justify-center h-24 text-xs text-gray-400">Sin datos en este período</div>
+    return <div className="flex items-center justify-center h-24 text-xs text-muted-foreground/60">Sin datos en este período</div>
   }
   const max = Math.max(...bars.map(b => b.amount), 1)
   // Show labels every N bars so they don't overlap when many bars
@@ -65,7 +65,7 @@ function RevenueChart({ bars }: { bars: ChartBar[] }) {
               className="flex-1 rounded-t transition-all cursor-default"
               style={{
                 height: `${pct}%`,
-                backgroundColor: b.amount > 0 ? '#3B82F6' : '#DBEAFE',
+                backgroundColor: b.amount > 0 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.2)',
                 opacity: b.amount > 0 ? 0.85 : 1,
               }}
               title={b.amount > 0 ? formatCurrency(b.amount) : undefined}
@@ -90,8 +90,8 @@ function PaymentMethodBar({ methods }: { methods: { method: string; amount: numb
   const total = methods.reduce((s, m) => s + m.amount, 0)
   if (total === 0) return null
   const COLORS: Record<string, string> = {
-    CARD: 'bg-blue-500', TRANSFER: 'bg-green-500', CASH: 'bg-yellow-500',
-    STRIPE_LINK: 'bg-purple-500', INSURANCE: 'bg-teal-500',
+    CARD: 'bg-primary', TRANSFER: 'bg-success', CASH: 'bg-warning',
+    STRIPE_LINK: 'bg-primary', INSURANCE: 'bg-success',
   }
   const LABELS: Record<string, string> = {
     CARD: 'Tarjeta', TRANSFER: 'Transferencia', CASH: 'Efectivo',
@@ -102,16 +102,16 @@ function PaymentMethodBar({ methods }: { methods: { method: string; amount: numb
       <div className="flex rounded-full overflow-hidden h-2 mb-2">
         {methods.map((m) => (
           <div key={m.method}
-            className={COLORS[m.method] ?? 'bg-gray-400'}
+            className={COLORS[m.method] ?? 'bg-muted-foreground'}
             style={{ width: `${(m.amount / total) * 100}%` }} />
         ))}
       </div>
       <div className="flex flex-wrap gap-3">
         {methods.map((m) => (
           <div key={m.method} className="flex items-center gap-1.5">
-            <div className={cn('w-2 h-2 rounded-full', COLORS[m.method] ?? 'bg-gray-400')} />
-            <span className="text-xs text-gray-600">{LABELS[m.method] ?? m.method}</span>
-            <span className="text-xs font-semibold text-gray-800">{formatCurrency(m.amount)}</span>
+            <div className={cn('w-2 h-2 rounded-full', COLORS[m.method] ?? 'bg-muted-foreground')} />
+            <span className="text-xs text-muted-foreground">{LABELS[m.method] ?? m.method}</span>
+            <span className="text-xs font-semibold text-foreground">{formatCurrency(m.amount)}</span>
           </div>
         ))}
       </div>
@@ -308,7 +308,7 @@ export default function CobrosPage() {
         subtitle="Ingresos, pagos y estado de cuenta"
         actions={
           <button onClick={() => setShowNew(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg">
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg">
             <Plus className="w-4 h-4" /> Nueva factura
           </button>
         }
@@ -318,11 +318,11 @@ export default function CobrosPage() {
         {/* Controls row: view mode + doctor filter */}
         <div className="flex items-center gap-3 flex-wrap">
           {/* View mode */}
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
             {(['dia', 'semana', 'mes'] as ViewMode[]).map((m) => (
               <button key={m} onClick={() => setViewMode(m)}
                 className={cn('px-3 py-1.5 rounded-md text-sm font-medium transition-colors capitalize',
-                  viewMode === m ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
+                  viewMode === m ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground/80')}>
                 {m === 'dia' ? 'Día' : m === 'semana' ? 'Semana' : 'Mes'}
               </button>
             ))}
@@ -334,19 +334,19 @@ export default function CobrosPage() {
               <select
                 value={selectedDoctorId}
                 onChange={e => setSelectedDoctorId(e.target.value)}
-                className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-1.5 pr-8 text-sm text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                className="appearance-none bg-card border border-border rounded-lg px-3 py-1.5 pr-8 text-sm text-foreground/80 font-medium focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer">
                 <option value="ALL">Clínica completa</option>
                 {doctors.map(d => (
                   <option key={d.id} value={d.id}>{d.firstName} {d.lastName}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
             </div>
           )}
 
           {/* Context badge — DOCTOR sees their own label */}
           {userRole === 'DOCTOR' && (
-            <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">
+            <span className="text-xs font-medium text-primary bg-primary/10 border border-primary px-2.5 py-1 rounded-full">
               Mis ingresos
             </span>
           )}
@@ -355,17 +355,17 @@ export default function CobrosPage() {
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: viewMode === 'dia' ? 'Ingresos hoy' : viewMode === 'semana' ? 'Ingresos semana' : 'Ingresos del mes', value: formatCurrency(stats?.totalBilled ?? 0), icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: 'Cobrado', value: formatCurrency(stats?.totalCollected ?? 0), sub: `${stats?.paidInvoiceCount ?? 0} facturas`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
-            { label: 'Pendiente', value: formatCurrency(stats?.pendingAmount ?? 0), sub: `${stats?.pendingInvoiceCount ?? 0} facturas`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-            { label: 'Vencido', value: formatCurrency(stats?.overdueAmount ?? 0), sub: `${stats?.overdueInvoiceCount ?? 0} facturas`, icon: CreditCard, color: 'text-red-600', bg: 'bg-red-50' },
+            { label: viewMode === 'dia' ? 'Ingresos hoy' : viewMode === 'semana' ? 'Ingresos semana' : 'Ingresos del mes', value: formatCurrency(stats?.totalBilled ?? 0), icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10' },
+            { label: 'Cobrado', value: formatCurrency(stats?.totalCollected ?? 0), sub: `${stats?.paidInvoiceCount ?? 0} facturas`, icon: DollarSign, color: 'text-success', bg: 'bg-success/10' },
+            { label: 'Pendiente', value: formatCurrency(stats?.pendingAmount ?? 0), sub: `${stats?.pendingInvoiceCount ?? 0} facturas`, icon: Clock, color: 'text-warning', bg: 'bg-warning/10' },
+            { label: 'Vencido', value: formatCurrency(stats?.overdueAmount ?? 0), sub: `${stats?.overdueInvoiceCount ?? 0} facturas`, icon: CreditCard, color: 'text-destructive', bg: 'bg-destructive/10' },
           ].map(({ label, value, sub, icon: Icon, color, bg }) => (
-            <div key={label} className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
+            <div key={label} className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xl font-bold text-gray-900">{value}</p>
-                  <p className="text-sm font-medium text-gray-600 mt-0.5">{label}</p>
-                  {sub && <p className="text-xs text-gray-400">{sub}</p>}
+                  <p className="text-xl font-bold text-foreground">{value}</p>
+                  <p className="text-sm font-medium text-muted-foreground mt-0.5">{label}</p>
+                  {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
                 </div>
                 <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center shrink-0`}>
                   <Icon className={`w-5 h-5 ${color}`} />
@@ -377,16 +377,16 @@ export default function CobrosPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Revenue chart */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-300 shadow-sm p-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
+          <div className="lg:col-span-2 bg-card rounded-xl border border-border p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-4">
               {viewMode === 'dia' ? 'Ingresos por hora — hoy' : viewMode === 'semana' ? 'Ingresos últimos 7 días' : 'Ingresos por día — este mes'}
             </h3>
             <RevenueChart bars={chartBars} />
           </div>
 
           {/* Payment method breakdown */}
-          <div className="bg-white rounded-xl border border-gray-300 shadow-sm p-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Desglose por método de pago</h3>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-4">Desglose por método de pago</h3>
             <PaymentMethodBar methods={paymentMethods} />
           </div>
         </div>
@@ -396,7 +396,7 @@ export default function CobrosPage() {
           {FILTERS.map((f) => (
             <button key={f.value} onClick={() => setFilter(f.value)}
               className={cn('px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                filter === f.value ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:border-blue-400')}>
+                filter === f.value ? 'bg-primary text-white' : 'bg-card border border-border text-muted-foreground hover:border-primary')}>
               {f.label}
             </button>
           ))}
@@ -404,29 +404,29 @@ export default function CobrosPage() {
 
         {/* Invoice table */}
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
+          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
         ) : invoices.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-            <CreditCard className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-            <p className="text-sm text-gray-400">No hay facturas</p>
+          <div className="text-center py-16 bg-card rounded-xl border border-border">
+            <CreditCard className="w-10 h-10 mx-auto mb-3 text-muted-foreground/60" />
+            <p className="text-sm text-muted-foreground">No hay facturas</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-x-auto">
+          <div className="bg-card rounded-xl border border-border overflow-x-auto">
             <table className="w-full min-w-[700px]">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Factura</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Paciente</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Concepto</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Monto</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Factura</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Paciente</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Concepto</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Monto</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
                     <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> Aseguradora</span>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Estado</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Acciones</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Estado</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border/50">
                 {invoices.map((invoice) => {
                   const total = Number(invoice.total)
                   const paid = Number(invoice.paidAmount)
@@ -434,35 +434,35 @@ export default function CobrosPage() {
                   const isPending = ['SENT', 'PARTIALLY_PAID', 'OVERDUE', 'DRAFT'].includes(invoice.status)
 
                   return (
-                    <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={invoice.id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-4 py-3">
-                        <p className="text-sm font-mono font-medium text-gray-900">{invoice.invoiceNumber}</p>
-                        <p className="text-xs text-gray-400">{formatDate(invoice.issuedAt)}</p>
+                        <p className="text-sm font-mono font-medium text-foreground">{invoice.invoiceNumber}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(invoice.issuedAt)}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-gray-900">{invoice.patient?.firstName} {invoice.patient?.lastName}</p>
+                        <p className="text-sm text-foreground">{invoice.patient?.firstName} {invoice.patient?.lastName}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-gray-600 max-w-[180px] truncate">
+                        <p className="text-sm text-muted-foreground max-w-[180px] truncate">
                           {(invoice as any).items?.[0]?.description ?? '—'}
                           {(invoice as any).items?.length > 1 && (
-                            <span className="text-xs text-gray-400 ml-1">+{(invoice as any).items.length - 1}</span>
+                            <span className="text-xs text-muted-foreground ml-1">+{(invoice as any).items.length - 1}</span>
                           )}
                         </p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-foreground">
                           {formatCurrency(total, invoice.currency)}
                         </p>
                         {remaining > 0 && paid > 0 && (
-                          <p className="text-xs text-orange-600">Pendiente: {formatCurrency(remaining, invoice.currency)}</p>
+                          <p className="text-xs text-warning">Pendiente: {formatCurrency(remaining, invoice.currency)}</p>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         {(invoice as any).payments?.[0]?.insurerName ? (
-                          <p className="text-sm text-gray-700">{(invoice as any).payments[0].insurerName}</p>
+                          <p className="text-sm text-foreground/80">{(invoice as any).payments[0].insurerName}</p>
                         ) : (
-                          <span className="text-xs text-gray-300">—</span>
+                          <span className="text-xs text-muted-foreground/60">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -474,20 +474,20 @@ export default function CobrosPage() {
                         <div className="flex gap-2 flex-wrap">
                           <button
                             onClick={(e) => { e.stopPropagation(); setDetailInvoiceId(invoice.id) }}
-                            className="flex items-center gap-1.5 text-xs text-gray-600 border border-gray-300 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 font-medium">
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground border border-border px-2.5 py-1.5 rounded-lg hover:bg-muted/50 font-medium">
                             <Eye className="w-3.5 h-3.5" /> Ver
                           </button>
                           {isPending && remaining > 0 && (
                             <>
                               <button onClick={(e) => { e.stopPropagation(); setPayingInvoice(invoice) }}
-                                className="text-xs text-gray-600 border border-gray-300 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 font-medium">
+                                className="text-xs text-muted-foreground border border-border px-2.5 py-1.5 rounded-lg hover:bg-muted/50 font-medium">
                                 Registrar pago
                               </button>
                               {!invoice.stripePaymentLinkUrl ? (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleSendPaymentLink(invoice) }}
                                   disabled={actionLoading[invoice.id] === 'link'}
-                                  className="flex items-center gap-1.5 text-xs text-green-700 border border-green-300 px-2.5 py-1.5 rounded-lg hover:bg-green-50 font-medium disabled:opacity-50">
+                                  className="flex items-center gap-1.5 text-xs text-success border border-success/50 px-2.5 py-1.5 rounded-lg hover:bg-success/10 font-medium disabled:opacity-50">
                                   {actionLoading[invoice.id] === 'link'
                                     ? <Loader2 className="w-3 h-3 animate-spin" />
                                     : <MessageSquare className="w-3 h-3" />}
@@ -495,7 +495,7 @@ export default function CobrosPage() {
                                 </button>
                               ) : (
                                 <a href={invoice.stripePaymentLinkUrl} target="_blank" rel="noopener noreferrer"
-                                  className="text-xs text-blue-600 hover:underline border border-blue-200 px-2.5 py-1.5 rounded-lg">
+                                  className="text-xs text-primary hover:underline border border-primary px-2.5 py-1.5 rounded-lg">
                                   Ver liga
                                 </a>
                               )}

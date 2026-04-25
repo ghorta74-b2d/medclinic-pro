@@ -21,9 +21,9 @@ interface EditingRx {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  ACTIVE:    'bg-green-100 text-green-700',
-  COMPLETED: 'bg-gray-100 text-gray-500',
-  CANCELLED: 'bg-red-100 text-red-600',
+  ACTIVE:    'bg-success/15 text-success',
+  COMPLETED: 'bg-muted text-muted-foreground',
+  CANCELLED: 'bg-destructive/15 text-destructive',
 }
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: 'Activa', COMPLETED: 'Completada', CANCELLED: 'Cancelada',
@@ -86,7 +86,7 @@ export default function RecetasPage() {
         actions={
           <button
             onClick={() => setShowBuilder(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             Nueva receta
@@ -97,10 +97,10 @@ export default function RecetasPage() {
       <div className="flex-1 p-3 sm:p-6 overflow-auto">
         {loading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         ) : prescriptions.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 bg-white rounded-xl border border-gray-100">
+          <div className="text-center py-16 text-muted-foreground bg-card rounded-xl border border-border">
             <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
             <p className="text-sm font-medium">No hay recetas registradas</p>
             <p className="text-xs mt-1">Crea la primera receta con el botón superior</p>
@@ -108,25 +108,25 @@ export default function RecetasPage() {
         ) : (
           <div className="space-y-3 max-w-3xl">
             {prescriptions.map((rx) => (
-              <div key={rx.id} className="bg-white rounded-2xl border border-gray-300 shadow-sm overflow-hidden hover:border-gray-400 transition-colors">
+              <div key={rx.id} className="bg-card rounded-2xl border border-border overflow-hidden hover:border-border transition-colors">
                 {/* Card header */}
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-300 bg-gray-200">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-muted">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                      <User className="w-4 h-4 text-blue-600" />
+                    <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-foreground">
                         {rx.patient?.firstName} {rx.patient?.lastName}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-muted-foreground">
                         Dr. {rx.doctor?.firstName} {rx.doctor?.lastName} · {formatDate(rx.createdAt)}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {rx.sentViaWhatsApp && (
-                      <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-medium">
+                      <span className="text-xs bg-success/10 text-success border border-success/20 px-2 py-0.5 rounded-full font-medium">
                         ✓ Enviada
                       </span>
                     )}
@@ -141,13 +141,13 @@ export default function RecetasPage() {
                   <div className="space-y-2">
                     {rx.items?.map((item: any, i: number) => (
                       <div key={i} className="flex items-start gap-2.5">
-                        <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">
+                        <span className="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">
                           {i + 1}
                         </span>
                         <div>
-                          <span className="text-sm font-semibold text-gray-900">{item.medicationName}</span>
-                          <span className="text-sm text-gray-500"> {item.dose}</span>
-                          <p className="text-xs text-gray-400 mt-0.5">
+                          <span className="text-sm font-semibold text-foreground">{item.medicationName}</span>
+                          <span className="text-sm text-muted-foreground"> {item.dose}</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {item.route} · {item.frequency} · {item.duration}
                             {item.instructions && ` · ${item.instructions}`}
                           </p>
@@ -157,27 +157,27 @@ export default function RecetasPage() {
                   </div>
 
                   {rx.instructions && (
-                    <p className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100 italic">
+                    <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border italic">
                       {rx.instructions}
                     </p>
                   )}
 
                   {rx.followUpDate && (
-                    <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100">
-                      <Calendar className="w-3.5 h-3.5 text-blue-400" />
-                      <span className="text-xs text-gray-500">
-                        Seguimiento: <span className="font-medium text-gray-700">{formatDate(rx.followUpDate)}</span>
+                    <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border">
+                      <Calendar className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-xs text-muted-foreground">
+                        Seguimiento: <span className="font-medium text-foreground/80">{formatDate(rx.followUpDate)}</span>
                       </span>
                     </div>
                   )}
                 </div>
 
                 {/* Actions footer */}
-                <div className="flex items-center gap-2 px-5 py-3 border-t border-gray-300 bg-gray-200">
+                <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-muted">
                   {/* Print / PDF */}
                   <button
                     onClick={() => router.push(`/recetas/${rx.id}`)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-white transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground/80 hover:bg-card transition-colors"
                   >
                     <Printer className="w-3.5 h-3.5" />
                     Ver / Imprimir
@@ -187,7 +187,7 @@ export default function RecetasPage() {
                   {rx.status === 'ACTIVE' && (
                     <button
                       onClick={() => openEdit(rx)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-white transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground/80 hover:bg-card transition-colors"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                       Editar
@@ -200,7 +200,7 @@ export default function RecetasPage() {
                       <button
                         onClick={() => handleSendWhatsApp(rx.id)}
                         disabled={waLoading === rx.id}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-success hover:bg-success/90 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition-colors"
                       >
                         {waLoading === rx.id
                           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />

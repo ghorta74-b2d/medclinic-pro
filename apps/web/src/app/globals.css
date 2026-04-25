@@ -5,48 +5,98 @@
 
 @layer base {
   :root {
-    --background: 210 17% 98%;       /* #F9FAFB */
-    --foreground: 210 39% 11%;       /* #111C27 */
+    /* Light theme */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --surface: 0 0% 100%;
+    --surface-elevated: 210 20% 96%;
+
     --card: 0 0% 100%;
-    --card-foreground: 210 39% 11%;
+    --card-foreground: 222 47% 11%;
+
     --popover: 0 0% 100%;
-    --popover-foreground: 210 39% 11%;
-    --primary: 252 65% 50%;          /* #4E2DD2 */
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 205 90% 45%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 213 22% 90%;        /* #E0E5EB */
-    --secondary-foreground: 210 39% 11%;
-    --muted: 213 22% 94%;
-    --muted-foreground: 215 16% 47%; /* #65758B */
-    --accent: 252 65% 95%;
-    --accent-foreground: 252 65% 40%;
-    --destructive: 0 84.2% 60.2%;
+
+    --secondary: 210 20% 94%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 205 90% 95%;
+    --accent-foreground: 205 90% 30%;
+
+    --success: 152 62% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 213 22% 90%;           /* #E0E5EB */
-    --input: 213 22% 90%;
-    --ring: 252 65% 50%;
-    --radius: 0.75rem;
+
+    --border: 215 20% 90%;
+    --input: 215 20% 90%;
+    --ring: 205 90% 45%;
+
+    /* Sidebar (light variant uses dark sidebar like Gravity) */
+    --sidebar: 222 25% 10%;
+    --sidebar-foreground: 210 20% 96%;
+    --sidebar-muted: 215 14% 60%;
+    --sidebar-active: 205 90% 55%;
+    --sidebar-border: 222 18% 18%;
+
+    --radius: 0.875rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 252 65% 60%;
+    /* Dark theme - Gravity-inspired near-black */
+    --background: 222 22% 7%;
+    --foreground: 210 20% 96%;
+
+    --surface: 222 20% 10%;
+    --surface-elevated: 222 18% 13%;
+
+    --card: 222 20% 10%;
+    --card-foreground: 210 20% 96%;
+
+    --popover: 222 20% 10%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 205 90% 55%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 252 65% 60%;
+
+    --secondary: 222 18% 14%;
+    --secondary-foreground: 210 20% 96%;
+
+    --muted: 222 18% 14%;
+    --muted-foreground: 215 16% 65%;
+
+    --accent: 222 18% 16%;
+    --accent-foreground: 205 90% 65%;
+
+    --success: 152 60% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 14% 18%;
+    --input: 222 14% 18%;
+    --ring: 205 90% 55%;
+
+    --sidebar: 222 24% 6%;
+    --sidebar-foreground: 210 20% 96%;
+    --sidebar-muted: 215 14% 60%;
+    --sidebar-active: 205 90% 55%;
+    --sidebar-border: 222 18% 14%;
   }
 }
 
@@ -55,14 +105,28 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
   }
 }
 
-/* Landing page animations */
+@layer utilities {
+  .text-display {
+    font-size: 1.75rem;
+    line-height: 2.25rem;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+  .text-metric {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+}
+
+/* Landing page animations (preserved) */
 @keyframes marquee {
   from { transform: translateX(0); }
   to   { transform: translateX(-33.333%); }

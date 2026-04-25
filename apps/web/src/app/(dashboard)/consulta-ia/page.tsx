@@ -74,18 +74,18 @@ function StepIndicator({ current }: { current: Step }) {
             <div className="flex items-center gap-1.5">
               <div className={cn(
                 'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors',
-                done  ? 'bg-blue-600 text-white' :
-                active ? 'bg-blue-600 text-white ring-4 ring-blue-100' :
-                         'bg-gray-200 text-gray-500'
+                done  ? 'bg-primary text-white' :
+                active ? 'bg-primary text-white ring-4 ring-primary/15' :
+                         'bg-muted text-muted-foreground'
               )}>
                 {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
               </div>
-              <span className={cn('text-xs font-medium', active ? 'text-blue-700' : done ? 'text-blue-600' : 'text-gray-400')}>
+              <span className={cn('text-xs font-medium', active ? 'text-primary' : done ? 'text-primary' : 'text-muted-foreground')}>
                 {s.label}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className={cn('w-8 h-px mx-2', i < idx ? 'bg-blue-400' : 'bg-gray-200')} />
+              <div className={cn('w-8 h-px mx-2', i < idx ? 'bg-primary' : 'bg-muted')} />
             )}
           </div>
         )
@@ -125,44 +125,44 @@ function PatientStep({
     <div className="max-w-xl">
       <StepIndicator current="patient" />
 
-      <h2 className="text-lg font-semibold text-gray-900 mb-1">Seleccionar paciente</h2>
-      <p className="text-sm text-gray-500 mb-5">Busca al paciente para iniciar la consulta asistida.</p>
+      <h2 className="text-lg font-semibold text-foreground mb-1">Seleccionar paciente</h2>
+      <p className="text-sm text-muted-foreground mb-5">Busca al paciente para iniciar la consulta asistida.</p>
 
       {/* Search */}
       <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           type="text"
           placeholder="Buscar por nombre, teléfono o CURP..."
           value={query}
           onChange={e => { setQuery(e.target.value); setSelected(null) }}
-          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           autoFocus
         />
-        {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />}
+        {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-primary" />}
       </div>
 
       {/* Results */}
       {results.length > 0 && !selected && (
-        <div className="border border-gray-200 rounded-xl overflow-hidden mb-4 shadow-sm">
+        <div className="border border-border rounded-xl overflow-hidden mb-4">
           {results.map(p => (
             <button
               key={p.id}
               onClick={() => { setSelected(p); setQuery(patientFullName(p)); setResults([]) }}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors text-left border-b border-gray-100 last:border-0"
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-primary/10 transition-colors text-left border-b border-border last:border-0"
             >
-              <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 text-xs font-bold shrink-0">
+              <div className="w-9 h-9 bg-primary/15 rounded-full flex items-center justify-center text-primary text-xs font-bold shrink-0">
                 {getInitials(p.firstName, p.lastName)}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-900 truncate">{patientFullName(p)}</p>
-                <p className="text-xs text-gray-400">
+                <p className="text-sm font-medium text-foreground truncate">{patientFullName(p)}</p>
+                <p className="text-xs text-muted-foreground">
                   {p.dateOfBirth ? `${calculateAge(p.dateOfBirth)} años` : ''}
                   {p.gender === 'MALE' ? ' · Masculino' : p.gender === 'FEMALE' ? ' · Femenino' : ''}
                   {p.phone ? ` · ${p.phone}` : ''}
                 </p>
               </div>
-              <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+              <ChevronRight className="w-4 h-4 text-muted-foreground/60 shrink-0" />
             </button>
           ))}
         </div>
@@ -170,24 +170,24 @@ function PatientStep({
 
       {/* Selected patient card */}
       {selected && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+        <div className="bg-primary/10 border border-primary rounded-xl p-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
+            <div className="w-11 h-11 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
               {getInitials(selected.firstName, selected.lastName)}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900">{patientFullName(selected)}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm font-semibold text-foreground">{patientFullName(selected)}</p>
+              <p className="text-xs text-muted-foreground">
                 {selected.dateOfBirth ? `${calculateAge(selected.dateOfBirth)} años` : ''}
                 {selected.gender === 'MALE' ? ' · Masculino' : selected.gender === 'FEMALE' ? ' · Femenino' : ''}
               </p>
               {selected.curp && (
-                <p className="text-xs text-gray-400 font-mono mt-0.5">{selected.curp}</p>
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">{selected.curp}</p>
               )}
             </div>
             <button
               onClick={() => { setSelected(null); setQuery('') }}
-              className="text-xs text-blue-600 hover:text-blue-800 shrink-0 font-medium"
+              className="text-xs text-primary hover:text-primary shrink-0 font-medium"
             >
               Cambiar
             </button>
@@ -198,7 +198,7 @@ function PatientStep({
       <button
         onClick={() => selected && onSelect(selected)}
         disabled={!selected}
-        className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+        className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-white font-semibold py-3 rounded-xl transition-colors text-sm"
       >
         Continuar
         <ChevronRight className="w-4 h-4" />
@@ -224,31 +224,31 @@ function ConsentStep({
     <div className="max-w-xl">
       <StepIndicator current="consent" />
 
-      <h2 className="text-lg font-semibold text-gray-900 mb-1">Consentimiento del paciente</h2>
-      <p className="text-sm text-gray-500 mb-5">
+      <h2 className="text-lg font-semibold text-foreground mb-1">Consentimiento del paciente</h2>
+      <p className="text-sm text-muted-foreground mb-5">
         Este paso es requerido por regulación antes de iniciar la grabación de la consulta.
       </p>
 
       {/* Patient reminder */}
-      <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-5">
-        <User className="w-4 h-4 text-gray-400 shrink-0" />
-        <span className="text-sm text-gray-700 font-medium">{patientFullName(patient)}</span>
+      <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 py-2 mb-5">
+        <User className="w-4 h-4 text-muted-foreground shrink-0" />
+        <span className="text-sm text-foreground/80 font-medium">{patientFullName(patient)}</span>
       </div>
 
       {/* Consent checkbox */}
       <label className={cn(
         'flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors mb-6',
-        checked ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300 bg-white'
+        checked ? 'border-primary bg-primary/10' : 'border-border hover:border-border bg-card'
       )}>
         <div className={cn(
           'w-5 h-5 rounded flex items-center justify-center shrink-0 mt-0.5 border-2 transition-colors',
-          checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+          checked ? 'bg-primary border-primary' : 'border-border'
         )}>
           {checked && <CheckSquare className="w-3.5 h-3.5 text-white" />}
         </div>
         <div>
-          <p className="text-sm font-semibold text-gray-900 mb-1">Consentimiento de grabación</p>
-          <p className="text-sm text-gray-600 leading-relaxed">
+          <p className="text-sm font-semibold text-foreground mb-1">Consentimiento de grabación</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">
             Confirmo que el paciente <strong>{patientFullName(patient)}</strong> ha otorgado su
             consentimiento verbal y/o escrito para la grabación y transcripción de esta consulta
             con fines clínicos y de documentación médica, de conformidad con la normativa vigente
@@ -261,14 +261,14 @@ function ConsentStep({
       <div className="flex gap-3">
         <button
           onClick={onBack}
-          className="flex-1 py-3 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+          className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-foreground/80 hover:bg-muted/50 transition-colors"
         >
           Regresar
         </button>
         <button
           onClick={() => checked && onConsent(new Date().toISOString())}
           disabled={!checked}
-          className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+          className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-white font-semibold py-3 rounded-xl transition-colors text-sm"
         >
           Continuar
           <ChevronRight className="w-4 h-4" />
@@ -322,27 +322,27 @@ function MicrophoneStep({
     <div className="max-w-xl">
       <StepIndicator current="microphone" />
 
-      <h2 className="text-lg font-semibold text-gray-900 mb-1">Selección de micrófono</h2>
-      <p className="text-sm text-gray-500 mb-5">Elige el micrófono que usarás durante la consulta.</p>
+      <h2 className="text-lg font-semibold text-foreground mb-1">Selección de micrófono</h2>
+      <p className="text-sm text-muted-foreground mb-5">Elige el micrófono que usarás durante la consulta.</p>
 
       {/* Patient reminder */}
-      <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-5">
-        <User className="w-4 h-4 text-gray-400 shrink-0" />
-        <span className="text-sm text-gray-700 font-medium">{patientFullName(patient)}</span>
+      <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 py-2 mb-5">
+        <User className="w-4 h-4 text-muted-foreground shrink-0" />
+        <span className="text-sm text-foreground/80 font-medium">{patientFullName(patient)}</span>
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-3 text-sm text-gray-500 py-8">
-          <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+        <div className="flex items-center gap-3 text-sm text-muted-foreground py-8">
+          <Loader2 className="w-4 h-4 animate-spin text-primary" />
           Detectando micrófonos disponibles...
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5">
+        <div className="bg-destructive/10 border border-destructive/15 rounded-xl p-4 mb-5">
           <div className="flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+            <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-red-800 mb-1">Sin acceso al micrófono</p>
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm font-semibold text-destructive mb-1">Sin acceso al micrófono</p>
+              <p className="text-sm text-destructive">{error}</p>
             </div>
           </div>
         </div>
@@ -353,17 +353,17 @@ function MicrophoneStep({
               key={d.deviceId}
               className={cn(
                 'flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-colors',
-                selected === d.deviceId ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300 bg-white'
+                selected === d.deviceId ? 'border-primary bg-primary/10' : 'border-border hover:border-border bg-card'
               )}
             >
               <div className={cn(
                 'w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
-                selected === d.deviceId ? 'border-blue-600' : 'border-gray-300'
+                selected === d.deviceId ? 'border-primary' : 'border-border'
               )}>
-                {selected === d.deviceId && <div className="w-2 h-2 bg-blue-600 rounded-full" />}
+                {selected === d.deviceId && <div className="w-2 h-2 bg-primary rounded-full" />}
               </div>
-              <Mic className={cn('w-4 h-4 shrink-0', selected === d.deviceId ? 'text-blue-600' : 'text-gray-400')} />
-              <span className="text-sm font-medium text-gray-800 truncate">
+              <Mic className={cn('w-4 h-4 shrink-0', selected === d.deviceId ? 'text-primary' : 'text-muted-foreground')} />
+              <span className="text-sm font-medium text-foreground truncate">
                 {d.label || `Micrófono ${devices.indexOf(d) + 1}`}
               </span>
               <input
@@ -380,9 +380,9 @@ function MicrophoneStep({
       )}
 
       {!srSupported && !error && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-800">
+        <div className="bg-warning/10 border border-warning/30 rounded-xl p-3 mb-4 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+          <p className="text-xs text-warning/80">
             Tu navegador no soporta transcripción en tiempo real. Se grabará el audio pero no habrá preview del texto durante la consulta. Usa Chrome o Edge para la mejor experiencia.
           </p>
         </div>
@@ -391,14 +391,14 @@ function MicrophoneStep({
       <div className="flex gap-3">
         <button
           onClick={onBack}
-          className="flex-1 py-3 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+          className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-foreground/80 hover:bg-muted/50 transition-colors"
         >
           Regresar
         </button>
         <button
           onClick={() => !error && selected && onReady(selected)}
           disabled={!!error || !selected || loading}
-          className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+          className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-white font-semibold py-3 rounded-xl transition-colors text-sm"
         >
           <Mic className="w-4 h-4" />
           Iniciar consulta
@@ -496,19 +496,19 @@ function RecordingStep({
       {/* Recording header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
-          <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-          <span className="text-sm font-bold text-red-600 uppercase tracking-wide">Grabando</span>
+          <span className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
+          <span className="text-sm font-bold text-destructive uppercase tracking-wide">Grabando</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Mic className="w-3.5 h-3.5" />
           <span className="truncate max-w-[180px]">Micrófono activo</span>
         </div>
       </div>
 
       {/* Patient */}
-      <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-6">
-        <User className="w-4 h-4 text-gray-400 shrink-0" />
-        <span className="text-sm text-gray-700 font-medium">{patientFullName(patient)}</span>
+      <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 py-2 mb-6">
+        <User className="w-4 h-4 text-muted-foreground shrink-0" />
+        <span className="text-sm text-foreground/80 font-medium">{patientFullName(patient)}</span>
       </div>
 
       {/* Timer */}
@@ -518,19 +518,19 @@ function RecordingStep({
             {fmtDuration(elapsed)}
           </span>
         </div>
-        <p className="text-xs text-gray-400 mt-2">Duración de la sesión</p>
+        <p className="text-xs text-muted-foreground mt-2">Duración de la sesión</p>
       </div>
 
       {/* Live transcript */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6 min-h-[130px] max-h-[220px] overflow-y-auto">
+      <div className="bg-muted/50 border border-border rounded-xl p-4 mb-6 min-h-[130px] max-h-[220px] overflow-y-auto">
         <div className="flex items-center gap-1.5 mb-2">
-          <FileText className="w-3 h-3 text-gray-400" />
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Transcripción en tiempo real</span>
+          <FileText className="w-3 h-3 text-muted-foreground" />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Transcripción en tiempo real</span>
         </div>
         {transcriptDisplay ? (
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{transcriptDisplay}</p>
+          <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{transcriptDisplay}</p>
         ) : (
-          <p className="text-sm text-gray-400 italic">
+          <p className="text-sm text-muted-foreground italic">
             {micError || 'Comienza a hablar — la transcripción aparecerá aquí...'}
           </p>
         )}
@@ -538,9 +538,9 @@ function RecordingStep({
 
       {/* Error */}
       {micError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-          <p className="text-xs text-red-700">{micError}</p>
+        <div className="bg-destructive/10 border border-destructive/15 rounded-lg px-3 py-2 mb-4 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+          <p className="text-xs text-destructive">{micError}</p>
         </div>
       )}
 
@@ -550,8 +550,8 @@ function RecordingStep({
         className={cn(
           'w-full flex items-center justify-center gap-2 font-semibold py-4 rounded-xl transition-all text-sm',
           confirming
-            ? 'bg-red-600 hover:bg-red-700 text-white ring-4 ring-red-200'
-            : 'bg-red-500 hover:bg-red-600 text-white'
+            ? 'bg-destructive hover:bg-destructive text-white ring-4 ring-destructive/15'
+            : 'bg-destructive hover:bg-destructive text-white'
         )}
       >
         <Square className="w-4 h-4 fill-current" />
@@ -559,7 +559,7 @@ function RecordingStep({
       </button>
 
       {elapsed < 30 && (
-        <p className="text-xs text-center text-gray-400 mt-3">
+        <p className="text-xs text-center text-muted-foreground mt-3">
           Sesión en curso — finaliza cuando el médico haya concluido la consulta
         </p>
       )}
@@ -585,16 +585,16 @@ function ProcessingStep() {
 
   return (
     <div className="max-w-sm text-center py-12">
-      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-5">
-        <Brain className="w-8 h-8 text-blue-600 animate-pulse" />
+      <div className="w-16 h-16 bg-primary/15 rounded-full flex items-center justify-center mx-auto mb-5">
+        <Brain className="w-8 h-8 text-primary animate-pulse" />
       </div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-2">Analizando consulta</h2>
-      <p className="text-sm text-gray-500 mb-6 transition-all">{messages[msgIdx]}</p>
+      <h2 className="text-lg font-semibold text-foreground mb-2">Analizando consulta</h2>
+      <p className="text-sm text-muted-foreground mb-6 transition-all">{messages[msgIdx]}</p>
       <div className="flex justify-center gap-1.5">
         {[0, 1, 2].map(i => (
           <div
             key={i}
-            className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
+            className="w-2 h-2 bg-primary rounded-full animate-bounce"
             style={{ animationDelay: `${i * 150}ms` }}
           />
         ))}
@@ -629,16 +629,16 @@ function DoneStep({
     <div className="max-w-xl">
       {/* Header success */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-11 h-11 bg-green-100 rounded-full flex items-center justify-center shrink-0">
-          <CheckCircle2 className="w-6 h-6 text-green-600" />
+        <div className="w-11 h-11 bg-success/15 rounded-full flex items-center justify-center shrink-0">
+          <CheckCircle2 className="w-6 h-6 text-success" />
         </div>
         <div>
-          <p className="text-base font-bold text-gray-900">Consulta procesada</p>
-          <p className="text-sm text-gray-500">
+          <p className="text-base font-bold text-foreground">Consulta procesada</p>
+          <p className="text-sm text-muted-foreground">
             {patientFullName(patient)} · {fmtDuration(duration)} min
           </p>
         </div>
-        <span className="ml-auto flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+        <span className="ml-auto flex items-center gap-1 text-xs bg-primary/15 text-primary px-2 py-1 rounded-full font-medium">
           <Brain className="w-3 h-3" />
           IA
         </span>
@@ -646,20 +646,20 @@ function DoneStep({
 
       {/* Extracted fields */}
       {fields.some(f => f.value) && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 space-y-3">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Campos extraídos por IA</p>
+        <div className="bg-card border border-border rounded-xl p-4 mb-4 space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Campos extraídos por IA</p>
           {fields.map(f => f.value && (
             <div key={f.label}>
-              <p className="text-xs font-semibold text-gray-500 mb-0.5">{f.label}</p>
-              <p className="text-sm text-gray-800 leading-relaxed">{f.value}</p>
+              <p className="text-xs font-semibold text-muted-foreground mb-0.5">{f.label}</p>
+              <p className="text-sm text-foreground leading-relaxed">{f.value}</p>
             </div>
           ))}
           {(extracted.diagnoses ?? []).length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 mb-1.5">Diagnósticos</p>
+              <p className="text-xs font-semibold text-muted-foreground mb-1.5">Diagnósticos</p>
               <div className="flex flex-wrap gap-1.5">
                 {extracted.diagnoses!.map((d, i) => (
-                  <span key={i} className="text-xs bg-[#4E2DD2]/10 text-[#4E2DD2] px-2 py-0.5 rounded font-medium">
+                  <span key={i} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">
                     {d}
                   </span>
                 ))}
@@ -671,19 +671,19 @@ function DoneStep({
 
       {/* AI Summary */}
       {extracted.aiSummary && (
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-5">
+        <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 mb-5">
           <div className="flex items-center gap-1.5 mb-2">
-            <Brain className="w-3.5 h-3.5 text-blue-600" />
-            <p className="text-xs font-bold text-blue-700 uppercase tracking-wide">Resumen IA</p>
+            <Brain className="w-3.5 h-3.5 text-primary" />
+            <p className="text-xs font-bold text-primary uppercase tracking-wide">Resumen IA</p>
           </div>
-          <p className="text-sm text-gray-800 leading-relaxed">{extracted.aiSummary}</p>
+          <p className="text-sm text-foreground leading-relaxed">{extracted.aiSummary}</p>
         </div>
       )}
 
       {/* Notice */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-5 flex items-start gap-2">
-        <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-        <p className="text-xs text-amber-800">
+      <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-5 flex items-start gap-2">
+        <AlertCircle className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />
+        <p className="text-xs text-warning/80">
           La nota quedó guardada como <strong>borrador</strong>. Revisa y edita los campos antes de firmarla desde el expediente del paciente.
         </p>
       </div>
@@ -692,14 +692,14 @@ function DoneStep({
       <div className="flex flex-col gap-2">
         <button
           onClick={() => router.push(`/pacientes/${result.patientId}`)}
-          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+          className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
         >
           Ver expediente del paciente
           <ArrowRight className="w-4 h-4" />
         </button>
         <button
           onClick={onReset}
-          className="w-full flex items-center justify-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 rounded-xl transition-colors text-sm"
+          className="w-full flex items-center justify-center gap-2 border border-border hover:bg-muted/50 text-foreground/80 font-semibold py-3 rounded-xl transition-colors text-sm"
         >
           <RotateCcw className="w-4 h-4" />
           Nueva consulta
@@ -765,9 +765,9 @@ export default function ConsultaIaPage() {
       <div className="flex-1 p-3 sm:p-6 overflow-auto">
         <div className="max-w-3xl">
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-6 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-              <p className="text-sm text-red-800">{error}</p>
+            <div className="bg-destructive/10 border border-destructive/15 rounded-xl px-4 py-3 mb-6 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+              <p className="text-sm text-destructive">{error}</p>
             </div>
           )}
 

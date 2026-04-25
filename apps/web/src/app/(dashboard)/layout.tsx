@@ -2,17 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Roboto } from 'next/font/google'
-import { Sidebar } from '@/components/layout/sidebar'
+import { SidebarNav } from '@/components/layout/sidebar-nav'
+import { AppShell } from '@/components/layout/app-shell'
 import { warmupApi, getUserRole } from '@/lib/api'
 import { createBrowserClient } from '@supabase/ssr'
 import { ShieldAlert, X, Loader2 } from 'lucide-react'
-
-const roboto = Roboto({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '700'],
-  display: 'swap',
-})
 
 // Singleton Supabase client para el check MFA
 const supabase = createBrowserClient(
@@ -33,7 +27,6 @@ export default function DashboardLayout({
   const [authChecked, setAuthChecked] = useState(false)
 
   useEffect(() => {
-    // ── Auth guard: redirige al login si no hay sesión activa ────────────
     async function init() {
       try {
         const { data: { session } } = await supabase.auth.getSession()
@@ -47,16 +40,12 @@ export default function DashboardLayout({
       }
 
       setAuthChecked(true)
-
-      // Pre-warm serverless para que el primer request al API sea rápido
       warmupApi()
 
-      // ── MFA check: solo para ADMIN y DOCTOR ─────────────────────────────
       try {
         const role = await getUserRole()
         if (role !== 'ADMIN' && role !== 'DOCTOR') return
 
-        // Si el usuario ya cerró el banner hoy, no molestar de nuevo
         const dismissed = sessionStorage.getItem(MFA_DISMISSED_KEY)
         if (dismissed) return
 
@@ -78,39 +67,39 @@ export default function DashboardLayout({
     sessionStorage.setItem(MFA_DISMISSED_KEY, '1')
   }
 
-  // Muestra spinner mientras se verifica la sesión — evita flash del dashboard sin auth
   if (!authChecked) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-primary animate-spin" />
       </div>
     )
   }
 
-  return (
-    <div className={`flex min-h-screen bg-gray-50 ${roboto.className}`}>
-      <Sidebar />
-      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Banner MFA — visible solo para ADMIN/DOCTOR sin MFA configurado */}
-        {showMfaBanner && (
-          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center gap-3 z-40">
-            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-            <p className="text-sm text-amber-800 flex-1">
-              <strong>Configura la verificación en dos pasos (MFA)</strong> para proteger el acceso a los expedientes clínicos.{' '}
-              <button
-                onClick={() => router.push('/mfa-setup')}
-                className="underline font-medium hover:text-amber-900"
-              >
-                Configurar ahora
-              </button>
-            </p>
-            <button onClick={dismissBanner} className="text-amber-400 hover:text-amber-600 shrink-0">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-        {children}
-      </main>
+  const banner = showMfaBanner ? (
+    <div className="flex items-center gap-3 border-b border-warning/30 bg-warning/10 px-4 py-2.5">
+      <ShieldAlert className="h-4 w-4 shrink-0 text-warning" />
+      <p className="flex-1 text-sm text-foreground">
+        <strong>Configura la verificación en dos pasos (MFA)</strong> para proteger el acceso a los expedientes clínicos.{' '}
+        <button
+          onClick={() => router.push('/mfa-setup')}
+          className="font-medium text-primary underline-offset-2 hover:underline"
+        >
+          Configurar ahora
+        </button>
+      </p>
+      <button
+        onClick={dismissBanner}
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+        aria-label="Cerrar"
+      >
+        <X className="h-4 w-4" />
+      </button>
     </div>
+  ) : null
+
+  return (
+    <AppShell sidebar={<SidebarNav />} banner={banner}>
+      {children}
+    </AppShell>
   )
 }

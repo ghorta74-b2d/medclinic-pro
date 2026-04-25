@@ -26,7 +26,7 @@ function NuevoExpedienteContent() {
 
   if (!patientId) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
+      <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
         Debe seleccionar un paciente
       </div>
     )
@@ -40,7 +40,7 @@ function NuevoExpedienteContent() {
         actions={
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 text-sm"
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             Volver

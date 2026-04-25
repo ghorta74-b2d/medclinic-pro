@@ -5,7 +5,7 @@
       "name": "MedClinic Web (Next.js)",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "web", "dev"],
-      "port": 3000
+      "port": 3100
     },
     {
       "name": "MedClinic API (Fastify)",
