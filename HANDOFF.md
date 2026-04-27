@@ -1,183 +1,207 @@
 # HANDOFF — MedClinic Pro
 
-**Fecha**: 2026-04-25
-**Último commit (main)**: `414a0ca`
-**CI**: ✅ Verde (run #9 en main — pre-design-system)
-**Estado**: Producción estable. Fases 0–4 + Design System completados. Listos para Fase 5.
+**Fecha**: 2026-04-27
+**Último commit (main)**: `ddf966d`
+**CI**: ✅ Verde en commits pre-design-system (run #9). Pendiente verificar run sobre `414a0ca`.
+**Estado**: Producción estable. Design system dark mode desplegado en Vercel. Listos para Fase 5.
 
 ---
 
 ## 1. Resumen ejecutivo
 
-SaaS clínico LATAM. Stack: monorepo pnpm (`apps/api` Fastify + Prisma + Postgres/Supabase, `apps/web` Next.js 14 App Router). Cumplimiento NOM-004 MX (firma electrónica, enmiendas, audit log). Despliegue: Vercel (web) + Render/Fly (API), Supabase (DB).
+SaaS clínico LATAM. Monorepo pnpm:
+- `apps/api` — Fastify + Prisma + Postgres (Supabase). Cumplimiento NOM-004 MX.
+- `apps/web` — Next.js 14 App Router. Vercel auto-deploy en push a `main`.
 
-**Sesión 2026-04-25**: Design system completo para área autenticada (dark mode por defecto, paleta azul médico, SF Pro, primitivos shadcn/CVA). 14 páginas + 12 componentes migrados a tokens semánticos. Montos sin decimales.
-
-**Sesión 2026-04-23**: Estabilizó el pipeline CI/CD que estaba roto por errores en cadena. Causa raíz identificada: **no se puede correr `tsc --noEmit` localmente porque los tipos generados de Prisma están en `.gitignore`** — cada error solo aparecía cuando CI llegaba a esa línea.
-
----
-
-## 2. Design System — sesión 2026-04-25 (commit `414a0ca`)
-
-### 2.1 Tokens CSS (globals.css)
-- Dark por defecto: `--background 222 22% 7%`, `--primary 205 90% 55%` (azul médico), `--success 152 60% 45%` (verde clínico), `--warning 38 92% 55%`, `--destructive 0 72% 55%`
-- Light: mismos nombres, valores invertidos
-- Sidebar separado: `--sidebar 222 24% 6%`
-- `--radius: 0.875rem`
-
-### 2.2 Primitivos UI nuevos (`apps/web/src/components/ui/`)
-`button`, `card`, `input`, `label`, `badge`, `status-dot`, `separator`, `avatar`, `skeleton`, `tabs`, `dialog`, `dropdown-menu`, `select`, `switch`, `progress`, `toast`, `toaster` — todos CVA + Radix + tokens semánticos.
-
-### 2.3 Shell nuevo
-- `sidebar-nav.tsx`: secciones GENERAL / OPERACIONES, pill activo `bg-primary/15`, ancho 240px, role-based filtering preservado, `sessionCache.clear()` en logout preservado
-- `topbar.tsx`: búsqueda, `<ThemeToggle />`, avatar usuario
-- `app-shell.tsx`: grid `sidebar + main`, clase `font-sf`
-- `theme-provider.tsx` + `theme-toggle.tsx`: next-themes dark default, sol/luna
-
-### 2.4 Migración páginas y componentes
-14 páginas `/dashboard`, `/agenda`, `/pacientes`, `/cobros`, `/recetas`, `/configuracion`, `/laboratorio`, `/billing`, `/expediente`, `/consulta-ia`, `/asistente-ia`, etc. + 12 componentes compartidos migrados de clases Tailwind hardcoded (`bg-white`, `text-gray-*`, `bg-blue-*`) a tokens semánticos (`bg-card`, `text-foreground`, `bg-primary/*`).
-
-### 2.5 Otros cambios
-- `formatCurrency`: `minimumFractionDigits: 0` — sin decimales en toda la app
-- Font: SF Pro (`-apple-system, BlinkMacSystemFont`) via clase `font-sf` en app-shell
-
-### 2.6 Configuración crítica (NO TOCAR)
-- `next-themes`: `defaultTheme="dark"`, `attribute="class"`, `storageKey="medclinic-theme"` — si se cambia, el toggle deja de persistir
-- Sidebar hardcoded `bg-sidebar` (no `bg-background`) para mantener contraste diferenciado en light mode
+Despliegue: **Vercel** (web) + **Render/Fly** (API) + **Supabase** (DB prod).
 
 ---
 
-## 3. Cambios clave — CI/CD stabilization (sesión 2026-04-23)
+## 2. Estado del repo
 
-### 3.1 Configuración crítica (NO TOCAR sin entender)
+```
+Branch main:    ddf966d  docs: actualizar HANDOFF con design system sesión 2026-04-25
+                414a0ca  feat(web): design system dark mode + SF Pro font   ← ÚLTIMO REAL
+                e844b07  fix(ci): todos los errores ESLint web (CI ✅ aquí)
+Branch staging: e844b07  (pendiente sync con main)
+```
 
-| Archivo | Configuración correcta | Por qué |
+### Commits en main que CI aún no corrió
+`414a0ca` y `ddf966d` son post CI run #9. Verificar en GitHub Actions que no hay regresión de lint/typecheck antes de seguir.
+
+```bash
+# Ver estado CI
+open https://github.com/ghorta74-b2d/medclinic-pro/actions
+```
+
+---
+
+## 3. Design system (sesión 2026-04-25) — commit `414a0ca`
+
+### 3.1 Tokens CSS — `apps/web/src/app/globals.css`
+
+| Token | Dark | Light |
 |---|---|---|
-| `apps/api/tsconfig.json` | `"module": "CommonJS"` + `"moduleResolution": "node"` | `bundler` es **incompatible** con CommonJS. Antes fallaba antes de typecheckear el resto. |
-| `apps/api/tsconfig.json` | `"include": ["src/**/*"]` (sin `prisma/**/*`) | Los seeds de Prisma quedaban fuera de `rootDir` y rompían build. |
-| `apps/api/src/index.ts` | Top-level await envuelto en IIFE `void (async () => {...})()` | CommonJS no soporta TLA. |
-| `apps/web/.eslintrc.json` | `{ "extends": "next/core-web-vitals" }` | Sin esto, `next lint` lanza wizard interactivo y CI cuelga. |
+| `--background` | `222 22% 7%` | `210 20% 98%` |
+| `--foreground` | `210 20% 96%` | `222 22% 10%` |
+| `--card` / `--surface` | `222 18% 10%` | `0 0% 100%` |
+| `--primary` | `205 90% 55%` (azul médico) | `205 90% 45%` |
+| `--success` | `152 60% 45%` (verde clínico) | `152 60% 35%` |
+| `--warning` | `38 92% 55%` | `38 92% 45%` |
+| `--destructive` | `0 72% 55%` | `0 72% 50%` |
+| `--sidebar` | `222 24% 6%` | `222 20% 94%` |
+| `--radius` | `0.875rem` | — |
 
-### 3.2 Patrones obligatorios para Prisma + Zod
+Tailwind mapea todo vía `hsl(var(--token))` en `tailwind.config.ts`.
+
+### 3.2 Primitivos UI — `apps/web/src/components/ui/`
+
+Todos usan CVA + Radix + tokens semánticos:
+`button`, `card`, `input`, `label`, `badge`, `status-dot`, `separator`, `avatar`, `skeleton`, `tabs`, `dialog`, `dropdown-menu`, `select`, `switch`, `progress`, `toast`, `toaster`
+
+### 3.3 Shell autenticado
+
+| Archivo | Qué hace |
+|---|---|
+| `components/layout/app-shell.tsx` | Contenedor `flex` sidebar + main, clase `font-sf` |
+| `components/layout/sidebar-nav.tsx` | Secciones GENERAL/OPERACIONES, pill activo `bg-primary/15`, 240px, role-based filtering + `sessionCache.clear()` en logout |
+| `components/layout/topbar.tsx` | Búsqueda, ThemeToggle, avatar usuario |
+| `components/theme/theme-provider.tsx` | `next-themes` wrapper, `defaultTheme="dark"`, `attribute="class"`, `storageKey="medclinic-theme"` |
+| `components/theme/theme-toggle.tsx` | Botón sol/luna (lucide) |
+
+### 3.4 Migración páginas y componentes
+
+**14 páginas migradas** (clases hardcoded → tokens semánticos):
+`/dashboard`, `/agenda`, `/agenda/[id]`, `/pacientes`, `/pacientes/[id]`, `/cobros`, `/recetas`, `/recetas/[id]`, `/configuracion`, `/laboratorio`, `/billing`, `/expediente`, `/expedientes/nuevo`, `/consulta-ia`, `/asistente-ia`
+
+**12 componentes migrados**:
+`calendar-view`, `week-view`, `month-view`, `day-stats`, `new-appointment-dialog`, `note-editor`, `prescription-builder`, `lab-result-dialog`, `billing-dialog`, `patient-dialog`, y otros
+
+**Patrón de migración**:
+```
+bg-white         → bg-card
+bg-gray-50       → bg-muted/50
+bg-gray-100      → bg-muted
+text-gray-*      → text-foreground / text-muted-foreground
+text-blue-*      → text-primary
+bg-blue-*        → bg-primary/*
+text-green-*     → text-success
+bg-green-*       → bg-success/*
+text-red-*       → text-destructive
+bg-red-*         → bg-destructive/*
+bg-yellow-*/orange-* → bg-warning/*
+border-gray-*    → border-border
+```
+
+### 3.5 Otros cambios
+
+- **`apps/web/src/lib/utils.ts`** — `formatCurrency`: `minimumFractionDigits: 0, maximumFractionDigits: 0` (sin decimales en toda la app)
+- **Font**: SF Pro via `-apple-system, BlinkMacSystemFont` (sistema en macOS/iOS), clase Tailwind `font-sf` en `app-shell`
+- **`apps/web/package.json`**: deps añadidas `next-themes`, `class-variance-authority`, `tailwindcss-animate`
+
+### 3.6 Reglas críticas (NO TOCAR)
+
+- `next-themes`: `defaultTheme="dark"`, `attribute="class"`, `storageKey="medclinic-theme"` — cambiar rompe persistencia del toggle
+- `sidebar-nav`: usa `bg-sidebar` (no `bg-background`) — necesario para contraste en light mode
+- `sessionCache.clear()` en logout de `sidebar-nav.tsx` — crítico para limpiar sesión, no eliminar
+- Role-based filtering en sidebar — ADMIN/DOCTOR/STAFF/SUPERADMIN ven ítems distintos
+
+---
+
+## 4. CI/CD stabilization (sesión 2026-04-23)
+
+### 4.1 Configuración crítica (NO TOCAR)
+
+| Archivo | Configuración | Por qué |
+|---|---|---|
+| `apps/api/tsconfig.json` | `"module": "CommonJS"` + `"moduleResolution": "node"` | `bundler` es incompatible con CommonJS |
+| `apps/api/tsconfig.json` | `"include": ["src/**/*"]` (sin `prisma/**/*`) | Seeds fuera de `rootDir` rompen build |
+| `apps/api/src/index.ts` | Top-level await en IIFE `void (async () => {...})()` | CommonJS no soporta TLA |
+| `apps/web/.eslintrc.json` | `{ "extends": "next/core-web-vitals" }` | Sin esto, `next lint` lanza wizard interactivo y CI cuelga |
+
+### 4.2 Patrones obligatorios Prisma + Zod
 
 ```typescript
 // JSON fields → SIEMPRE z.any(), NUNCA z.unknown()
-// Razón: Prisma exige InputJsonValue (no acepta JsonValue|unknown)
 metadata: z.record(z.any()).optional(),
-familyHistory: z.record(z.any()).optional(),
-reviewOfSystems: z.record(z.any()).optional(),
 
-// Spreads condicionales en .update() → cast al final del data block
+// Spreads condicionales en .update() → cast al final
 await prisma.patient.update({
   where: { id },
-  data: {
-    ...(x ? { x } : {}),
-    ...(y ? { y } : {}),
-  } as Parameters<typeof prisma.patient.update>[0]['data'],
+  data: { ...(x ? { x } : {}) } as Parameters<typeof prisma.patient.update>[0]['data'],
 })
 ```
 
-### 3.3 Otros fixes (referencia)
-
-- `apps/api/src/services/pdf.ts`: `interface | null` no es válido → usar `type`.
-- `apps/api/src/middleware/audit.ts:50`: `metadata: ... ? (meta as object) : undefined`.
-- `apps/api/src/routes/consulta-ia.ts`: usar `doctorId` (no `userId`); `Errors.FORBIDDEN(reply)` sin segundo arg; `auditLog` con `action: 'CREATE'` + `metadata.source`.
-- `apps/api/src/routes/webhooks/elevenlabs.ts:13`: doble cast `as unknown as`.
-- `apps/api/src/routes/webhooks/stripe.ts:60`: `case ('payment_link.completed' as any)` con `eslint-disable-next-line`.
-- `apps/web/src/app/landing/page.tsx`: comillas literales `"..."` en JSX → `&ldquo;`/`&rdquo;`. Logo `<img>` con `eslint-disable-next-line @next/next/no-img-element`.
-- `apps/web/src/components/agenda/new-appointment-dialog.tsx:578,587`: idem `&ldquo;`.
-- `apps/web/src/app/(dashboard)/consulta-ia/page.tsx`: removidos comentarios `eslint-disable @typescript-eslint/no-explicit-any` (regla no cargada con `next/core-web-vitals`).
-
-### 3.4 Seguridad
-
-- `scripts/set-github-secrets.sh`: token `gho_...` hardcodeado eliminado. Ahora exige `${GH_TOKEN:?...}`.
-- Ref corrupto `.git/refs/remotes/origin/HEAD 2` (con espacio) eliminado manualmente.
-
 ---
 
-## 4. Lecciones / reglas para próxima sesión
+## 5. Pendientes (orden de prioridad)
 
-1. **Antes de hacer push: pedir el log COMPLETO de CI**, no fix-iterar error por error.
-2. **No se puede typecheckear local** sin correr `pnpm prisma generate` antes.
-3. **`bundler` moduleResolution NO sirve** con `module: CommonJS`. Si se migra API a ESM, cambiar AMBOS.
-4. **JSON Prisma + Zod**: `z.record(z.any())`. Memorizar.
-5. **Update spreads** necesitan cast `as Parameters<typeof prisma.X.update>[0]['data']`.
-6. **Design system**: migrar páginas primero, luego componentes importados — siempre hacer grep de `bg-white`/`text-gray-*` después de cada migración.
-
----
-
-## 5. Pendientes críticos (orden de prioridad)
-
-### 4.1 GitHub Secrets (BLOQUEANTE para staging deploy real)
-- Script listo: `scripts/set-github-secrets.sh`.
-- Falta: usuario debe rellenar valores desde Supabase dashboard y ejecutar:
-  ```bash
-  export GH_TOKEN=ghp_...
-  bash scripts/set-github-secrets.sh
-  ```
-
-### 4.2 Supabase staging DB aislada
-- Hoy staging branch CI corre contra DB de prod (riesgo).
-- Opciones: Supabase Pro (branching nativo) o segundo proyecto free.
-
-### 4.3 Fase 5 — Interoperabilidad FHIR R4
-- Recursos: `Patient`, `Encounter`, `MedicationRequest`.
-- UI ARCO completa (Acceso, Rectificación, Cancelación, Oposición — LFPDPPP).
-- Endpoint `/api/fhir/v4/...` con auth OAuth2 SMART-on-FHIR.
-
----
-
-## 5. Estado del repo
-
+### 5.1 Verificar CI en commit `414a0ca` (URGENTE)
+```bash
+open https://github.com/ghorta74-b2d/medclinic-pro/actions
 ```
-Branch main:    414a0ca (design system dark mode + SF Pro)
-Branch staging: e844b07 (pendiente sync con main)
+Si falla lint/typecheck, los errores más probables son clases Tailwind personalizadas no reconocidas o imports de primitivos UI nuevos.
+
+### 5.2 GitHub Secrets — BLOQUEANTE para staging deploy real
+Script listo en `scripts/set-github-secrets.sh`. Falta rellenar valores desde Supabase dashboard:
+```bash
+export GH_TOKEN=ghp_...
+bash scripts/set-github-secrets.sh
 ```
 
-### Workflow GitHub Actions
-- `.github/workflows/ci.yml`: corre en push a `main` y `staging` + PRs. Pasos: install → prisma generate → typecheck (api+web) → lint (web) → test (api).
+### 5.3 Sync staging con main
+```bash
+git push origin main:staging
+```
 
-### Tests
-- `apps/api/src/tests/*.test.ts` (Vitest + Fastify inject). Cobertura: patients, auth, clinical-notes básico.
-- Pendiente ampliar a consulta-ia, prescriptions, lab webhook.
+### 5.4 Supabase staging DB aislada
+CI de staging corre contra DB de prod (riesgo). Opciones: Supabase Pro branching o segundo proyecto free.
 
----
-
-## 6. Arquitectura (recordatorio rápido)
-
-- **Auth**: Supabase Auth → `request.authUser` con `{ authUserId, clinicId, role, doctorId? }`. Middleware `requireDoctor` / `requireStaff` / `requireAdmin`.
-- **Multi-tenant**: TODO query filtra por `clinicId`. Nunca confiar en input del cliente.
-- **Audit**: `auditLog({ user, action, resourceType, resourceId, ... })` en toda mutación + lectura sensible (READ de ClinicalNote).
-- **NOM-004**: Notas firmadas son inmutables. Solo se enmiendan vía `/sign` → `/amend`. Una sola enmienda draft activa por nota.
-- **Webhooks**: lab (X-Lab-API-Key), elevenlabs (Bearer), stripe (signature).
+### 5.5 Fase 5 — Interoperabilidad FHIR R4
+- Recursos: `Patient`, `Encounter`, `MedicationRequest`
+- UI ARCO (Acceso, Rectificación, Cancelación, Oposición — LFPDPPP)
+- Endpoint `/api/fhir/v4/...` con OAuth2 SMART-on-FHIR
 
 ---
 
-## 7. Comandos útiles
+## 6. Arquitectura
+
+- **Auth**: Supabase Auth → `request.authUser` `{ authUserId, clinicId, role, doctorId? }`. Middleware `requireDoctor` / `requireStaff` / `requireAdmin`.
+- **Multi-tenant**: toda query filtra por `clinicId`. Nunca confiar en input del cliente.
+- **Audit**: `auditLog({ user, action, resourceType, resourceId, ... })` en toda mutación + READ sensible de `ClinicalNote`.
+- **NOM-004**: notas firmadas inmutables. Solo enmienda vía `/sign` → `/amend`. Una sola enmienda draft activa por nota.
+- **Webhooks**: lab (`X-Lab-API-Key`), elevenlabs (`Bearer`), stripe (signature).
+
+---
+
+## 7. Dev local
 
 ```bash
-# Local dev
-pnpm dev                          # web + api
-pnpm --filter api prisma generate # OBLIGATORIO antes de typecheck
+# Prerequisito: Node 20 (instalado en ~/.local/node20)
+# El script de dev ya lo inyecta en PATH vía .claude/launch.json
+
+# Levantar
+pnpm dev                           # web (puerto 3000) + api
+pnpm --filter api prisma generate  # OBLIGATORIO antes de typecheck
+
+# Verificar
 pnpm --filter api typecheck
 pnpm --filter web lint
 
-# CI logs
-gh run list --branch main --limit 5
-gh run view <run-id> --log-failed
-
 # Deploy
-git push origin main              # auto-deploy Vercel web preview
-git push origin main:staging      # promover main a staging
+git push origin main               # Vercel auto-deploy
+git push origin main:staging       # Promover a staging
 ```
 
 ---
 
 ## 8. Para retomar
 
-Próxima sesión arranca con:
-1. `git pull origin main` (verificar `414a0ca` o posterior).
-2. Confirmar CI verde: `gh run list --branch main --limit 1`.
-3. Decidir: ¿migración página por página del design system, GitHub Secrets, Supabase staging, o Fase 5 FHIR?
+```
+1. git pull origin main
+2. Verificar CI: https://github.com/ghorta74-b2d/medclinic-pro/actions
+3. Si CI rojo en 414a0ca → revisar lint (pnpm --filter web lint)
+4. Si CI verde → elegir: GitHub Secrets / Fase 5 FHIR / otra cosa
+```
 
-**Nota design system**: las páginas internas heredan dark automáticamente. Si alguna se ve mal, el patrón es buscar `bg-white`/`text-gray-` y reemplazar por `bg-card`/`text-foreground`.
+**Si algo se ve mal en dark mode**: buscar `bg-white` o `text-gray-` en el archivo afectado y reemplazar por `bg-card` / `text-foreground`. El patrón completo está en §3.4.
