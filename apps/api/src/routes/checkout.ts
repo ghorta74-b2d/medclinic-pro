@@ -43,7 +43,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
       cancel_url:  `${BASE_URL}/#precios`,
       allow_promotion_codes: true,
       locale: 'es-419',
-      subscription_data: { metadata: { plan } },
+      subscription_data: { trial_period_days: 14, metadata: { plan } },
     })
 
     return reply.send({ url: session.url })
