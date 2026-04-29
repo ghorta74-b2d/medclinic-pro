@@ -89,27 +89,27 @@ export default function LoginPage() {
     }
   }
 
-  const inputClass = 'w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+  const inputClass = 'w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0071e3] focus:border-transparent focus:bg-white transition-colors'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
 
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-10">
           <img
             src="/logo-color.svg"
             alt="MedClinic Pro"
-            className="mx-auto mb-4 h-14 w-auto object-contain"
+            className="mx-auto mb-4 h-12 w-auto object-contain"
           />
-          <p className="text-gray-500 text-sm mt-1">Plataforma de gestión clínica</p>
+          <p className="text-gray-400 text-sm">Plataforma de gestión clínica</p>
         </div>
 
         {!mfaStep ? (
           // ── Paso 1: email + contraseña ────────────────────────────────────
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Correo electrónico
               </label>
               <input
@@ -124,7 +124,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Contraseña
               </label>
               <input
@@ -139,13 +139,13 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+              <p className="text-red-600 text-sm bg-red-50 border border-red-100 px-3.5 py-2.5 rounded-xl">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+              className="w-full bg-[#0071e3] hover:bg-[#0077ed] disabled:opacity-50 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-2 mt-2"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {loading ? 'Ingresando…' : 'Ingresar'}
@@ -153,10 +153,10 @@ export default function LoginPage() {
           </form>
         ) : (
           // ── Paso 2: código TOTP ────────────────────────────────────────────
-          <form onSubmit={handleMfaVerify} className="space-y-5">
-            <div className="text-center space-y-2">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                <ShieldCheck className="w-6 h-6 text-blue-600" />
+          <form onSubmit={handleMfaVerify} className="space-y-4">
+            <div className="text-center space-y-2 mb-2">
+              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
+                <ShieldCheck className="w-6 h-6 text-[#0071e3]" />
               </div>
               <h2 className="text-base font-semibold text-gray-900">Verificación en dos pasos</h2>
               <p className="text-sm text-gray-500">
@@ -173,17 +173,17 @@ export default function LoginPage() {
               placeholder="000000"
               value={mfaOtp}
               onChange={(e) => setMfaOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="w-full text-center text-2xl tracking-[0.5em] font-mono px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full text-center text-2xl tracking-[0.5em] font-mono px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0071e3] focus:border-transparent focus:bg-white transition-colors"
             />
 
             {error && (
-              <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg text-center">{error}</p>
+              <p className="text-red-600 text-sm bg-red-50 border border-red-100 px-3.5 py-2.5 rounded-xl text-center">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={loading || mfaOtp.length !== 6}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+              className="w-full bg-[#0071e3] hover:bg-[#0077ed] disabled:opacity-50 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
               {loading ? 'Verificando…' : 'Verificar'}
@@ -192,7 +192,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => { setMfaStep(false); setMfaOtp(''); setError('') }}
-              className="w-full text-sm text-gray-400 hover:text-gray-600"
+              className="w-full text-sm text-gray-400 hover:text-gray-600 transition-colors"
             >
               ← Volver
             </button>
