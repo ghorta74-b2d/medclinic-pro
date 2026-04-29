@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import Stripe from 'stripe'
 import { prisma } from '../../lib/prisma.js'
+import { sendResendEmail } from '../../lib/email.js'
 
 export async function webhookStripe(server: FastifyInstance) {
   const stripe = new Stripe(process.env['STRIPE_SECRET_KEY']!, {
@@ -54,6 +55,33 @@ export async function webhookStripe(server: FastifyInstance) {
               },
             }),
           ])
+          break
+        }
+
+        case 'checkout.session.completed': {
+          const cs = event.data.object as Stripe.Checkout.Session
+          const plan = cs.metadata?.['plan'] ?? 'desconocido'
+          const buyerEmail = cs.customer_details?.email ?? 'desconocido'
+          const planLabels: Record<string, string> = {
+            esencial: 'Esencial', profesional: 'Profesional', clinica: 'Clínica',
+          }
+          await sendResendEmail({
+            to: 'gerardo@b2d.mx',
+            subject: `💰 Nueva suscripción — Plan ${planLabels[plan] ?? plan}`,
+            html: `
+              <p style="font-family:sans-serif">
+                <strong>Nueva suscripción iniciada en MedClinic PRO</strong>
+              </p>
+              <table style="font-family:sans-serif;font-size:14px;border-collapse:collapse">
+                <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Plan</td><td>${planLabels[plan] ?? plan}</td></tr>
+                <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Email comprador</td><td>${buyerEmail}</td></tr>
+                <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Stripe Customer</td><td>${cs.customer}</td></tr>
+              </table>
+              <p style="font-family:sans-serif;color:#6b7280;font-size:13px;margin-top:16px">
+                El cliente está configurando su cuenta ahora en /thank-you.
+              </p>
+            `,
+          }).catch(() => {})
           break
         }
 
