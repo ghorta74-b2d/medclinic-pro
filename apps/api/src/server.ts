@@ -77,6 +77,12 @@ export async function buildServer() {
     app: 'medclinic-pro-api',
     version: '1.0.0',
     ts: new Date().toISOString(),
+    stripe: {
+      secret_key: !!process.env['STRIPE_SECRET_KEY'],
+      price_esencial_monthly: !!process.env['STRIPE_PRICE_ESENCIAL_MONTHLY'],
+      price_profesional_monthly: !!process.env['STRIPE_PRICE_PROFESIONAL_MONTHLY'],
+      price_clinica_monthly: !!process.env['STRIPE_PRICE_CLINICA_MONTHLY'],
+    },
   }))
 
   // ── API Routes ───────────────────────────────────────────
