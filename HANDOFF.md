@@ -1,131 +1,118 @@
 # HANDOFF — MedClinic Pro
 
 **Fecha**: 2026-04-27
-**Último commit (main)**: `ddf966d`
-**CI**: ✅ Verde en commits pre-design-system (run #9). Pendiente verificar run sobre `414a0ca`.
-**Estado**: Producción estable. Design system dark mode desplegado en Vercel. Listos para Fase 5.
+**Branch**: `main`
+**Commits en main (no pusheados aún)**: `98eef71`, `ddf966d`, `414a0ca` — pendiente de push desde GitHub Desktop (git push se cuelga desde Bash porque el credential helper requiere GUI).
+**CI**: ✅ Verde en `e844b07`. Pendiente verificar CI sobre `414a0ca` (design system).
+**Estado**: Design system dark mode completo + desplegado en Vercel. CONTEXT.md creado para onboarding de agentes.
 
 ---
 
-## 1. Resumen ejecutivo
-
-SaaS clínico LATAM. Monorepo pnpm:
-- `apps/api` — Fastify + Prisma + Postgres (Supabase). Cumplimiento NOM-004 MX.
-- `apps/web` — Next.js 14 App Router. Vercel auto-deploy en push a `main`.
-
-Despliegue: **Vercel** (web) + **Render/Fly** (API) + **Supabase** (DB prod).
-
----
-
-## 2. Estado del repo
-
-```
-Branch main:    ddf966d  docs: actualizar HANDOFF con design system sesión 2026-04-25
-                414a0ca  feat(web): design system dark mode + SF Pro font   ← ÚLTIMO REAL
-                e844b07  fix(ci): todos los errores ESLint web (CI ✅ aquí)
-Branch staging: e844b07  (pendiente sync con main)
-```
-
-### Commits en main que CI aún no corrió
-`414a0ca` y `ddf966d` son post CI run #9. Verificar en GitHub Actions que no hay regresión de lint/typecheck antes de seguir.
+## PRIMERA ACCIÓN AL RETOMAR
 
 ```bash
-# Ver estado CI
+# 1. Verificar que el push llegó
+git log --oneline origin/main -5
+
+# 2. Si no llegó, hacer push desde terminal interactiva
+git push origin main
+
+# 3. Verificar CI
 open https://github.com/ghorta74-b2d/medclinic-pro/actions
 ```
 
+**Si CI falla en `414a0ca`**: lo más probable es lint web. Correr `pnpm --filter web lint` y revisar errores. El patrón habitual son clases Tailwind custom no reconocidas o imports de los nuevos primitivos UI.
+
 ---
 
-## 3. Design system (sesión 2026-04-25) — commit `414a0ca`
+## 1. Estado del repo
 
-### 3.1 Tokens CSS — `apps/web/src/app/globals.css`
+```
+Local main:   98eef71  docs: HANDOFF completo sesión 2026-04-27
+              ddf966d  docs: actualizar HANDOFF
+              414a0ca  feat(web): design system dark mode + SF Pro font   ← CAMBIO REAL
+              e844b07  fix(ci): ESLint web  ← ÚLTIMO EN ORIGIN/MAIN (CI ✅)
 
-| Token | Dark | Light |
+Origin/main:  ddf966d  (o 98eef71 si ya se hizo push desde GH Desktop)
+Staging:      e844b07  (pendiente sync con main)
+```
+
+### Archivos clave creados esta sesión
+- `CONTEXT.md` (raíz) — contexto completo del proyecto para agentes externos, 572 líneas
+- `HANDOFF.md` (este archivo) — estado para retomar sesión
+
+---
+
+## 2. Lo que se hizo en esta sesión (2026-04-27)
+
+1. Verificé que el design system (`414a0ca`) llegó a `origin/main` ✅
+2. Verifiqué visualmente el dashboard en preview — dark mode, sidebar, cards, SF Pro, montos sin decimales ✅
+3. Actualicé `HANDOFF.md` con sección completa del design system
+4. Creé `CONTEXT.md` — documento de 572 líneas con todo el proyecto para onboarding de agentes externos (stack, BD, rutas, auth, design system, env vars, CI, integraciones, cumplimiento, convenciones, gotchas)
+
+---
+
+## 3. Design system — resumen técnico (commit `414a0ca`)
+
+### Tokens CSS (`apps/web/src/app/globals.css`)
+
+| Variable | Dark | Light |
 |---|---|---|
 | `--background` | `222 22% 7%` | `210 20% 98%` |
-| `--foreground` | `210 20% 96%` | `222 22% 10%` |
-| `--card` / `--surface` | `222 18% 10%` | `0 0% 100%` |
-| `--primary` | `205 90% 55%` (azul médico) | `205 90% 45%` |
-| `--success` | `152 60% 45%` (verde clínico) | `152 60% 35%` |
+| `--card` | `222 18% 10%` | `0 0% 100%` |
+| `--primary` | `205 90% 55%` | `205 90% 45%` |
+| `--success` | `152 60% 45%` | `152 60% 35%` |
 | `--warning` | `38 92% 55%` | `38 92% 45%` |
 | `--destructive` | `0 72% 55%` | `0 72% 50%` |
 | `--sidebar` | `222 24% 6%` | `222 20% 94%` |
 | `--radius` | `0.875rem` | — |
 
-Tailwind mapea todo vía `hsl(var(--token))` en `tailwind.config.ts`.
+### Archivos nuevos
 
-### 3.2 Primitivos UI — `apps/web/src/components/ui/`
-
-Todos usan CVA + Radix + tokens semánticos:
-`button`, `card`, `input`, `label`, `badge`, `status-dot`, `separator`, `avatar`, `skeleton`, `tabs`, `dialog`, `dropdown-menu`, `select`, `switch`, `progress`, `toast`, `toaster`
-
-### 3.3 Shell autenticado
-
-| Archivo | Qué hace |
+| Archivo | Descripción |
 |---|---|
-| `components/layout/app-shell.tsx` | Contenedor `flex` sidebar + main, clase `font-sf` |
-| `components/layout/sidebar-nav.tsx` | Secciones GENERAL/OPERACIONES, pill activo `bg-primary/15`, 240px, role-based filtering + `sessionCache.clear()` en logout |
-| `components/layout/topbar.tsx` | Búsqueda, ThemeToggle, avatar usuario |
-| `components/theme/theme-provider.tsx` | `next-themes` wrapper, `defaultTheme="dark"`, `attribute="class"`, `storageKey="medclinic-theme"` |
-| `components/theme/theme-toggle.tsx` | Botón sol/luna (lucide) |
+| `components/ui/` (17 archivos) | button, card, input, label, badge, dialog, dropdown-menu, select, tabs, switch, avatar, separator, progress, skeleton, toast, toaster, status-dot |
+| `components/layout/app-shell.tsx` | Contenedor flex, clase `font-sf` |
+| `components/layout/sidebar-nav.tsx` | GENERAL/OPERACIONES, role-based, `sessionCache.clear()` en logout |
+| `components/layout/topbar.tsx` | Búsqueda, ThemeToggle, avatar |
+| `components/theme/theme-provider.tsx` | next-themes, dark default |
+| `components/theme/theme-toggle.tsx` | Sol/luna |
 
-### 3.4 Migración páginas y componentes
+### Páginas y componentes migrados
+14 páginas + 12 componentes: todas las clases hardcoded (`bg-white`, `text-gray-*`, `bg-blue-*`) reemplazadas por tokens semánticos (`bg-card`, `text-foreground`, `bg-primary/*`).
 
-**14 páginas migradas** (clases hardcoded → tokens semánticos):
-`/dashboard`, `/agenda`, `/agenda/[id]`, `/pacientes`, `/pacientes/[id]`, `/cobros`, `/recetas`, `/recetas/[id]`, `/configuracion`, `/laboratorio`, `/billing`, `/expediente`, `/expedientes/nuevo`, `/consulta-ia`, `/asistente-ia`
+### Otros cambios
+- `formatCurrency`: sin decimales (`minimumFractionDigits: 0`)
+- Font: SF Pro (`-apple-system`) via clase `font-sf` en app-shell
+- Deps añadidas: `next-themes`, `class-variance-authority`, `tailwindcss-animate`
 
-**12 componentes migrados**:
-`calendar-view`, `week-view`, `month-view`, `day-stats`, `new-appointment-dialog`, `note-editor`, `prescription-builder`, `lab-result-dialog`, `billing-dialog`, `patient-dialog`, y otros
+### Reglas críticas (NO TOCAR)
 
-**Patrón de migración**:
-```
-bg-white         → bg-card
-bg-gray-50       → bg-muted/50
-bg-gray-100      → bg-muted
-text-gray-*      → text-foreground / text-muted-foreground
-text-blue-*      → text-primary
-bg-blue-*        → bg-primary/*
-text-green-*     → text-success
-bg-green-*       → bg-success/*
-text-red-*       → text-destructive
-bg-red-*         → bg-destructive/*
-bg-yellow-*/orange-* → bg-warning/*
-border-gray-*    → border-border
-```
-
-### 3.5 Otros cambios
-
-- **`apps/web/src/lib/utils.ts`** — `formatCurrency`: `minimumFractionDigits: 0, maximumFractionDigits: 0` (sin decimales en toda la app)
-- **Font**: SF Pro via `-apple-system, BlinkMacSystemFont` (sistema en macOS/iOS), clase Tailwind `font-sf` en `app-shell`
-- **`apps/web/package.json`**: deps añadidas `next-themes`, `class-variance-authority`, `tailwindcss-animate`
-
-### 3.6 Reglas críticas (NO TOCAR)
-
-- `next-themes`: `defaultTheme="dark"`, `attribute="class"`, `storageKey="medclinic-theme"` — cambiar rompe persistencia del toggle
-- `sidebar-nav`: usa `bg-sidebar` (no `bg-background`) — necesario para contraste en light mode
-- `sessionCache.clear()` en logout de `sidebar-nav.tsx` — crítico para limpiar sesión, no eliminar
-- Role-based filtering en sidebar — ADMIN/DOCTOR/STAFF/SUPERADMIN ven ítems distintos
+| Regla | Por qué |
+|---|---|
+| `next-themes` con `defaultTheme="dark"`, `attribute="class"`, `storageKey="medclinic-theme"` | Cambiar rompe persistencia del toggle |
+| `sidebar-nav` usa `bg-sidebar` (no `bg-background`) | Contraste en light mode |
+| `sessionCache.clear()` en logout de `sidebar-nav.tsx` | Crítico para limpiar sesión Supabase |
+| Role-based filtering en sidebar | ADMIN/DOCTOR/STAFF/SUPERADMIN ven ítems distintos |
 
 ---
 
-## 4. CI/CD stabilization (sesión 2026-04-23)
-
-### 4.1 Configuración crítica (NO TOCAR)
+## 4. CI/CD — configuración crítica (NO TOCAR)
 
 | Archivo | Configuración | Por qué |
 |---|---|---|
-| `apps/api/tsconfig.json` | `"module": "CommonJS"` + `"moduleResolution": "node"` | `bundler` es incompatible con CommonJS |
-| `apps/api/tsconfig.json` | `"include": ["src/**/*"]` (sin `prisma/**/*`) | Seeds fuera de `rootDir` rompen build |
-| `apps/api/src/index.ts` | Top-level await en IIFE `void (async () => {...})()` | CommonJS no soporta TLA |
-| `apps/web/.eslintrc.json` | `{ "extends": "next/core-web-vitals" }` | Sin esto, `next lint` lanza wizard interactivo y CI cuelga |
+| `apps/api/tsconfig.json` | `"module": "CommonJS"` + `"moduleResolution": "node"` | `bundler` rompe build |
+| `apps/api/tsconfig.json` | `"include": ["src/**/*"]` (sin `prisma/**/*`) | Seeds fuera de rootDir rompen build |
+| `apps/api/src/index.ts` | Top-level await en IIFE | CommonJS no soporta TLA |
+| `apps/web/.eslintrc.json` | `{ "extends": "next/core-web-vitals" }` | Sin esto, CI cuelga en wizard interactivo |
 
-### 4.2 Patrones obligatorios Prisma + Zod
+### Patrones Prisma + Zod
 
 ```typescript
 // JSON fields → SIEMPRE z.any(), NUNCA z.unknown()
-metadata: z.record(z.any()).optional(),
+metadata: z.record(z.any()).optional()
 
-// Spreads condicionales en .update() → cast al final
+// Spreads en .update() → cast al final
 await prisma.patient.update({
   where: { id },
   data: { ...(x ? { x } : {}) } as Parameters<typeof prisma.patient.update>[0]['data'],
@@ -136,72 +123,65 @@ await prisma.patient.update({
 
 ## 5. Pendientes (orden de prioridad)
 
-### 5.1 Verificar CI en commit `414a0ca` (URGENTE)
-```bash
-open https://github.com/ghorta74-b2d/medclinic-pro/actions
-```
-Si falla lint/typecheck, los errores más probables son clases Tailwind personalizadas no reconocidas o imports de primitivos UI nuevos.
-
-### 5.2 GitHub Secrets — BLOQUEANTE para staging deploy real
-Script listo en `scripts/set-github-secrets.sh`. Falta rellenar valores desde Supabase dashboard:
-```bash
-export GH_TOKEN=ghp_...
-bash scripts/set-github-secrets.sh
-```
-
-### 5.3 Sync staging con main
-```bash
-git push origin main:staging
-```
-
-### 5.4 Supabase staging DB aislada
-CI de staging corre contra DB de prod (riesgo). Opciones: Supabase Pro branching o segundo proyecto free.
-
-### 5.5 Fase 5 — Interoperabilidad FHIR R4
-- Recursos: `Patient`, `Encounter`, `MedicationRequest`
-- UI ARCO (Acceso, Rectificación, Cancelación, Oposición — LFPDPPP)
-- Endpoint `/api/fhir/v4/...` con OAuth2 SMART-on-FHIR
+| # | Item | Estado |
+|---|---|---|
+| 1 | Push commits a origin/main | ⏳ Hacer desde GH Desktop |
+| 2 | Verificar CI en `414a0ca` | ⏳ Tras el push |
+| 3 | Configurar GitHub Secrets (`scripts/set-github-secrets.sh`) | 🔴 BLOQUEANTE para staging |
+| 4 | Sync staging con main (`git push origin main:staging`) | 🟡 |
+| 5 | Supabase staging DB aislada | 🟡 Hoy usa prod (riesgo) |
+| 6 | Fase 5 — FHIR R4 (`Patient`, `Encounter`, `MedicationRequest`) | 🟢 |
+| 7 | UI ARCO (derechos LFPDPPP) | 🟢 |
+| 8 | Tests: ampliar cobertura (consulta-ia, prescriptions, lab webhook) | 🟢 |
 
 ---
 
-## 6. Arquitectura
+## 6. Gotchas conocidos
 
-- **Auth**: Supabase Auth → `request.authUser` `{ authUserId, clinicId, role, doctorId? }`. Middleware `requireDoctor` / `requireStaff` / `requireAdmin`.
-- **Multi-tenant**: toda query filtra por `clinicId`. Nunca confiar en input del cliente.
-- **Audit**: `auditLog({ user, action, resourceType, resourceId, ... })` en toda mutación + READ sensible de `ClinicalNote`.
-- **NOM-004**: notas firmadas inmutables. Solo enmienda vía `/sign` → `/amend`. Una sola enmienda draft activa por nota.
-- **Webhooks**: lab (`X-Lab-API-Key`), elevenlabs (`Bearer`), stripe (signature).
+1. **`pnpm prisma generate` es OBLIGATORIO** antes de cualquier `typecheck`. Los tipos están en `.gitignore`.
+2. **`git push` desde Bash se cuelga** — credential helper (GitHub Desktop) requiere GUI. Siempre push desde terminal interactiva o desde GH Desktop.
+3. **Loose git objects** — si el repo acumula >2000 objetos sueltos, `git push` se cuelga en "Counting objects". Solución: `git gc --prune=now` desde terminal interactiva.
+4. **Multi-tenant**: toda query de BD debe filtrar por `clinicId = request.authUser.clinicId`. Nunca confiar en clinicId del body.
+5. **Si algo se ve mal en dark mode**: buscar `bg-white` o `text-gray-` en el archivo y reemplazar con `bg-card` / `text-foreground`. Ver patrón completo en CONTEXT.md §15.
 
 ---
 
-## 7. Dev local
+## 7. Arquitectura rápida
+
+- **Auth**: Supabase JWT → `request.authUser` `{ authUserId, clinicId, role, doctorId? }`
+- **Multi-tenant**: todo filtra por `clinicId`
+- **Audit NOM-004**: `auditLog()` en toda mutación + READ de notas clínicas
+- **Notas firmadas**: inmutables. Enmienda = nueva nota con `amendedFromId`
+- **Webhooks**: lab (`X-Lab-API-Key`), elevenlabs (`Bearer`), stripe (signature)
+
+---
+
+## 8. Comandos esenciales
 
 ```bash
-# Prerequisito: Node 20 (instalado en ~/.local/node20)
-# El script de dev ya lo inyecta en PATH vía .claude/launch.json
+# Setup local
+pnpm install
+pnpm --filter api prisma generate  # SIEMPRE primero
 
-# Levantar
-pnpm dev                           # web (puerto 3000) + api
-pnpm --filter api prisma generate  # OBLIGATORIO antes de typecheck
+# Dev
+pnpm dev                           # web :3000 + api
 
 # Verificar
 pnpm --filter api typecheck
 pnpm --filter web lint
+pnpm --filter api test
 
 # Deploy
 git push origin main               # Vercel auto-deploy
-git push origin main:staging       # Promover a staging
+git push origin main:staging       # Promover staging
 ```
 
 ---
 
-## 8. Para retomar
+## 9. Documentos de referencia en el repo
 
-```
-1. git pull origin main
-2. Verificar CI: https://github.com/ghorta74-b2d/medclinic-pro/actions
-3. Si CI rojo en 414a0ca → revisar lint (pnpm --filter web lint)
-4. Si CI verde → elegir: GitHub Secrets / Fase 5 FHIR / otra cosa
-```
-
-**Si algo se ve mal en dark mode**: buscar `bg-white` o `text-gray-` en el archivo afectado y reemplazar por `bg-card` / `text-foreground`. El patrón completo está en §3.4.
+| Archivo | Contenido |
+|---|---|
+| `CONTEXT.md` | Contexto completo del proyecto (stack, BD, rutas, auth, env, CI, integraciones, cumplimiento) — para onboarding de agentes |
+| `HANDOFF.md` | Este archivo — estado para retomar sesión |
+| `.env.example` | Todas las variables de entorno necesarias |
