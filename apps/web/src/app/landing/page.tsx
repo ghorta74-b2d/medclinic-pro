@@ -4,8 +4,11 @@ import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import Link from 'next/link'
 import {
   ArrowRight, Check, ChevronRight, Menu, X,
-  Calendar, Users, Pill, CreditCard, Bot, Video, Send,
+  Calendar, Users, Pill, CreditCard, Bot, Video, Send, Loader2,
 } from 'lucide-react'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
 
 /* ── Fade-up on scroll ── */
 function FadeUp({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
@@ -171,9 +174,78 @@ function DemoForm() {
 }
 
 const PLANS = [
-  { name: 'Esencial', monthly: 1299, annual: 1169, desc: 'Para médicos independientes que quieren crecer.', features: ['Agenda + confirmación WhatsApp', 'Expediente clínico completo', 'Recetas digitales', 'Hasta 2 usuarios'], hot: false },
-  { name: 'Profesional', monthly: 2499, annual: 2249, desc: 'El preferido por clínicas que ya escalan.', features: ['Todo de Esencial', 'Cobros y 16 aseguradoras', 'Asistente IA 24/7', 'Hasta 5 usuarios', 'Analytics básico'], hot: true },
-  { name: 'Clínica', monthly: 4999, annual: 4499, desc: 'Para grupos con múltiples médicos.', features: ['Todo de Profesional', 'Telemedicina integrada', 'Hasta 20 usuarios', 'Analytics avanzado', 'Soporte dedicado'], hot: false },
+  {
+    id: 'esencial',
+    name: 'Esencial',
+    monthly: 1299, annual: 1169,
+    desc: 'Para médicos independientes que quieren crecer.',
+    features: ['Agenda + confirmación WhatsApp', 'Expediente clínico NOM-004', 'Recetas digitales firmadas', 'Catálogos CIE-10 y CUM/COFEPRIS', 'Hasta 2 usuarios'],
+    hot: false,
+  },
+  {
+    id: 'profesional',
+    name: 'Profesional',
+    monthly: 2499, annual: 2249,
+    desc: 'El preferido por clínicas que ya escalan.',
+    features: ['Todo de Esencial', 'Cobros y 16 aseguradoras', 'Pagos en línea con Stripe', 'Asistente IA 24/7', 'Analytics básico', 'Hasta 5 usuarios'],
+    hot: true,
+  },
+  {
+    id: 'clinica',
+    name: 'Clínica',
+    monthly: 4999, annual: 4499,
+    desc: 'Para grupos con múltiples médicos.',
+    features: ['Todo de Profesional', 'Telemedicina integrada', 'Analytics avanzado', 'Soporte dedicado', 'Hasta 20 usuarios'],
+    hot: false,
+  },
+  {
+    id: 'clinica-plus',
+    name: 'Clínica Plus',
+    monthly: null as number | null, annual: null as number | null,
+    desc: 'Para hospitales y redes de clínicas.',
+    features: ['Todo de Clínica', 'Usuarios ilimitados', 'Multi-sucursal', 'Integración HL7/FHIR R4', 'SLA garantizado', 'Onboarding y capacitación', 'Soporte 24/7 dedicado'],
+    hot: false,
+  },
+]
+
+/* ── Comparison table data ── */
+type CompRow = { label: string; header?: boolean; values: (boolean | string)[] }
+const COMPARE_ROWS: CompRow[] = [
+  { label: 'Precio mensual', values: ['$1,299', '$2,499', '$4,999', 'A medida'] },
+  { label: 'Usuarios incluidos', values: ['2', '5', '20', 'Sin límite'] },
+  { label: 'Agenda & Comunicación', header: true, values: ['', '', '', ''] },
+  { label: 'Agenda con citas', values: [true, true, true, true] },
+  { label: 'Confirmación WhatsApp', values: [true, true, true, true] },
+  { label: 'Expediente clínico', header: true, values: ['', '', '', ''] },
+  { label: 'Expediente NOM-004', values: [true, true, true, true] },
+  { label: 'Notas firmadas (inmutables)', values: [true, true, true, true] },
+  { label: 'Catálogo CIE-10 SSA', values: [true, true, true, true] },
+  { label: 'Catálogo CUM/COFEPRIS', values: [true, true, true, true] },
+  { label: 'Recetas digitales', values: [true, true, true, true] },
+  { label: 'Validación CURP (RENAPO)', values: [true, true, true, true] },
+  { label: 'Cobros & Pagos', header: true, values: ['', '', '', ''] },
+  { label: 'Módulo de cobros', values: [false, true, true, true] },
+  { label: '16 aseguradoras', values: [false, true, true, true] },
+  { label: 'Pagos online Stripe', values: [false, true, true, true] },
+  { label: 'Asistente IA', header: true, values: ['', '', '', ''] },
+  { label: 'IA 24/7', values: [false, true, true, true] },
+  { label: 'Resúmenes automáticos', values: [false, true, true, true] },
+  { label: 'Cumplimiento', header: true, values: ['', '', '', ''] },
+  { label: 'MFA / TOTP', values: [true, true, true, true] },
+  { label: 'ARCO / LFPDPPP', values: [true, true, true, true] },
+  { label: 'Exportación de datos', values: [false, true, true, true] },
+  { label: 'Escala', header: true, values: ['', '', '', ''] },
+  { label: 'Analytics básico', values: [false, true, true, true] },
+  { label: 'Analytics avanzado', values: [false, false, true, true] },
+  { label: 'Telemedicina', values: [false, false, true, true] },
+  { label: 'Multi-sucursal', values: [false, false, false, true] },
+  { label: 'FHIR R4', values: [false, false, false, true] },
+  { label: 'Soporte', header: true, values: ['', '', '', ''] },
+  { label: 'Soporte email', values: [true, true, true, true] },
+  { label: 'Soporte prioritario', values: [false, false, true, true] },
+  { label: 'Soporte 24/7 dedicado', values: [false, false, false, true] },
+  { label: 'SLA garantizado', values: [false, false, false, true] },
+  { label: 'Capacitación personalizada', values: [false, false, false, true] },
 ]
 
 /* ── Page ── */
@@ -181,7 +253,36 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [overHero, setOverHero] = useState(true)
   const [annual, setAnnual] = useState(false)
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [compareOpen, setCompareOpen] = useState(false)
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false)
   const heroRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('checkout=success')) {
+      setCheckoutSuccess(true)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
+  async function handleContratar(planId: string) {
+    setLoadingPlan(planId)
+    try {
+      const res = await fetch('https://medclinic-api.vercel.app/api/checkout/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: planId, annual }),
+      })
+      const data = await res.json() as { url?: string; error?: string }
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setLoadingPlan(null)
+      }
+    } catch {
+      setLoadingPlan(null)
+    }
+  }
 
   // Sync before first paint: if already scrolled past hero, show white nav immediately
   useLayoutEffect(() => {
@@ -225,10 +326,10 @@ export default function LandingPage() {
             <Link href="/login" className={`text-sm font-medium transition-colors ${overHero ? 'text-white/80 hover:text-white' : 'text-black/60 hover:text-black'}`}>
               Iniciar sesión
             </Link>
-            <a href="#demo" className={`text-sm font-semibold px-5 py-2.5 rounded-full transition-all ${
+            <a href="#precios" className={`text-sm font-semibold px-5 py-2.5 rounded-full transition-all ${
               overHero ? 'bg-white text-black hover:bg-white/90' : 'bg-[#0071e3] text-white hover:bg-[#0077ed]'
             }`}>
-              Agendar demo
+              Ver planes
             </a>
           </div>
 
@@ -243,7 +344,7 @@ export default function LandingPage() {
               <a key={href} href={href} onClick={() => setMenuOpen(false)} className="block text-sm text-black/70">{label}</a>
             ))}
             <Link href="/login" onClick={() => setMenuOpen(false)} className="block text-sm text-black/70">Iniciar sesión</Link>
-            <a href="#demo" onClick={() => setMenuOpen(false)} className="block text-center text-sm bg-[#0071e3] text-white py-3 rounded-full font-semibold">Agendar demo</a>
+            <a href="#precios" onClick={() => setMenuOpen(false)} className="block text-center text-sm bg-[#0071e3] text-white py-3 rounded-full font-semibold">Ver planes</a>
           </div>
         )}
       </nav>
@@ -284,7 +385,7 @@ export default function LandingPage() {
             <p className="text-[#6e6e73] text-[17px] leading-[1.6] max-w-[580px] mx-auto mb-10">
               MediaClinic reúne agenda, expediente, recetas, cobros y telemedicina en una sola plataforma — potenciada por inteligencia artificial.
             </p>
-            <a href="#demo" className="inline-flex items-center gap-1.5 bg-[#0071e3] text-white text-[17px] px-6 py-3 rounded-full hover:bg-[#0077ed] transition-colors">
+            <a href="#precios" className="inline-flex items-center gap-1.5 bg-[#0071e3] text-white text-[17px] px-6 py-3 rounded-full hover:bg-[#0077ed] transition-colors">
               Ver planes <ChevronRight className="w-4 h-4" />
             </a>
           </FadeUp>
@@ -578,7 +679,16 @@ export default function LandingPage() {
           PRECIOS — white
       ══════════════════════════════════════════ */}
       <section id="precios" className="bg-white py-20 lg:py-28 px-6 border-t border-[#d2d2d7]">
-        <div className="max-w-[980px] mx-auto">
+        <div className="max-w-[1200px] mx-auto">
+          {checkoutSuccess && (
+            <div className="mb-10 rounded-2xl bg-[#f0faf4] border border-[#34c759]/30 px-6 py-4 flex items-start gap-3">
+              <Check className="w-5 h-5 text-[#1a7f37] shrink-0 mt-0.5" />
+              <p className="text-[15px] text-[#1a7f37] font-medium">
+                ¡Suscripción iniciada! Un especialista te contactará en las próximas horas para configurar tu cuenta.
+              </p>
+            </div>
+          )}
+
           <FadeUp className="mb-14 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
             <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold text-[#1d1d1f] tracking-tight">
               Elige tu plan.
@@ -591,42 +701,162 @@ export default function LandingPage() {
             </div>
           </FadeUp>
 
-          <div className="grid md:grid-cols-3 gap-4">
-            {PLANS.map((plan, i) => (
-              <FadeUp key={plan.name} delay={i * 80}>
-                <div className={`rounded-2xl p-8 h-full flex flex-col ${plan.hot ? 'bg-[#1d1d1f]' : 'bg-[#f5f5f7]'}`}>
-                  {plan.hot && <span className="text-[12px] font-medium text-[#0071e3] mb-4 block">Más popular</span>}
-                  <h3 className={`text-[20px] font-semibold mb-1 ${plan.hot ? 'text-white' : 'text-[#1d1d1f]'}`}>{plan.name}</h3>
-                  <p className={`text-[15px] mb-6 ${plan.hot ? 'text-white/50' : 'text-[#6e6e73]'}`}>{plan.desc}</p>
-                  <div className="mb-8">
-                    <span className={`text-[48px] font-semibold tabular-nums ${plan.hot ? 'text-white' : 'text-[#1d1d1f]'}`}>
-                      ${(annual ? plan.annual : plan.monthly).toLocaleString()}
-                    </span>
-                    <span className={`text-[15px] ml-1 ${plan.hot ? 'text-white/40' : 'text-[#6e6e73]'}`}>/mes</span>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {PLANS.map((plan, i) => {
+              const isPlus = plan.id === 'clinica-plus'
+              const price = annual ? plan.annual : plan.monthly
+              return (
+                <FadeUp key={plan.name} delay={i * 80}>
+                  <div className={`rounded-2xl p-7 h-full flex flex-col ${plan.hot ? 'bg-[#1d1d1f]' : 'bg-[#f5f5f7]'}`}>
+                    {/* Badge row — same height for all */}
+                    <div className="h-5 mb-3">
+                      {plan.hot && <span className="text-[12px] font-medium text-[#0071e3]">Más popular</span>}
+                      {isPlus && <span className="text-[12px] font-medium text-[#6e6e73] uppercase tracking-wide">Enterprise</span>}
+                    </div>
+                    <h3 className={`text-[20px] font-semibold mb-1 ${plan.hot ? 'text-white' : 'text-[#1d1d1f]'}`}>{plan.name}</h3>
+                    {/* Fixed-height desc so price is always at same vertical position */}
+                    <p className={`text-[14px] min-h-[2.5rem] mb-5 ${plan.hot ? 'text-white/50' : 'text-[#6e6e73]'}`}>{plan.desc}</p>
+                    <div className="mb-8 min-h-[3.5rem] flex flex-col justify-center">
+                      {isPlus ? (
+                        <>
+                          <p className={`text-[22px] font-semibold text-[#1d1d1f]`}>Precio a medida</p>
+                          <p className="text-[13px] text-[#6e6e73] mt-0.5">Según el tamaño de tu organización</p>
+                        </>
+                      ) : (
+                        <div>
+                          <span className={`text-[42px] font-semibold tabular-nums leading-none ${plan.hot ? 'text-white' : 'text-[#1d1d1f]'}`}>
+                            ${price!.toLocaleString()}
+                          </span>
+                          <span className={`text-[14px] ml-1 ${plan.hot ? 'text-white/40' : 'text-[#6e6e73]'}`}>/mes</span>
+                        </div>
+                      )}
+                    </div>
+                    <ul className="space-y-3 flex-1 mb-8">
+                      {plan.features.map(f => (
+                        <li key={f} className={`flex items-start gap-3 text-[14px] ${plan.hot ? 'text-white/70' : 'text-[#1d1d1f]'}`}>
+                          <Check className={`w-4 h-4 shrink-0 mt-0.5 text-[#0071e3]`} />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                    {isPlus ? (
+                      <a
+                        href="#demo"
+                        className="flex items-center justify-center py-3.5 rounded-full text-[16px] font-medium transition-colors bg-[#1d1d1f] text-white hover:bg-black"
+                      >
+                        Cotizar
+                      </a>
+                    ) : (
+                      <button
+                        onClick={() => handleContratar(plan.id)}
+                        disabled={loadingPlan !== null}
+                        className={`flex items-center justify-center gap-2 py-3.5 rounded-full text-[16px] font-medium transition-colors disabled:opacity-60 ${plan.hot ? 'bg-[#0071e3] text-white hover:bg-[#0077ed]' : 'bg-[#1d1d1f] text-white hover:bg-black'}`}
+                      >
+                        {loadingPlan === plan.id ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" /> Redirigiendo…</>
+                        ) : 'Contratar'}
+                      </button>
+                    )}
                   </div>
-                  <ul className="space-y-3 flex-1 mb-8">
-                    {plan.features.map(f => (
-                      <li key={f} className={`flex items-start gap-3 text-[15px] ${plan.hot ? 'text-white/70' : 'text-[#1d1d1f]'}`}>
-                        <Check className="w-4 h-4 text-[#0071e3] shrink-0 mt-0.5" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <a
-                    href="mailto:demo@mediaclinic.mx"
-                    className={`flex items-center justify-center py-3.5 rounded-full text-[17px] transition-colors ${plan.hot ? 'bg-[#0071e3] text-white hover:bg-[#0077ed]' : 'bg-[#1d1d1f] text-white hover:bg-black'}`}
-                  >
-                    Comenzar
-                  </a>
-                </div>
-              </FadeUp>
-            ))}
+                </FadeUp>
+              )
+            })}
           </div>
+
           <FadeUp>
-            <p className="text-center text-[13px] text-[#6e6e73] mt-8">14 días de prueba gratuita · Sin tarjeta de crédito · Cancela cuando quieras</p>
+            <div className="mt-10 flex flex-col items-center gap-4">
+              <button
+                onClick={() => setCompareOpen(true)}
+                className="inline-flex items-center gap-1.5 border border-[#d2d2d7] rounded-full px-6 py-2.5 text-[14px] font-medium text-[#1d1d1f] hover:border-[#0071e3] hover:text-[#0071e3] transition-colors"
+              >
+                Comparar todos los planes <ChevronRight className="w-4 h-4" />
+              </button>
+              <p className="text-center text-[13px] text-[#6e6e73]">14 días de prueba gratuita · Cancela cuando quieras</p>
+            </div>
           </FadeUp>
         </div>
       </section>
+
+      {/* ── Comparison Modal ── */}
+      <Dialog open={compareOpen} onOpenChange={setCompareOpen}>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden p-0 bg-white text-[#1d1d1f] flex flex-col">
+          {/* Title — outside scroll area */}
+          <div className="px-8 pt-7 pb-4 shrink-0">
+            <DialogTitle className="text-[22px] font-semibold text-[#1d1d1f]">Comparar planes</DialogTitle>
+          </div>
+
+          {/* Single scrollable area with one unified table (thead sticky) */}
+          <div className="overflow-y-auto flex-1 px-8 pb-8">
+            <table className="w-full text-[13px] border-separate border-spacing-0">
+              <thead className="sticky top-0 bg-white z-10">
+                <tr className="border-b">
+                  <th className="w-[36%] pb-4 text-left border-b border-[#c7c7cc]" />
+                  {PLANS.map(p => (
+                    <th key={p.id} className="pb-4 text-center font-semibold border-b border-[#c7c7cc]">
+                      <p className="text-[14px] text-[#1d1d1f]">{p.name}</p>
+                      <p className="text-[12px] text-[#6e6e73] font-normal mt-0.5">
+                        {p.monthly ? `$${p.monthly.toLocaleString()}/mes` : 'A medida'}
+                      </p>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARE_ROWS.map((row, idx) => (
+                  row.header ? (
+                    <tr key={idx}>
+                      <td colSpan={5} className="pt-5 pb-1.5 px-0 text-[12px] font-bold text-[#1d1d1f]">
+                        {row.label}
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={idx} className="border-b border-[#d2d2d7]">
+                      <td className="py-2.5 pr-4 text-[#1d1d1f]">{row.label}</td>
+                      {row.values.map((val, vi) => (
+                        <td key={vi} className="py-2.5 text-center">
+                          {typeof val === 'boolean' ? (
+                            val
+                              ? <Check className="w-4 h-4 text-[#0071e3] mx-auto" />
+                              : <span className="text-[#c7c7cc] text-[16px] leading-none">—</span>
+                          ) : (
+                            <span className="font-semibold text-[#1d1d1f]">{val}</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  )
+                ))}
+                {/* CTA row inside the table so columns stay aligned */}
+                <tr>
+                  <td className="pt-6 w-[36%]" />
+                  {PLANS.map(p => (
+                    <td key={p.id} className="pt-6 px-1.5">
+                      {p.id === 'clinica-plus' ? (
+                        <a
+                          href="#demo"
+                          onClick={() => setCompareOpen(false)}
+                          className="flex items-center justify-center py-2.5 rounded-full text-[13px] font-medium bg-[#1d1d1f] text-white hover:bg-black transition-colors"
+                        >
+                          Cotizar
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => { setCompareOpen(false); handleContratar(p.id) }}
+                          disabled={loadingPlan !== null}
+                          className={`w-full flex items-center justify-center gap-1 py-2.5 rounded-full text-[13px] font-medium transition-colors disabled:opacity-60 ${p.hot ? 'bg-[#0071e3] text-white hover:bg-[#0077ed]' : 'bg-[#1d1d1f] text-white hover:bg-black'}`}
+                        >
+                          {loadingPlan === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                          Contratar
+                        </button>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ══════════════════════════════════════════
           DEMO FORM — white

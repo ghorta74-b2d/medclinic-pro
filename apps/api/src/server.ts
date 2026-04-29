@@ -20,6 +20,7 @@ import { webhookWhatsapp } from './routes/webhooks/whatsapp.js'
 import { webhookElevenLabs } from './routes/webhooks/elevenlabs.js'
 import { webhookStripe } from './routes/webhooks/stripe.js'
 import { webhookLab } from './routes/webhooks/lab.js'
+import { checkoutRoutes } from './routes/checkout.js'
 
 export async function buildServer() {
   const server = Fastify({
@@ -90,6 +91,9 @@ export async function buildServer() {
   await server.register(notificationsRoutes, { prefix: '/api/notifications' })
   await server.register(catalogsRoutes, { prefix: '/api/catalogs' })
   await server.register(consultaIaRoutes, { prefix: '/api/consulta-ia' })
+
+  // ── Public routes (no auth) ───────────────────────────────
+  await server.register(checkoutRoutes, { prefix: '/api/checkout' })
 
   // ── Webhooks (no auth — verified by signature) ───────────
   await server.register(webhookWhatsapp, { prefix: '/api/webhooks/whatsapp' })
