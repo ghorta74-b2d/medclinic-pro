@@ -54,6 +54,7 @@ function ThankYouContent() {
     return (
       <div className="min-h-screen bg-white flex flex-col">
         <header className="px-8 py-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-color.svg" alt="MedClinic" className="h-11 w-auto object-contain" />
         </header>
 
@@ -72,14 +73,11 @@ function ThankYouContent() {
             </p>
             <p className="text-base font-semibold text-gray-900 mb-8">{form.adminEmail}</p>
 
-            <div className="bg-gray-50 rounded-2xl px-6 py-4 text-left mb-10">
-              <p className="text-xs text-gray-400 mb-1">Próximos pasos</p>
-              <ol className="text-sm text-gray-600 space-y-1.5 list-decimal list-inside">
-                <li>Revisa tu bandeja de entrada</li>
-                <li>Haz clic en "Activar mi cuenta"</li>
-                <li>Establece tu contraseña</li>
-              </ol>
-            </div>
+            <p className="text-sm text-gray-400 mb-10 leading-relaxed">
+              Revisa tu bandeja de entrada y sigue el enlace para activar tu cuenta. El enlace expira en 24 horas.
+              <br /><br />
+              Si no lo encuentras, revisa tu carpeta de <span className="text-gray-500 font-medium">spam o correos no deseados</span>.
+            </p>
 
             <Link
               href="https://mediaclinic.mx"
@@ -97,6 +95,7 @@ function ThankYouContent() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <header className="px-8 py-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-color.svg" alt="MedClinic" className="h-11 w-auto object-contain" />
       </header>
 

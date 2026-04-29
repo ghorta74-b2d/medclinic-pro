@@ -97,6 +97,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="text-center mb-10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo-color.svg"
             alt="MedClinic Pro"
