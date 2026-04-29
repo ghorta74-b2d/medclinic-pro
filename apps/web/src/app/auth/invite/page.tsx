@@ -3,155 +3,280 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import { Loader2, ArrowRight } from 'lucide-react'
 
-// Singleton — must NOT be inside the component. Re-creating the client on each
-// render loses the in-memory session that setSession() stored, causing
-// updateUser() to fail with "Auth session missing!".
+// Singleton — must NOT be inside the component to avoid losing the in-memory
+// session that setSession() stores between renders.
 const supabase = createBrowserClient(
   process.env['NEXT_PUBLIC_SUPABASE_URL']!,
   process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
 )
 
+const inputClass =
+  'w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0071e3] focus:border-transparent focus:bg-white transition-colors'
+
+type State = 'loading' | 'password' | 'expired' | 'resent'
+
 export default function InvitePage() {
   const router = useRouter()
+  const [state, setState] = useState<State>('loading')
+
+  // Password-setup form
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [tokenError, setTokenError] = useState('')
-  const [ready, setReady] = useState(false)
+  const [pwLoading, setPwLoading] = useState(false)
+  const [pwError, setPwError] = useState('')
+
+  // Resend form
+  const [resendEmail, setResendEmail] = useState('')
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendError, setResendError] = useState('')
 
   useEffect(() => {
-    // @supabase/ssr does NOT auto-process the hash fragment — do it manually.
     const hash = window.location.hash.substring(1)
     const params = new URLSearchParams(hash)
+
+    // Supabase puts error info in the hash when the OTP expires
+    if (params.get('error') || params.get('error_code')) {
+      setState('expired')
+      return
+    }
+
     const accessToken = params.get('access_token')
     const refreshToken = params.get('refresh_token')
 
     if (accessToken && refreshToken) {
-      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
-        .then(({ data, error }) => {
+      supabase.auth
+        .setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ data }) => {
           if (data.session) {
-            // Remove tokens from URL bar
             window.history.replaceState(null, '', window.location.pathname)
-            setReady(true)
+            setState('password')
           } else {
-            setTokenError(error?.message || 'Token de invitación inválido o expirado')
-            setReady(true)
+            setState('expired')
           }
         })
     } else {
-      // No hash — maybe they're already logged in from a previous invite click
+      // No hash — check if they already have a session from a previous click
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          setReady(true)
-        } else {
-          setTokenError('Link de invitación inválido o ya utilizado.')
-          setReady(true)
-        }
+        setState(session ? 'password' : 'expired')
       })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSetPassword(e: React.FormEvent) {
     e.preventDefault()
-    if (password !== confirm) {
-      setError('Las contraseñas no coinciden')
-      return
-    }
-    if (password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres')
-      return
-    }
-    setLoading(true)
-    setError('')
+    if (password !== confirm) { setPwError('Las contraseñas no coinciden'); return }
+    if (password.length < 8) { setPwError('Mínimo 8 caracteres'); return }
+    setPwLoading(true)
+    setPwError('')
     const { error } = await supabase.auth.updateUser({ password })
     if (error) {
-      setError(error.message)
-      setLoading(false)
+      setPwError(error.message)
+      setPwLoading(false)
     } else {
       router.replace('/agenda')
     }
   }
 
-  if (!ready) {
+  async function handleResend(e: React.FormEvent) {
+    e.preventDefault()
+    setResendLoading(true)
+    setResendError('')
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://medclinic-api.vercel.app'
+      const res = await fetch(`${apiUrl}/api/checkout/resend-invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resendEmail }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Error al reenviar')
+      setState('resent')
+    } catch (err) {
+      setResendError(err instanceof Error ? err.message : 'Error inesperado')
+    } finally {
+      setResendLoading(false)
+    }
+  }
+
+  // ── Loading ────────────────────────────────────────────────────────────────
+  if (state === 'loading') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Verificando invitación…</p>
+          <Loader2 className="w-8 h-8 animate-spin text-[#0071e3] mx-auto mb-3" />
+          <p className="text-sm text-gray-400">Verificando enlace…</p>
         </div>
       </div>
     )
   }
 
-  if (tokenError) {
+  // ── Confirmation: link resent ──────────────────────────────────────────────
+  if (state === 'resent') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+      <div className="min-h-screen bg-white flex flex-col">
+        <header className="px-8 py-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-color.svg" alt="Mediaclinic" className="h-11 w-auto object-contain" />
+        </header>
+        <div className="flex-1 flex items-center justify-center px-6">
+          <div className="max-w-sm w-full text-center">
+            <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-8">
+              <svg className="w-7 h-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-semibold text-gray-900 mb-3">Enlace enviado</h1>
+            <p className="text-gray-500 text-sm leading-relaxed mb-2">
+              Enviamos un nuevo enlace de activación a
+            </p>
+            <p className="text-base font-semibold text-gray-900 mb-8">{resendEmail}</p>
+            <p className="text-sm text-gray-400 leading-relaxed">
+              Revisa tu bandeja de entrada y sigue el enlace para activar tu cuenta. El enlace expira en 24 horas.
+              <br /><br />
+              Si no lo encuentras, revisa tu carpeta de{' '}
+              <span className="text-gray-500 font-medium">spam o correos no deseados</span>.
+            </p>
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">Link inválido</h2>
-          <p className="text-gray-500 text-sm mb-6">{tokenError}</p>
-          <p className="text-gray-400 text-xs">Pide a tu administrador que reenvíe la invitación.</p>
         </div>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+  // ── Expired / error: resend form ───────────────────────────────────────────
+  if (state === 'expired') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <header className="px-8 py-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-color.svg" alt="Mediaclinic" className="h-11 w-auto object-contain" />
+        </header>
+        <div className="flex-1 flex items-center justify-center px-6 py-12">
+          <div className="max-w-sm w-full">
+            <div className="mb-10">
+              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-6">
+                <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-semibold text-gray-900 mb-2">El enlace expiró</h1>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                No te preocupes. Escribe tu correo y te enviamos uno nuevo al instante.
+              </p>
+            </div>
+
+            <form onSubmit={handleResend} className="space-y-5">
+              <div>
+                <label htmlFor="resendEmail" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Correo electrónico
+                </label>
+                <input
+                  id="resendEmail"
+                  type="email"
+                  required
+                  placeholder="admin@tuclinica.com"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+
+              {resendError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                  {resendError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={resendLoading}
+                className="w-full flex items-center justify-center gap-2 bg-[#0071e3] hover:bg-[#0077ed] disabled:opacity-50 text-white font-semibold text-sm px-4 py-3.5 rounded-xl transition-colors"
+              >
+                {resendLoading
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando…</>
+                  : <>Reenviar enlace <ArrowRight className="w-4 h-4" /></>}
+              </button>
+            </form>
+
+            <p className="mt-8 text-center text-xs text-gray-400">
+              ¿Necesitas ayuda?{' '}
+              <a href="mailto:soporte@mediaclinic.mx" className="text-[#0071e3] hover:underline">
+                Contáctanos
+              </a>
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Activa tu cuenta</h1>
-          <p className="text-gray-500 text-sm mt-1">Establece una contraseña para MedClinic Pro</p>
         </div>
+      </div>
+    )
+  }
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nueva contraseña</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar contraseña</label>
-            <input
-              type="password"
-              required
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder="Repite la contraseña"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+  // ── Password setup ─────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      <header className="px-8 py-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-color.svg" alt="Mediaclinic" className="h-11 w-auto object-contain" />
+      </header>
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="max-w-sm w-full">
+          <div className="mb-10">
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-6">
+              <svg className="w-6 h-6 text-[#0071e3]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-semibold text-gray-900 mb-1">Crea tu contraseña</h1>
+            <p className="text-gray-400 text-sm">Elige una contraseña segura para activar tu cuenta.</p>
           </div>
 
-          {error && (
-            <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
-          )}
+          <form onSubmit={handleSetPassword} className="space-y-5">
+            <div>
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Nueva contraseña
+              </label>
+              <input
+                id="password"
+                type="password"
+                required
+                placeholder="Mínimo 8 caracteres"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="confirm" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Confirmar contraseña
+              </label>
+              <input
+                id="confirm"
+                type="password"
+                required
+                placeholder="Repite la contraseña"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                className={inputClass}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
-          >
-            {loading ? 'Guardando…' : 'Establecer contraseña y entrar'}
-          </button>
-        </form>
+            {pwError && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                {pwError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={pwLoading}
+              className="w-full flex items-center justify-center gap-2 bg-[#0071e3] hover:bg-[#0077ed] disabled:opacity-50 text-white font-semibold text-sm px-4 py-3.5 rounded-xl transition-colors mt-2"
+            >
+              {pwLoading
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Activando…</>
+                : <>Activar mi cuenta <ArrowRight className="w-4 h-4" /></>}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )

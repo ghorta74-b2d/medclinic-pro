@@ -198,4 +198,53 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
 
     return reply.send({ ok: true })
   })
+
+  // ── POST /api/checkout/resend-invite ─────────────────────────────────────
+  // Self-service: resend activation email when the link expires.
+  // No auth — email is the trust anchor (only doctors already in DB get a link).
+  server.post('/resend-invite', async (request, reply) => {
+    const { email } = request.body as { email: string }
+    if (!email) return reply.status(400).send({ error: 'Email requerido' })
+
+    const doctor = await prisma.doctor.findFirst({
+      where: { email: email.toLowerCase().trim() },
+    })
+    if (!doctor) {
+      return reply.status(404).send({ error: 'No encontramos una cuenta con ese correo.' })
+    }
+
+    const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'https://mediaclinic.mx'}/auth/invite`
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+      type: 'invite',
+      email: doctor.email,
+      options: {
+        data: {
+          clinic_id: doctor.clinicId,
+          role: doctor.role,
+          firstName: doctor.firstName,
+          lastName: doctor.lastName,
+          doctor_id: doctor.id,
+        },
+        redirectTo,
+      },
+    })
+
+    if (linkError || !linkData?.properties?.action_link) {
+      return reply.status(400).send({ error: 'No se pudo generar el nuevo enlace.' })
+    }
+
+    await sendResendEmail({
+      to: doctor.email,
+      subject: 'Tu nuevo enlace de activación — Mediaclinic',
+      html: buildInviteEmail({
+        firstName: doctor.firstName,
+        email: doctor.email,
+        role: doctor.role,
+        actionLink: linkData.properties.action_link,
+        isResend: true,
+      }),
+    }).catch(() => {})
+
+    return reply.send({ ok: true })
+  })
 }
