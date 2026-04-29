@@ -85,7 +85,7 @@ export async function sendResendEmail(opts: {
     method: 'POST',
     headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: 'MedClinic PRO <medclinic@glasshaus.mx>',
+      from: 'MedClinic PRO <noreply@mediaclinic.mx>',
       to: Array.isArray(opts.to) ? opts.to : [opts.to],
       subject: opts.subject,
       html: opts.html,
