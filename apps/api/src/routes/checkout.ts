@@ -42,7 +42,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
       success_url: `${BASE_URL}/?checkout=success&plan=${plan}`,
       cancel_url:  `${BASE_URL}/#precios`,
       allow_promotion_codes: true,
-      locale: 'es',
+      locale: 'es-419',
       subscription_data: { metadata: { plan } },
     })
 
