@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "Email Preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/tmp/email-preview", "-p", "4500", "--no-clipboard"],
+      "port": 4500
+    },
+    {
       "name": "MedClinic Web (Next.js)",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "web", "dev"],
