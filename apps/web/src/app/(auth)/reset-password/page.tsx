@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Loader2, Eye, EyeOff } from 'lucide-react'
@@ -21,7 +21,7 @@ function getPasswordStrength(pw: string): { label: string; color: string; width:
   return { label: 'Débil', color: 'bg-red-400', width: '30%' }
 }
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token') ?? ''
@@ -161,7 +161,7 @@ export default function ResetPasswordPage() {
     )
   }
 
-  // ── Form ───────────────────────────────────────────────────────────────────
+  // ── Form (default) ────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
@@ -273,5 +273,17 @@ export default function ResetPasswordPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   )
 }
