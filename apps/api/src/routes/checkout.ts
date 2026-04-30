@@ -213,6 +213,17 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
       return reply.status(404).send({ error: 'No encontramos una cuenta con ese correo.' })
     }
 
+    // Block resend if the account is already activated (confirmed_at set in Supabase).
+    // Prevents using an expired invite URL to overwrite credentials of an active account.
+    if (doctor.authUserId) {
+      const { data: userData } = await supabase.auth.admin.getUserById(doctor.authUserId)
+      if (userData?.user?.confirmed_at) {
+        return reply.status(409).send({
+          error: 'Esta cuenta ya está activa. Inicia sesión en mediaclinic.mx.',
+        })
+      }
+    }
+
     const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'https://mediaclinic.mx'}/auth/invite`
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'invite',
