@@ -8,8 +8,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================================
@@ -184,10 +185,11 @@ model Doctor {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  appointments    Appointment[]
-  clinicalNotes   ClinicalNote[]
-  prescriptions   Prescription[]
-  invoices        Invoice[]
+  appointments         Appointment[]
+  clinicalNotes        ClinicalNote[]
+  prescriptions        Prescription[]
+  invoices             Invoice[]
+  passwordResetTokens  PasswordResetToken[]
 
   @@unique([clinicId, email])
   @@index([clinicId, isActive])  // doctor list queries (agenda, billing selectors)
@@ -755,4 +757,24 @@ model Notification {
   @@index([userId, read])
   @@index([clinicId])
   @@map("notifications")
+}
+
+// ============================================================
+// PASSWORD RESET TOKENS
+// ============================================================
+
+model PasswordResetToken {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique  // SHA-256 del token — nunca el token en claro
+  doctorId    String
+  doctor      Doctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  usedAt      DateTime?           // null = no usado | timestamp = ya consumido
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([doctorId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }

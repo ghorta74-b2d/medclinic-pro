@@ -21,6 +21,7 @@ import { webhookElevenLabs } from './routes/webhooks/elevenlabs.js'
 import { webhookStripe } from './routes/webhooks/stripe.js'
 import { webhookLab } from './routes/webhooks/lab.js'
 import { checkoutRoutes } from './routes/checkout.js'
+import { authRoutes } from './routes/auth.js'
 
 export async function buildServer() {
   const server = Fastify({
@@ -100,6 +101,7 @@ export async function buildServer() {
 
   // ── Public routes (no auth) ───────────────────────────────
   await server.register(checkoutRoutes, { prefix: '/api/checkout' })
+  await server.register(authRoutes, { prefix: '/api/auth' })
 
   // ── Webhooks (no auth — verified by signature) ───────────
   await server.register(webhookWhatsapp, { prefix: '/api/webhooks/whatsapp' })
