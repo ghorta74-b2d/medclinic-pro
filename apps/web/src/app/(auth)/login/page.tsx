@@ -3,13 +3,23 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import { Loader2, ShieldCheck } from 'lucide-react'
+import { Loader2, ShieldCheck, Activity, Sparkles, ArrowRight } from 'lucide-react'
+import { AuthSplitLayout } from '@/components/auth-split-layout'
 
-// Singleton — must NOT be inside the component to avoid re-creation on render
 const supabase = createBrowserClient(
   process.env['NEXT_PUBLIC_SUPABASE_URL']!,
   process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!
 )
+
+const inputClass = 'w-full px-4 py-3.5 bg-white border border-gray-300 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#3730a3] focus:border-transparent transition-colors'
+const labelClass = 'block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5'
+const btnClass = 'w-full bg-[#3730a3] hover:bg-[#312e81] disabled:opacity-50 text-white font-semibold py-3.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-2'
+
+const FEATURES = [
+  { icon: <Activity className="w-4 h-4 text-white" />, text: 'Expediente clínico inteligente' },
+  { icon: <ShieldCheck className="w-4 h-4 text-white" />, text: 'Datos cifrados y cumplimiento NOM-024' },
+  { icon: <Sparkles className="w-4 h-4 text-white" />, text: 'Asistente IA con WhatsApp integrado' },
+]
 
 export default function LoginPage() {
   const router = useRouter()
@@ -18,7 +28,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // MFA step — populated when signInWithPassword requires 2FA
   const [mfaStep, setMfaStep] = useState(false)
   const [mfaFactorId, setMfaFactorId] = useState('')
   const [mfaOtp, setMfaOtp] = useState('')
@@ -37,7 +46,6 @@ export default function LoginPage() {
       return
     }
 
-    // If session is null → user has TOTP enrolled and must pass the MFA challenge
     if (!data.session) {
       const { data: factors } = await supabase.auth.mfa.listFactors()
       const totpFactor = factors?.totp?.find((f) => f.status === 'verified')
@@ -48,7 +56,6 @@ export default function LoginPage() {
         setLoading(false)
         return
       }
-      // No factors → session should exist; fall through
     }
 
     redirectByRole(data.user?.user_metadata?.role)
@@ -80,39 +87,27 @@ export default function LoginPage() {
   }
 
   function redirectByRole(role?: string) {
-    if (role === 'SUPER_ADMIN') {
-      router.push('/superadmin')
-    } else if (role === 'ADMIN' || role === 'STAFF') {
-      router.push('/dashboard')
-    } else {
-      router.push('/agenda')
-    }
+    if (role === 'SUPER_ADMIN') router.push('/superadmin')
+    else if (role === 'ADMIN' || role === 'STAFF') router.push('/dashboard')
+    else router.push('/agenda')
   }
 
-  const inputClass = 'w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0071e3] focus:border-transparent focus:bg-white transition-colors'
-
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <AuthSplitLayout
+      headline="Bienvenido a la nueva era de tu clínica."
+      subline="Gestiona pacientes, agenda, expediente clínico y cobros desde una sola plataforma elegante, segura y diseñada para LATAM."
+      features={FEATURES}
+    >
+      {!mfaStep ? (
+        <>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Inicia sesión</h1>
+            <p className="text-sm text-gray-500">Accede a tu panel clínico.</p>
+          </div>
 
-        {/* Logo */}
-        <div className="text-center mb-10">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo-color.svg"
-            alt="MedClinic Pro"
-            className="mx-auto mb-4 h-12 w-auto object-contain"
-          />
-          <p className="text-gray-400 text-sm">Plataforma de gestión clínica</p>
-        </div>
-
-        {!mfaStep ? (
-          // ── Paso 1: email + contraseña ────────────────────────────────────
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Correo electrónico
-              </label>
+              <label htmlFor="email" className={labelClass}>Correo electrónico</label>
               <input
                 id="email"
                 type="email"
@@ -125,9 +120,14 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Contraseña
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="password" className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Contraseña
+                </label>
+                <a href="/auth/forgot-password" className="text-xs text-[#3730a3] hover:underline">
+                  ¿Olvidaste tu contraseña?
+                </a>
+              </div>
               <input
                 id="password"
                 type="password"
@@ -139,38 +139,27 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="flex justify-end">
-              <a href="/auth/forgot-password" className="text-xs text-[#0071e3] hover:underline">
-                ¿Olvidaste tu contraseña?
-              </a>
-            </div>
-
             {error && (
               <p className="text-red-600 text-sm bg-red-50 border border-red-100 px-3.5 py-2.5 rounded-xl">{error}</p>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#0071e3] hover:bg-[#0077ed] disabled:opacity-50 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-2 mt-2"
-            >
+            <button type="submit" disabled={loading} className={btnClass + ' mt-2'}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {loading ? 'Ingresando…' : 'Ingresar'}
+              {loading ? 'Ingresando…' : <>Ingresar al panel <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
-        ) : (
-          // ── Paso 2: código TOTP ────────────────────────────────────────────
-          <form onSubmit={handleMfaVerify} className="space-y-4">
-            <div className="text-center space-y-2 mb-2">
-              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
-                <ShieldCheck className="w-6 h-6 text-[#0071e3]" />
-              </div>
-              <h2 className="text-base font-semibold text-gray-900">Verificación en dos pasos</h2>
-              <p className="text-sm text-gray-500">
-                Ingresa el código de 6 dígitos de tu app de autenticación.
-              </p>
+        </>
+      ) : (
+        <>
+          <div className="mb-8">
+            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center mb-5">
+              <ShieldCheck className="w-5 h-5 text-[#3730a3]" />
             </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Verificación en dos pasos</h1>
+            <p className="text-sm text-gray-500">Ingresa el código de 6 dígitos de tu app de autenticación.</p>
+          </div>
 
+          <form onSubmit={handleMfaVerify} className="space-y-5">
             <input
               type="text"
               inputMode="numeric"
@@ -180,20 +169,16 @@ export default function LoginPage() {
               placeholder="000000"
               value={mfaOtp}
               onChange={(e) => setMfaOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="w-full text-center text-2xl tracking-[0.5em] font-mono px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0071e3] focus:border-transparent focus:bg-white transition-colors"
+              className="w-full text-center text-2xl tracking-[0.5em] font-mono px-4 py-3.5 bg-white border border-gray-300 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3730a3] focus:border-transparent transition-colors"
             />
 
             {error && (
               <p className="text-red-600 text-sm bg-red-50 border border-red-100 px-3.5 py-2.5 rounded-xl text-center">{error}</p>
             )}
 
-            <button
-              type="submit"
-              disabled={loading || mfaOtp.length !== 6}
-              className="w-full bg-[#0071e3] hover:bg-[#0077ed] disabled:opacity-50 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-2"
-            >
+            <button type="submit" disabled={loading || mfaOtp.length !== 6} className={btnClass}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-              {loading ? 'Verificando…' : 'Verificar'}
+              {loading ? 'Verificando…' : 'Verificar código'}
             </button>
 
             <button
@@ -204,8 +189,8 @@ export default function LoginPage() {
               ← Volver
             </button>
           </form>
-        )}
-      </div>
-    </div>
+        </>
+      )}
+    </AuthSplitLayout>
   )
 }

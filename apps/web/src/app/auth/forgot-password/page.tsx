@@ -2,12 +2,20 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Lock, Mail, Clock, ArrowRight } from 'lucide-react'
+import { AuthSplitLayout } from '@/components/auth-split-layout'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
-const inputClass =
-  'w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0071e3] focus:border-transparent focus:bg-white transition-colors'
+const inputClass = 'w-full px-4 py-3.5 bg-white border border-gray-300 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#3730a3] focus:border-transparent transition-colors'
+const labelClass = 'block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5'
+const btnClass = 'w-full bg-[#3730a3] hover:bg-[#312e81] disabled:opacity-50 text-white font-semibold py-3.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-2'
+
+const FEATURES = [
+  { icon: <Lock className="w-4 h-4 text-white" />, text: 'Proceso 100% seguro y cifrado' },
+  { icon: <Mail className="w-4 h-4 text-white" />, text: 'Instrucciones enviadas a tu correo' },
+  { icon: <Clock className="w-4 h-4 text-white" />, text: 'Enlace válido por 1 hora' },
+]
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -35,33 +43,21 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <AuthSplitLayout
+      headline="Recupera el acceso a tu clínica."
+      subline="Te enviamos las instrucciones para restablecer tu contraseña de forma segura."
+      features={FEATURES}
+    >
+      {!submitted ? (
+        <>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Recuperar contraseña</h1>
+            <p className="text-sm text-gray-500">Ingresa tu correo y te enviaremos las instrucciones.</p>
+          </div>
 
-        {/* Logo */}
-        <div className="text-center mb-10">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo-color.svg"
-            alt="Mediaclinic"
-            className="mx-auto mb-4 h-12 w-auto object-contain"
-          />
-          <p className="text-gray-400 text-sm">Plataforma de gestión clínica</p>
-        </div>
-
-        {!submitted ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1 mb-2">
-              <h1 className="text-lg font-semibold text-gray-900">Recuperar contraseña</h1>
-              <p className="text-sm text-gray-500">
-                Ingresa tu correo y te enviaremos las instrucciones.
-              </p>
-            </div>
-
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Correo electrónico
-              </label>
+              <label htmlFor="email" className={labelClass}>Correo electrónico</label>
               <input
                 id="email"
                 type="email"
@@ -74,49 +70,42 @@ export default function ForgotPasswordPage() {
             </div>
 
             {error && (
-              <p className="text-red-600 text-sm bg-red-50 border border-red-100 px-3.5 py-2.5 rounded-xl">
-                {error}
-              </p>
+              <p className="text-red-600 text-sm bg-red-50 border border-red-100 px-3.5 py-2.5 rounded-xl">{error}</p>
             )}
 
-            <button
-              type="submit"
-              disabled={loading || !email}
-              className="w-full bg-[#0071e3] hover:bg-[#0077ed] disabled:opacity-50 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors text-sm flex items-center justify-center gap-2 mt-2"
-            >
+            <button type="submit" disabled={loading || !email} className={btnClass + ' mt-2'}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {loading ? 'Enviando…' : 'Enviar instrucciones'}
+              {loading ? 'Enviando…' : <>Enviar instrucciones <ArrowRight className="w-4 h-4" /></>}
             </button>
 
-            <Link
-              href="/login"
-              className="block text-center text-sm text-gray-400 hover:text-gray-600 transition-colors mt-2"
-            >
+            <Link href="/login" className="block text-center text-sm text-gray-400 hover:text-gray-600 transition-colors">
               ← Volver al inicio de sesión
             </Link>
           </form>
-        ) : (
-          <div className="space-y-5 text-center">
-            <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center mx-auto">
-              <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
+        </>
+      ) : (
+        <>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Revisa tu correo</h1>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Si el correo está registrado, recibirás las instrucciones en unos minutos. Revisa también tu carpeta de spam.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3.5 text-sm text-gray-600">
+              Enviado a: <span className="font-semibold text-gray-900">{email}</span>
             </div>
-            <div className="space-y-2">
-              <h2 className="text-base font-semibold text-gray-900">Revisa tu correo</h2>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                Si el correo está registrado, recibirás las instrucciones en unos minutos.
-              </p>
-            </div>
+
             <Link
               href="/login"
-              className="block text-sm text-[#0071e3] hover:underline"
+              className="block text-center text-sm text-[#3730a3] hover:underline"
             >
               ← Volver al inicio de sesión
             </Link>
           </div>
-        )}
-      </div>
-    </div>
+        </>
+      )}
+    </AuthSplitLayout>
   )
 }
