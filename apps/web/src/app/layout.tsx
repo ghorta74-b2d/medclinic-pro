@@ -75,7 +75,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: 'PLACEHOLDER_GOOGLE_SEARCH_CONSOLE', // TODO: reemplazar con token real de GSC
+    google: 'Ais0QGz0ru5bJUGyQV_xTQi2rtERB9SqNB51s0wFD2Y',
     other: { 'msvalidate.01': 'PLACEHOLDER_BING' }, // TODO: reemplazar con token real de Bing
   },
 }
