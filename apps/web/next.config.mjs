@@ -10,6 +10,11 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      { source: '/landing2', destination: '/', permanent: true },
+    ]
+  },
 }
 
 export default nextConfig

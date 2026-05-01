@@ -25,16 +25,16 @@ export const metadata: Metadata = {
   formatDetection: { email: false, address: false, telephone: false },
   alternates: {
     // Actualizar a '/' cuando esta landing reemplace el home
-    canonical: 'https://mediaclinic.mx/landing2',
+    canonical: 'https://mediaclinic.mx',
     languages: {
-      'es-MX': 'https://mediaclinic.mx/landing2',
-      'es': 'https://mediaclinic.mx/landing2',
+      'es-MX': 'https://mediaclinic.mx',
+      'es': 'https://mediaclinic.mx',
     },
   },
   openGraph: {
     type: 'website',
     locale: 'es_MX',
-    url: 'https://mediaclinic.mx/landing2',
+    url: 'https://mediaclinic.mx',
     siteName: 'Mediaclinic',
     title: 'Software para Clínicas Médicas en México | Mediaclinic',
     description:

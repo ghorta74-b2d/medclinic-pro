@@ -1,2 +1,1 @@
-// Root serves the landing page — no redirect, no bounce
-export { default } from './landing/page'
+export { default } from './landing2/page'
