@@ -29,7 +29,7 @@ export function AuthSplitLayout({ headline, subline, features, children }: AuthS
       <div className="hidden lg:flex lg:w-[46%] flex-col justify-between p-12" style={PANEL_BG}>
         {/* Logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-white.svg" alt="Mediaclinic" className="h-10 w-auto object-contain object-left" />
+        <img src="/logo-white.svg" alt="Mediaclinic" className="w-auto object-contain object-left" style={{ height: '46px' }} />
 
         {/* Headline + subline + features */}
         <div className="space-y-8">
