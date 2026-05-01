@@ -468,12 +468,14 @@ export default function Landing2Client() {
         }`}
       >
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={overHero ? '/logo-white.svg' : '/logo-color.svg'}
-            alt="Mediaclinic — Software para Clínicas Médicas"
-            className="h-10 w-auto transition-all duration-500"
-          />
+          <a href="#hero" aria-label="Ir al inicio">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={overHero ? '/logo-white.svg' : '/logo-color.svg'}
+              alt="Mediaclinic — Software para Clínicas Médicas"
+              className="h-10 w-auto transition-all duration-500"
+            />
+          </a>
 
           <div className="hidden md:flex items-center gap-8 text-sm">
             {[
@@ -560,6 +562,7 @@ export default function Landing2Client() {
           HERO — video full screen
       ══════════════════════════════════════════ */}
       <section
+        id="hero"
         ref={heroRef}
         aria-label="Presentación principal"
         className="relative h-screen min-h-[640px] flex items-end overflow-hidden"
@@ -1288,16 +1291,30 @@ export default function Landing2Client() {
             className="h-7 w-auto opacity-40"
           />
           <div className="flex flex-wrap justify-center gap-6 text-[13px] text-white/30">
-            {['Plataforma', 'Precios', 'Privacidad', 'Términos', 'HIPAA'].map((l) => (
-              <a key={l} href="#" className="hover:text-white/60 transition-colors">
-                {l}
-              </a>
-            ))}
+            <a href="#funciones" className="hover:text-white/60 transition-colors">Plataforma</a>
+            <a href="#precios" className="hover:text-white/60 transition-colors">Precios</a>
+            <a href="#" className="hover:text-white/60 transition-colors">Privacidad</a>
+            <a href="#" className="hover:text-white/60 transition-colors">Términos</a>
+            <a href="#" className="hover:text-white/60 transition-colors">HIPAA</a>
             <Link href="/login" className="hover:text-white/60 transition-colors">
               Acceso
             </Link>
           </div>
           <p className="text-[13px] text-white/20">© 2026 Mediaclinic</p>
+        </div>
+        <div className="max-w-[980px] mx-auto mt-6 pt-6 border-t border-white/5 flex justify-center items-center gap-2">
+          <span className="text-[11px] text-white/20">Powered by</span>
+          <a
+            href="https://b2d.mx"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 opacity-30 hover:opacity-60 transition-opacity"
+            aria-label="B2D Automation"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-b2d.png" alt="B2D Automation" className="h-4 w-auto" />
+            <span className="text-[11px] text-white font-medium">B2D Automation</span>
+          </a>
         </div>
       </footer>
     </div>
