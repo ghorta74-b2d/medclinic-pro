@@ -112,6 +112,59 @@ function Counter({
   )
 }
 
+/* ── WhatsApp AI Demo ── */
+function WhatsAppDemo() {
+  const [step, setStep] = useState(0)
+  const msgs = [
+    { side: 'left',  text: 'Hola Ana 👋 Tu cita es mañana a las 9:00 AM con la Dra. López. ¿Confirmas?' },
+    { side: 'right', text: 'Sí, confirmo ✅' },
+    { side: 'left',  text: '¡Confirmado! Formulario de pre-consulta: link.mediaclinic.mx/pre 📋' },
+    { side: 'left',  text: 'Recuerda llegar 10 min antes 😊' },
+  ]
+  const delays = [800, 1600, 1800, 1600]
+  useEffect(() => {
+    if (step >= msgs.length) return
+    const t = setTimeout(() => setStep(s => s + 1), delays[step])
+    return () => clearTimeout(t)
+  }, [step])
+  useEffect(() => { const t = setInterval(() => setStep(0), 12000); return () => clearInterval(t) }, [])
+  return (
+    <div className="w-72 bg-[#111b21] rounded-3xl overflow-hidden shadow-2xl border border-white/5">
+      <div className="bg-[#1f2c33] px-4 py-3.5 flex items-center gap-3">
+        <div className="w-9 h-9 bg-[#3b2ea8] rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">MC</div>
+        <div>
+          <p className="text-white text-sm font-semibold">MediaClinic IA</p>
+          <p className="text-[#8696a0] text-xs flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block animate-pulse" />en línea
+          </p>
+        </div>
+      </div>
+      <div className="px-3 py-4 space-y-2.5 min-h-[220px] bg-[#0b141a]">
+        {msgs.slice(0, step).map((m, i) => (
+          <div key={i} className={`flex ${m.side === 'right' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[85%] px-3.5 py-2 rounded-2xl text-[13px] leading-relaxed ${m.side === 'left' ? 'bg-[#202c33] text-[#e9edef] rounded-tl-sm' : 'bg-[#005c4b] text-[#e9edef] rounded-tr-sm'}`}>
+              {m.text}
+            </div>
+          </div>
+        ))}
+        {step < msgs.length && (
+          <div className="flex justify-start">
+            <div className="bg-[#202c33] px-4 py-3 rounded-2xl rounded-tl-sm">
+              <div className="flex gap-1">
+                {[0, 150, 300].map(d => <div key={d} className="w-1.5 h-1.5 rounded-full bg-[#8696a0] animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="bg-[#1f2c33]/80 px-4 py-3 flex items-center gap-2 border-t border-white/5">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0" />
+        <span className="text-[#8696a0] text-xs">3 confirmaciones en la última hora</span>
+      </div>
+    </div>
+  )
+}
+
 /* ── Demo form ── */
 function DemoForm() {
   const [form, setForm] = useState({
@@ -574,6 +627,25 @@ export default function Landing2Client() {
               <strong className="text-[#1d1d1f]">Mediaclinic resuelve todo eso desde un solo lugar.</strong>
             </p>
           </FadeUp>
+          <div className="mt-10 grid sm:grid-cols-3 gap-4 text-left">
+            {([
+              { icon: Clock, stat: '3 horas', label: 'en papeleo médico por día', color: '#0071e3' },
+              { icon: Calendar, stat: '30%', label: 'de citas con no-show sin recordatorio', color: '#1a7f37' },
+              { icon: Stethoscope, stat: '70%', label: 'del tiempo fuera del paciente', color: '#0071e3' },
+            ] as const).map(({ icon: Icon, stat, label, color }) => (
+              <FadeUp key={label}>
+                <div className="bg-white rounded-2xl px-5 py-5 flex items-center gap-4 border border-[#e8e8ed] shadow-[0_1px_8px_rgba(0,0,0,0.05)]">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}18` }}>
+                    <Icon className="w-5 h-5" style={{ color }} aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-[20px] font-bold text-[#1d1d1f] leading-none mb-0.5">{stat}</p>
+                    <p className="text-[13px] text-[#6e6e73] leading-tight">{label}</p>
+                  </div>
+                </div>
+              </FadeUp>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -592,8 +664,8 @@ export default function Landing2Client() {
           <div className="grid md:grid-cols-2 gap-8">
             {/* IA */}
             <FadeUp delay={0}>
-              <div id="ia" className="bg-[#f5f5f7] rounded-2xl p-8 h-full">
-                <div className="w-12 h-12 rounded-xl bg-[#0071e3]/10 flex items-center justify-center mb-5">
+              <div id="ia" className="bg-white border border-[#e8e8ed] shadow-[0_2px_16px_rgba(0,0,0,0.06)] rounded-2xl p-8 h-full">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0071e3]/15 to-[#5ac8fa]/8 flex items-center justify-center mb-5">
                   <Brain className="w-6 h-6 text-[#0071e3]" aria-hidden="true" />
                 </div>
                 <h3 className="text-[22px] font-semibold text-[#1d1d1f] mb-3">
@@ -610,8 +682,8 @@ export default function Landing2Client() {
 
             {/* ECE */}
             <FadeUp delay={80}>
-              <div className="bg-[#f5f5f7] rounded-2xl p-8 h-full">
-                <div className="w-12 h-12 rounded-xl bg-[#0071e3]/10 flex items-center justify-center mb-5">
+              <div className="bg-white border border-[#e8e8ed] shadow-[0_2px_16px_rgba(0,0,0,0.06)] rounded-2xl p-8 h-full">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0071e3]/15 to-[#5ac8fa]/8 flex items-center justify-center mb-5">
                   <FileText className="w-6 h-6 text-[#0071e3]" aria-hidden="true" />
                 </div>
                 <h3 className="text-[22px] font-semibold text-[#1d1d1f] mb-3">
@@ -627,8 +699,8 @@ export default function Landing2Client() {
 
             {/* Agenda */}
             <FadeUp delay={160}>
-              <div className="bg-[#f5f5f7] rounded-2xl p-8 h-full">
-                <div className="w-12 h-12 rounded-xl bg-[#0071e3]/10 flex items-center justify-center mb-5">
+              <div className="bg-white border border-[#e8e8ed] shadow-[0_2px_16px_rgba(0,0,0,0.06)] rounded-2xl p-8 h-full">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0071e3]/15 to-[#5ac8fa]/8 flex items-center justify-center mb-5">
                   <Calendar className="w-6 h-6 text-[#0071e3]" aria-hidden="true" />
                 </div>
                 <h3 className="text-[22px] font-semibold text-[#1d1d1f] mb-3">
@@ -644,8 +716,8 @@ export default function Landing2Client() {
 
             {/* Recetas */}
             <FadeUp delay={240}>
-              <div className="bg-[#f5f5f7] rounded-2xl p-8 h-full">
-                <div className="w-12 h-12 rounded-xl bg-[#0071e3]/10 flex items-center justify-center mb-5">
+              <div className="bg-white border border-[#e8e8ed] shadow-[0_2px_16px_rgba(0,0,0,0.06)] rounded-2xl p-8 h-full">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#0071e3]/15 to-[#5ac8fa]/8 flex items-center justify-center mb-5">
                   <Pill className="w-6 h-6 text-[#0071e3]" aria-hidden="true" />
                 </div>
                 <h3 className="text-[22px] font-semibold text-[#1d1d1f] mb-3">
@@ -669,6 +741,42 @@ export default function Landing2Client() {
             >
               Ver planes <ArrowRight className="w-4 h-4" aria-hidden="true" />
             </a>
+          </FadeUp>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════
+          ASISTENTE IA
+      ══════════════════════════════════════════ */}
+      <section id="ia" className="bg-white py-20 lg:py-28 px-6 border-t border-[#d2d2d7]">
+        <div className="max-w-[980px] mx-auto grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+          <FadeUp>
+            <p className="text-[#6e6e73] text-[12px] uppercase tracking-widest font-medium mb-5">Asistente IA</p>
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-semibold text-[#1d1d1f] tracking-tight leading-[1.07] mb-5">
+              Tu clínica trabaja<br />aunque no estés.
+            </h2>
+            <p className="text-[#6e6e73] text-[17px] leading-[1.6] mb-7 max-w-[400px]">
+              Agentes de IA que confirman citas, envían ligas de pago y notifican resultados por WhatsApp — los 7 días de la semana.
+            </p>
+            <ul className="space-y-3.5 mb-8">
+              {[
+                'Confirmación automática de citas vía WhatsApp',
+                'Cobros y ligas de pago sin intervención humana',
+                'Notificación de resultados de laboratorio',
+                'Formularios de pre-consulta personalizados',
+              ].map(f => (
+                <li key={f} className="flex items-start gap-3 text-[15px] text-[#1d1d1f]">
+                  <Check className="w-4 h-4 text-[#0071e3] shrink-0 mt-0.5" aria-hidden="true" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <a href="#demo" className="text-[17px] text-[#0071e3] flex items-center gap-0.5 hover:underline w-fit">
+              Conocer más <ChevronRight className="w-4 h-4" />
+            </a>
+          </FadeUp>
+          <FadeUp delay={120} className="flex justify-center">
+            <WhatsAppDemo />
           </FadeUp>
         </div>
       </section>
@@ -709,7 +817,7 @@ export default function Landing2Client() {
             ].map(({ icon: Icon, title, desc }, i) => (
               <FadeUp key={title} delay={i * 60}>
                 <div className="flex items-start gap-4 bg-[#f5f5f7] rounded-2xl p-6">
-                  <div className="w-10 h-10 rounded-xl bg-[#0071e3]/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0071e3]/15 to-[#5ac8fa]/8 flex items-center justify-center shrink-0 mt-0.5">
                     <Icon className="w-5 h-5 text-[#0071e3]" aria-hidden="true" />
                   </div>
                   <div>
@@ -779,17 +887,20 @@ export default function Landing2Client() {
       {/* ══════════════════════════════════════════
           STATS
       ══════════════════════════════════════════ */}
-      <section className="bg-white py-20 px-6 border-t border-[#d2d2d7]">
+      <section className="bg-gradient-to-b from-[#f5f5f7] to-white py-20 px-6 border-t border-[#d2d2d7]">
         <div className="max-w-[980px] mx-auto grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
-          {[
-            { end: 2500, suffix: '+', label: 'Médicos activos', color: '#0071e3' },
-            { end: 60, suffix: '%', label: 'Menos inasistencias', color: '#1a7f37' },
-            { end: 30, suffix: 's', label: 'Respuesta IA', color: '#0071e3' },
-            { end: 100, suffix: '%', label: 'En la nube', color: '#1a7f37' },
-          ].map(({ end, suffix, label, color }, i) => (
+          {([
+            { end: 2500, suffix: '+', label: 'Médicos activos', color: '#0071e3', icon: Stethoscope },
+            { end: 60, suffix: '%', label: 'Menos inasistencias', color: '#1a7f37', icon: Calendar },
+            { end: 30, suffix: 's', label: 'Respuesta IA', color: '#0071e3', icon: Brain },
+            { end: 100, suffix: '%', label: 'En la nube', color: '#1a7f37', icon: Zap },
+          ] as const).map(({ end, suffix, label, color, icon: Icon }, i) => (
             <FadeUp key={label} delay={i * 60}>
+              <div className="w-11 h-11 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: `${color}18` }}>
+                <Icon className="w-5 h-5" style={{ color }} aria-hidden="true" />
+              </div>
               <p className="text-[clamp(2.2rem,5vw,3.5rem)] font-bold leading-none mb-2">
-                <Counter end={end} suffix={suffix} color={color} />
+                <Counter end={end} suffix={suffix} color="#1d1d1f" />
               </p>
               <p className="text-[14px] text-[#6e6e73]">{label}</p>
             </FadeUp>
