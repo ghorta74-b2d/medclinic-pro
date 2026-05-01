@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { error } = await resend.emails.send({
-      from: 'MedClinic PRO <medclinic@glasshaus.mx>',
+      from: 'Mediaclinic <noreply@mediaclinic.mx>',
       to: ['mediaclinic@b2d.mx'],
       replyTo: email,
       subject: `Solicitud de demo — ${nombre}`,
