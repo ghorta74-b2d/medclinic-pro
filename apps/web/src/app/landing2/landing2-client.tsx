@@ -1303,17 +1303,16 @@ export default function Landing2Client() {
           <p className="text-[13px] text-white/20">© 2026 Mediaclinic</p>
         </div>
         <div className="max-w-[980px] mx-auto mt-6 pt-6 border-t border-white/5 flex justify-center items-center gap-2">
-          <span className="text-[11px] text-white/20">Powered by</span>
+          <span className="text-[11px] text-white/25">Powered by</span>
           <a
             href="https://b2d.mx"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 opacity-30 hover:opacity-60 transition-opacity"
+            className="opacity-40 hover:opacity-70 transition-opacity"
             aria-label="B2D Automation"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-b2d.png" alt="B2D Automation" className="h-4 w-auto" />
-            <span className="text-[11px] text-white font-medium">B2D Automation</span>
+            <img src="/logo-b2d.png" alt="B2D Automation" className="h-5 w-auto" />
           </a>
         </div>
       </footer>
