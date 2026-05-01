@@ -5,9 +5,7 @@ import Link from 'next/link'
 import {
   ArrowRight, Check, ChevronRight, Menu, X,
   Loader2, Send, Brain, FileText, Calendar, Pill,
-  ShieldCheck, Receipt, MapPin, HeadphonesIcon,
-  MessageCircle, Clock, Lock, Database, KeyRound,
-  BookOpen, ChevronDown, Zap, Users, Building2, Stethoscope,
+  Clock, ChevronDown, Zap, Users, Building2, Stethoscope,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import JsonLd, {
@@ -676,84 +674,6 @@ export default function Landing2Client() {
       </section>
 
       {/* ══════════════════════════════════════════
-          POR QUÉ MEDIACLINIC
-      ══════════════════════════════════════════ */}
-      <section className="bg-[#f5f5f7] py-20 lg:py-28 px-6">
-        <div className="max-w-[1100px] mx-auto">
-          <FadeUp className="mb-16 text-center">
-            <h2 className="text-[clamp(1.8rem,4vw,2.8rem)] font-semibold text-[#1d1d1f] tracking-tight leading-[1.1]">
-              Construido para el sistema de salud mexicano.
-            </h2>
-          </FadeUp>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <FadeUp delay={0}>
-              <div className="bg-white rounded-2xl p-8 h-full">
-                <div className="w-12 h-12 rounded-xl bg-[#1a7f37]/10 flex items-center justify-center mb-5">
-                  <ShieldCheck className="w-6 h-6 text-[#1a7f37]" aria-hidden="true" />
-                </div>
-                <h3 className="text-[20px] font-semibold text-[#1d1d1f] mb-3">
-                  Cumplimiento normativo desde el día uno
-                </h3>
-                <p className="text-[15px] text-[#6e6e73] leading-[1.65]">
-                  <strong className="text-[#1d1d1f]">NOM-004-SSA3-2012, LFPDPPP</strong>, lineamientos
-                  de COFEPRIS para receta electrónica. No es una capa que agregamos después: es la base
-                  sobre la que está construida la plataforma.
-                </p>
-              </div>
-            </FadeUp>
-
-            <FadeUp delay={80}>
-              <div className="bg-white rounded-2xl p-8 h-full">
-                <div className="w-12 h-12 rounded-xl bg-[#1a7f37]/10 flex items-center justify-center mb-5">
-                  <Receipt className="w-6 h-6 text-[#1a7f37]" aria-hidden="true" />
-                </div>
-                <h3 className="text-[20px] font-semibold text-[#1d1d1f] mb-3">
-                  Facturación CFDI 4.0 nativa
-                </h3>
-                <p className="text-[15px] text-[#6e6e73] leading-[1.65]">
-                  Genera facturas, complementos de pago y notas de crédito que cumplen con el SAT sin
-                  salir de Mediaclinic. Conexión directa con tu{' '}
-                  <strong className="text-[#1d1d1f]">PAC autorizado</strong>.
-                </p>
-              </div>
-            </FadeUp>
-
-            <FadeUp delay={160}>
-              <div className="bg-white rounded-2xl p-8 h-full">
-                <div className="w-12 h-12 rounded-xl bg-[#1a7f37]/10 flex items-center justify-center mb-5">
-                  <MapPin className="w-6 h-6 text-[#1a7f37]" aria-hidden="true" />
-                </div>
-                <h3 className="text-[20px] font-semibold text-[#1d1d1f] mb-3">
-                  Datos en México
-                </h3>
-                <p className="text-[15px] text-[#6e6e73] leading-[1.65]">
-                  Tu información y la de tus pacientes vive en{' '}
-                  <strong className="text-[#1d1d1f]">servidores ubicados en México</strong>. Sin
-                  transferencias internacionales innecesarias. Sin sorpresas regulatorias.
-                </p>
-              </div>
-            </FadeUp>
-
-            <FadeUp delay={240}>
-              <div className="bg-white rounded-2xl p-8 h-full">
-                <div className="w-12 h-12 rounded-xl bg-[#1a7f37]/10 flex items-center justify-center mb-5">
-                  <HeadphonesIcon className="w-6 h-6 text-[#1a7f37]" aria-hidden="true" />
-                </div>
-                <h3 className="text-[20px] font-semibold text-[#1d1d1f] mb-3">
-                  Soporte que entiende tu clínica
-                </h3>
-                <p className="text-[15px] text-[#6e6e73] leading-[1.65]">
-                  Equipo de soporte en horario de clínica. Capacitación inicial incluida.{' '}
-                  <strong className="text-[#1d1d1f]">Onboarding acompañado los primeros 30 días.</strong>
-                </p>
-              </div>
-            </FadeUp>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════
           PARA QUIÉN
       ══════════════════════════════════════════ */}
       <section className="bg-white py-20 lg:py-28 px-6">
@@ -874,74 +794,6 @@ export default function Landing2Client() {
               <p className="text-[14px] text-[#6e6e73]">{label}</p>
             </FadeUp>
           ))}
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════
-          INTEGRACIONES
-      ══════════════════════════════════════════ */}
-      <section className="bg-[#f5f5f7] py-20 lg:py-24 px-6 border-t border-[#d2d2d7]">
-        <div className="max-w-[860px] mx-auto text-center">
-          <FadeUp>
-            <h2 className="text-[clamp(1.8rem,4vw,2.5rem)] font-semibold text-[#1d1d1f] tracking-tight mb-4 leading-[1.1]">
-              Mediaclinic se conecta con las herramientas que ya usas.
-            </h2>
-            <p className="text-[17px] text-[#6e6e73] mb-12">
-              Sin migraciones forzadas. Sin perder lo que ya funciona.
-            </p>
-          </FadeUp>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {[
-              { icon: MessageCircle, label: 'WhatsApp Business', desc: 'Confirmaciones y recordatorios' },
-              { icon: Calendar, label: 'Google Calendar', desc: 'Sincronización de agenda' },
-              { icon: Calendar, label: 'Outlook', desc: 'Sincronización de agenda' },
-              { icon: Receipt, label: 'PACs SAT', desc: 'Timbrado CFDI 4.0' },
-              { icon: BookOpen, label: 'Stripe & MercadoPago', desc: 'Cobros en línea' },
-              { icon: Database, label: 'Laboratorios y gabinetes', desc: 'Integración API' },
-            ].map(({ icon: Icon, label, desc }, i) => (
-              <FadeUp key={label} delay={i * 60}>
-                <div className="bg-white rounded-2xl p-5 flex flex-col items-center gap-2 text-center">
-                  <div className="w-10 h-10 rounded-xl bg-[#0071e3]/8 flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-[#0071e3]" aria-hidden="true" />
-                  </div>
-                  <p className="text-[14px] font-semibold text-[#1d1d1f]">{label}</p>
-                  <p className="text-[12px] text-[#6e6e73]">{desc}</p>
-                </div>
-              </FadeUp>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════
-          SEGURIDAD Y PRIVACIDAD
-      ══════════════════════════════════════════ */}
-      <section className="bg-white py-20 lg:py-28 px-6 border-t border-[#d2d2d7]">
-        <div className="max-w-[860px] mx-auto">
-          <FadeUp className="mb-12 text-center">
-            <h2 className="text-[clamp(1.8rem,4vw,2.5rem)] font-semibold text-[#1d1d1f] tracking-tight leading-[1.1]">
-              Tus datos y los de tus pacientes están protegidos por diseño.
-            </h2>
-          </FadeUp>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {[
-              { icon: Lock, text: 'Cifrado en tránsito (TLS 1.3) y en reposo (AES-256).' },
-              { icon: KeyRound, text: 'Autenticación multifactor para todos los usuarios clínicos.' },
-              { icon: BookOpen, text: 'Bitácora de acceso completa por usuario y por expediente.' },
-              { icon: Database, text: 'Respaldos automáticos diarios en infraestructura redundante.' },
-              { icon: ShieldCheck, text: 'Cumplimiento con LFPDPPP, incluyendo derechos ARCO para pacientes.' },
-              { icon: MapPin, text: 'Servidores en México.' },
-            ].map(({ icon: Icon, text }, i) => (
-              <FadeUp key={text} delay={i * 50}>
-                <div className="flex items-start gap-3 bg-[#f5f5f7] rounded-xl p-5">
-                  <div className="w-8 h-8 rounded-lg bg-[#1a7f37]/10 flex items-center justify-center shrink-0">
-                    <Icon className="w-4 h-4 text-[#1a7f37]" aria-hidden="true" />
-                  </div>
-                  <p className="text-[14px] text-[#1d1d1f] leading-[1.55]">{text}</p>
-                </div>
-              </FadeUp>
-            ))}
-          </div>
         </div>
       </section>
 
