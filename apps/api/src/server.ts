@@ -36,23 +36,22 @@ export async function buildServer() {
     contentSecurityPolicy: false, // API only, no HTML
   })
 
-  const allowedOrigins = [
-    process.env['NEXT_PUBLIC_APP_URL'],
-    'http://localhost:3000',
-    'https://mediaclinic.mx',
-    'https://www.mediaclinic.mx',
-    'https://medclinic-web.vercel.app',
-    'https://medclinic-web-ghorta74-6617s-projects.vercel.app',
-  ].filter(Boolean) as string[]
+  // Explicit CORS allowlist — no wildcard prefixes
+  const allowedOrigins = new Set<string>(
+    [
+      process.env['NEXT_PUBLIC_APP_URL'],
+      'http://localhost:3000',
+      'https://mediaclinic.mx',
+      'https://www.mediaclinic.mx',
+      'https://medclinic-web.vercel.app',
+      'https://medclinic-web-ghorta74-6617s-projects.vercel.app',
+    ].filter(Boolean) as string[]
+  )
 
   await server.register(cors, {
     origin: (origin, callback) => {
-      if (
-        !origin ||
-        allowedOrigins.includes(origin) ||
-        origin.startsWith('https://medclinic-web') ||
-        origin.startsWith('https://mediaclinic')
-      ) {
+      // Allow server-to-server calls (no Origin header) and all explicitly listed origins
+      if (!origin || allowedOrigins.has(origin)) {
         callback(null, true)
       } else {
         callback(new Error('Not allowed by CORS'), false)
@@ -78,12 +77,6 @@ export async function buildServer() {
     app: 'medclinic-pro-api',
     version: '1.0.0',
     ts: new Date().toISOString(),
-    stripe: {
-      secret_key: !!process.env['STRIPE_SECRET_KEY'],
-      price_esencial_monthly: !!process.env['STRIPE_PRICE_ESENCIAL_MONTHLY'],
-      price_profesional_monthly: !!process.env['STRIPE_PRICE_PROFESIONAL_MONTHLY'],
-      price_clinica_monthly: !!process.env['STRIPE_PRICE_CLINICA_MONTHLY'],
-    },
   }))
 
   // ── API Routes ───────────────────────────────────────────

@@ -6,6 +6,24 @@ import { Errors } from '../lib/errors.js'
 import { createStripePaymentLink } from '../services/stripe.js'
 import { sendWhatsAppMessage } from '../services/whatsapp.js'
 
+const CreateServiceSchema = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().max(500).optional(),
+  price: z.number().positive(),
+  category: z.string().max(100).optional(),
+  taxRate: z.number().min(0).max(1).optional(),
+  taxIncluded: z.boolean().optional(),
+})
+
+const UpdateServiceSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  description: z.string().max(500).optional(),
+  price: z.number().positive().optional(),
+  category: z.string().max(100).optional(),
+  taxRate: z.number().min(0).max(1).optional(),
+  isActive: z.boolean().optional(),
+})
+
 const CreateInvoiceSchema = z.object({
   patientId: z.string(),
   appointmentId: z.string().optional(),
@@ -53,14 +71,9 @@ export async function billingRoutes(server: FastifyInstance) {
   // POST /api/billing/services
   server.post('/services', { preHandler: requireStaff }, async (request, reply) => {
     const { clinicId } = request.authUser
-    const body = request.body as {
-      name: string
-      description?: string
-      price: number
-      category?: string
-      taxRate?: number
-      taxIncluded?: boolean
-    }
+    const parsed = CreateServiceSchema.safeParse(request.body)
+    if (!parsed.success) return Errors.VALIDATION(reply, parsed.error.format())
+    const body = parsed.data
 
     const service = await prisma.service.create({
       data: {
@@ -81,10 +94,9 @@ export async function billingRoutes(server: FastifyInstance) {
   server.patch('/services/:id', { preHandler: requireStaff }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const { clinicId } = request.authUser
-    const body = request.body as {
-      name?: string; description?: string; price?: number
-      category?: string; taxRate?: number; isActive?: boolean
-    }
+    const parsed = UpdateServiceSchema.safeParse(request.body)
+    if (!parsed.success) return Errors.VALIDATION(reply, parsed.error.format())
+    const body = parsed.data
 
     const service = await prisma.service.findFirst({ where: { id, clinicId } })
     if (!service) return Errors.NOT_FOUND(reply, 'Service')

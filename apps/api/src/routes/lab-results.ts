@@ -151,12 +151,31 @@ export async function labResultsRoutes(server: FastifyInstance) {
     if (!data) return Errors.VALIDATION(reply, { message: 'No file provided' })
 
     const fileBuffer = await data.toBuffer()
-    const fileName = `lab-results/${clinicId}/${id}/${Date.now()}-${data.filename}`
+
+    // Server-side MIME validation — never trust the client-supplied Content-Type.
+    // Check magic bytes to confirm the actual file format.
+    const ALLOWED_MIMES: Record<string, Buffer> = {
+      'application/pdf': Buffer.from([0x25, 0x50, 0x44, 0x46]),         // %PDF
+      'image/jpeg':      Buffer.from([0xFF, 0xD8, 0xFF]),               // JFIF/Exif
+      'image/png':       Buffer.from([0x89, 0x50, 0x4E, 0x47]),         // PNG
+    }
+
+    const detectedMime = Object.entries(ALLOWED_MIMES).find(([, magic]) =>
+      fileBuffer.slice(0, magic.length).equals(magic)
+    )?.[0]
+
+    if (!detectedMime) {
+      return reply.status(415).send({ error: 'Unsupported file type. Only PDF, JPEG, and PNG are allowed.' })
+    }
+
+    // Map detected MIME to a safe extension — never use the client-supplied filename
+    const EXT: Record<string, string> = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png' }
+    const safeFileName = `lab-results/${clinicId}/${id}/${Date.now()}.${EXT[detectedMime]}`
 
     const { data: uploaded, error } = await supabase.storage
       .from('clinical-files')
-      .upload(fileName, fileBuffer, {
-        contentType: data.mimetype,
+      .upload(safeFileName, fileBuffer, {
+        contentType: detectedMime,
         upsert: true,
       })
 
@@ -180,7 +199,7 @@ export async function labResultsRoutes(server: FastifyInstance) {
       action: 'UPDATE',
       resourceType: 'LabResult',
       resourceId: id,
-      metadata: { action: 'file_uploaded', fileName },
+      metadata: { action: 'file_uploaded', fileName: safeFileName },
       ip: request.ip,
       userAgent: request.headers['user-agent'],
     })
@@ -324,14 +343,17 @@ REGLAS: Usa exactamente los encabezados ##, tablas markdown con |, negritas **te
   server.patch('/:id/notes', { preHandler: requireStaff }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const { clinicId } = request.authUser
-    const body = request.body as { notes: string }
+
+    const NotesPatchSchema = z.object({ notes: z.string().max(10000) })
+    const parsed = NotesPatchSchema.safeParse(request.body)
+    if (!parsed.success) return Errors.VALIDATION(reply, parsed.error.format())
 
     const result = await prisma.labResult.findFirst({ where: { id, clinicId } })
     if (!result) return Errors.NOT_FOUND(reply, 'Lab result')
 
     const updated = await prisma.labResult.update({
       where: { id },
-      data: { notes: body.notes },
+      data: { notes: parsed.data.notes },
     })
     return reply.send({ data: updated })
   })
@@ -341,7 +363,10 @@ REGLAS: Usa exactamente los encabezados ##, tablas markdown con |, negritas **te
     const { id } = request.params as { id: string }
     const { clinicId, authUserId, role } = request.authUser
 
-    const body = request.body as { notes?: string }
+    const ReviewPatchSchema = z.object({ notes: z.string().max(10000).optional() })
+    const parsedReview = ReviewPatchSchema.safeParse(request.body)
+    if (!parsedReview.success) return Errors.VALIDATION(reply, parsedReview.error.format())
+    const body = parsedReview.data
 
     const result = await prisma.labResult.findFirst({ where: { id, clinicId } })
     if (!result) return Errors.NOT_FOUND(reply, 'Lab result')

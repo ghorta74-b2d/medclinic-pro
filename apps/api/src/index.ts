@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import './lib/env.js' // validate env vars at boot — exits with error if any are missing
 import { buildServer } from './server.js'
 
 void (async () => {
