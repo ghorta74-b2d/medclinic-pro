@@ -25,8 +25,8 @@ const securityHeaders = [
       "img-src 'self' data: https: blob:",
       // Fonts: own origin and data URIs
       "font-src 'self' data:",
-      // API/WebSocket connections: own origin, Supabase, Stripe
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.google-analytics.com",
+      // API/WebSocket connections: own origin, Supabase, Stripe, backend API
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.google-analytics.com https://medclinic-api.vercel.app",
       // Frames: Stripe Elements only
       "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
       // No iframes of this app by anyone
