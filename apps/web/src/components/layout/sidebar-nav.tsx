@@ -150,8 +150,8 @@ export function SidebarNav() {
           <Image
             src="/logo-white.svg"
             alt="MedClinic Pro"
-            width={120}
-            height={32}
+            width={165}
+            height={36}
             className="h-9 w-auto object-contain"
           />
         </div>
