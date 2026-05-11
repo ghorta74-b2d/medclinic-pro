@@ -1,4 +1,3 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -13,57 +12,58 @@ const STAFF_BLOCKED_PREFIXES = [
   '/configuracion',
 ]
 
-function makeSupabase(request: NextRequest, response: NextResponse) {
-  return createServerClient(
-    process.env['NEXT_PUBLIC_SUPABASE_URL']!,
-    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options?: Parameters<typeof response.cookies.set>[2] }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
-        },
-      },
+/**
+ * Decode the role from the Supabase access-token JWT without any network call.
+ * We only need the role for routing decisions — actual auth is enforced by the API.
+ */
+function getRoleFromCookies(request: NextRequest): string | undefined {
+  try {
+    // Supabase SSR stores the token in a cookie named sb-<project>-auth-token
+    // which is a JSON string: [access_token, refresh_token, ...]
+    // Alternatively the cookie can just be the access_token string directly.
+    for (const cookie of request.cookies.getAll()) {
+      if (!cookie.name.includes('auth-token')) continue
+      let token = cookie.value
+      // If value is a JSON array, pull the first element (access_token)
+      try {
+        const parsed = JSON.parse(token)
+        if (Array.isArray(parsed)) token = parsed[0]
+        else if (parsed?.access_token) token = parsed.access_token
+      } catch { /* not JSON — value is already the raw JWT */ }
+
+      // Decode JWT payload (no signature verification — just routing)
+      const parts = token.split('.')
+      if (parts.length !== 3) continue
+      const payload = JSON.parse(atob((parts[1] as string).replace(/-/g, '+').replace(/_/g, '/')))
+      return payload?.user_metadata?.role as string | undefined
     }
-  )
+  } catch { /* malformed cookie — treat as unauthenticated */ }
+  return undefined
 }
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const response = NextResponse.next()
 
-  // ── Superadmin guard: require active SUPER_ADMIN session ───────────────────
+  // ── Superadmin guard: SUPER_ADMIN role required ────────────────────────────
   if (pathname.startsWith('/superadmin')) {
-    try {
-      const supabase = makeSupabase(request, response)
-      const { data: { session } } = await supabase.auth.getSession()
-      const role = session?.user?.user_metadata?.role as string | undefined
-      if (!session || role !== 'SUPER_ADMIN') {
-        const loginUrl = new URL('/login', request.url)
-        loginUrl.searchParams.set('next', pathname)
-        return NextResponse.redirect(loginUrl)
-      }
-    } catch {
-      // On error allow through — don't lock out on transient Supabase failures
+    const role = getRoleFromCookies(request)
+    if (role !== 'SUPER_ADMIN') {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('next', pathname)
+      return NextResponse.redirect(loginUrl)
     }
-    return response
+    return NextResponse.next()
   }
 
   // ── STAFF restrictions ─────────────────────────────────────────────────────
   const isRestricted = STAFF_BLOCKED_PREFIXES.some(prefix => pathname.startsWith(prefix))
   if (!isRestricted) return NextResponse.next()
 
-  try {
-    const supabase = makeSupabase(request, response)
-    const { data: { session } } = await supabase.auth.getSession()
-    const role = session?.user?.user_metadata?.role as string | undefined
-    if (role === 'STAFF') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-    return response
-  } catch {
-    return NextResponse.next()
+  const role = getRoleFromCookies(request)
+  if (role === 'STAFF') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
+  return NextResponse.next()
 }
 
 export const config = {
