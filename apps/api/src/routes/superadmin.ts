@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { createClient } from '@supabase/supabase-js'
 import { prisma } from '../lib/prisma.js'
 import { Errors } from '../lib/errors.js'
+import { buildInviteEmail, buildPasswordResetEmail, sendResendEmail } from '../lib/email.js'
 
 // Call GoTrue admin generate_link directly (bypass JS SDK quirks)
 async function generateInviteLink(email: string, metadata: Record<string, unknown>, redirectTo: string) {
@@ -29,72 +30,6 @@ async function generateInviteLink(email: string, metadata: Record<string, unknow
 
   if (!actionLink) throw new Error('GoTrue did not return action_link')
   return { actionLink, userId }
-}
-
-async function sendPasswordResetEmail(to: string, resetUrl: string, firstName: string) {
-  const resendKey = process.env['RESEND_API_KEY']
-  if (!resendKey) throw new Error('RESEND_API_KEY not configured')
-
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${resendKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: 'MedClinic PRO <noreply@mediaclinic.mx>',
-      to: [to],
-      subject: 'Restablece tu contraseña — MedClinic PRO',
-      html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-          <h2>Hola ${firstName},</h2>
-          <p>Recibiste este email porque se solicitó un restablecimiento de contraseña para tu cuenta en MedClinic PRO.</p>
-          <a href="${resetUrl}" style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">
-            Restablecer contraseña
-          </a>
-          <p style="color:#888;font-size:12px">Este enlace expira en 1 hora. Si no solicitaste este cambio, ignora este mensaje.</p>
-        </div>
-      `,
-    }),
-  })
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(`Resend error ${res.status}: ${(body as any).message ?? res.statusText}`)
-  }
-}
-
-async function sendInviteEmail(to: string, inviteUrl: string, firstName: string) {
-  const resendKey = process.env['RESEND_API_KEY']
-  if (!resendKey) throw new Error('RESEND_API_KEY not configured')
-
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${resendKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: 'MedClinic PRO <noreply@mediaclinic.mx>',
-      to: [to],
-      subject: 'Invitación a MedClinic PRO',
-      html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-          <h2>Hola ${firstName},</h2>
-          <p>Has sido invitado a MedClinic PRO. Haz clic en el botón para activar tu cuenta y establecer tu contraseña.</p>
-          <a href="${inviteUrl}" style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">
-            Activar cuenta
-          </a>
-          <p style="color:#888;font-size:12px">Si no esperabas esta invitación, ignora este mensaje.</p>
-        </div>
-      `,
-    }),
-  })
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(`Resend error ${res.status}: ${(body as any).message ?? res.statusText}`)
-  }
 }
 
 // Admin Supabase client (bypasses RLS, can create users)
@@ -245,8 +180,12 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       if (userId) {
         await prisma.doctor.update({ where: { id: doctor.id }, data: { authUserId: userId } }).catch(() => {})
       }
-      // 5. Send via Resend directly
-      await sendInviteEmail(body.admin.email, actionLink, body.admin.firstName)
+      // 5. Send via Resend
+      await sendResendEmail({
+        to: body.admin.email,
+        subject: 'Activa tu cuenta de Mediaclinic',
+        html: buildInviteEmail({ firstName: body.admin.firstName, email: body.admin.email, role: 'ADMIN', actionLink }),
+      })
       inviteSent = true
     } catch (inviteErr: any) {
       inviteEmailError = inviteErr.message
@@ -434,7 +373,11 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
         }).catch(() => {})
       }
 
-      await sendInviteEmail(doctor.email, actionLink, doctor.firstName)
+      await sendResendEmail({
+        to: doctor.email,
+        subject: 'Tu acceso a Mediaclinic',
+        html: buildInviteEmail({ firstName: doctor.firstName, email: doctor.email, role: 'DOCTOR', actionLink, isResend: true }),
+      })
       return { data: { sent: true, email: doctor.email } }
     } catch (err: any) {
       const msg = err?.message || String(err) || 'Error al enviar invitación'
@@ -465,7 +408,11 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
     if (!actionLink) return reply.status(500).send({ error: { message: 'No se pudo generar el enlace de recuperación' } })
 
     try {
-      await sendPasswordResetEmail(doctor.email, actionLink, doctor.firstName)
+      await sendResendEmail({
+        to: doctor.email,
+        subject: 'Restablece tu contraseña — Mediaclinic',
+        html: buildPasswordResetEmail({ firstName: doctor.firstName, resetLink: actionLink }),
+      })
       return { data: { sent: true, email: doctor.email } }
     } catch (err: any) {
       return reply.status(400).send({ error: { message: err?.message || 'Error al enviar email' } })
@@ -498,7 +445,11 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
     const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`
     try {
       const { actionLink } = await generateInviteLink(email, { role: 'SUPER_ADMIN', firstName, lastName }, redirectTo)
-      await sendInviteEmail(email, actionLink, firstName || email)
+      await sendResendEmail({
+        to: email,
+        subject: 'Acceso de administrador — Mediaclinic',
+        html: buildInviteEmail({ firstName: firstName || email, email, role: 'ADMIN', actionLink }),
+      })
       return { data: { sent: true } }
     } catch (err: any) {
       return reply.status(400).send({ error: { message: err?.message || 'Error al invitar' } })

@@ -344,7 +344,7 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
     if (linkData?.properties?.action_link) {
       await sendResendEmail({
         to: body.email,
-        subject: 'Bienvenido a MedClinic PRO — Activa tu cuenta',
+        subject: 'Bienvenido a Mediaclinic — Activa tu cuenta',
         html: buildInviteEmail({
           firstName: body.firstName,
           email: body.email,
@@ -479,7 +479,7 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
 
     await sendResendEmail({
       to: doctor.email,
-      subject: 'Acceso a MedClinic PRO',
+      subject: 'Tu acceso a Mediaclinic',
       html: buildInviteEmail({
         firstName: doctor.firstName,
         email: doctor.email,

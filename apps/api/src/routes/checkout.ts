@@ -170,7 +170,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
       // Invite email → new admin
       actionLink ? sendResendEmail({
         to: adminEmail,
-        subject: 'Activa tu cuenta de MedClinic PRO',
+        subject: 'Activa tu cuenta de Mediaclinic',
         html: buildInviteEmail({ firstName, email: adminEmail, role: 'ADMIN', actionLink }),
       }).catch(() => {}) : Promise.resolve(),
 
@@ -180,7 +180,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
         subject: `Nueva venta — Plan ${planLabels[plan] ?? plan} — ${clinicName}`,
         html: `
           <p style="font-family:sans-serif">
-            <strong>Nueva clínica onboardeada en MedClinic PRO</strong>
+            <strong>Nueva clínica onboardeada en Mediaclinic</strong>
           </p>
           <table style="font-family:sans-serif;font-size:14px;border-collapse:collapse">
             <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Clínica</td><td><strong>${clinicName}</strong></td></tr>

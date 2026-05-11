@@ -6,40 +6,18 @@ import { auditLog } from '../middleware/audit.js'
 import { Errors } from '../lib/errors.js'
 import { scheduleReminders } from '../services/scheduling.js'
 import { sendWhatsAppMessage } from '../services/whatsapp.js'
-// ── Email helper for doctor notifications ───────────────────
+import { buildNotificationEmail, sendResendEmail } from '../lib/email.js'
+
 async function sendDoctorNotificationEmail(opts: {
   to: string
   subject: string
+  title: string
   bodyHtml: string
 }) {
-  const resendKey = process.env['RESEND_API_KEY']
-  if (!resendKey) return
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: 'MedClinic PRO <medclinic@glasshaus.mx>',
-      to: [opts.to],
-      subject: opts.subject,
-      html: `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#f5f7fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px">
-    <tr><td align="center">
-      <table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
-        <tr><td style="background:linear-gradient(135deg,#7c3aed 0%,#4f46e5 100%);padding:28px 40px">
-          <p style="margin:0;font-size:20px;font-weight:700;color:#fff">MedClinic PRO</p>
-        </td></tr>
-        <tr><td style="padding:32px 40px;font-size:14px;color:#374151;line-height:1.7">
-          ${opts.bodyHtml}
-        </td></tr>
-        <tr><td style="padding:16px 40px 24px;border-top:1px solid #f3f4f6;text-align:center">
-          <p style="margin:0;font-size:12px;color:#9ca3af">MedClinic PRO · Plataforma de gestión clínica</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body></html>`,
-    }),
+  await sendResendEmail({
+    to: opts.to,
+    subject: opts.subject,
+    html: buildNotificationEmail({ title: opts.title, bodyHtml: opts.bodyHtml }),
   }).catch(() => {})
 }
 
@@ -368,6 +346,7 @@ export async function appointmentsRoutes(server: FastifyInstance) {
         sendDoctorNotificationEmail({
           to: originalDoctor.email,
           subject: `Tu paciente ${patient.firstName} ${patient.lastName} fue atendido por otro médico`,
+          title: 'Notificación de consulta',
           bodyHtml: `<p>Hola Dr. ${originalDoctor.firstName},</p>
             <p>El/La <strong>Dr./Dra. ${callerDoctor.firstName} ${callerDoctor.lastName}</strong> atendió a tu paciente
             <strong>${patient.firstName} ${patient.lastName}</strong> el ${aptTime}.</p>
@@ -459,6 +438,7 @@ export async function appointmentsRoutes(server: FastifyInstance) {
         sendDoctorNotificationEmail({
           to: originalDoctor.email,
           subject: `Cita reasignada: ${patient.firstName} ${patient.lastName}`,
+          title: 'Cita reasignada',
           bodyHtml: `<p>Hola Dr. ${originalDoctor.firstName},</p>
             <p>Tu cita con <strong>${patient.firstName} ${patient.lastName}</strong> programada para el ${aptTime}
             fue reasignada al/a la <strong>Dr./Dra. ${newDoctor.firstName} ${newDoctor.lastName}</strong> por ${callerName}.</p>`,
@@ -468,6 +448,7 @@ export async function appointmentsRoutes(server: FastifyInstance) {
         sendDoctorNotificationEmail({
           to: newDoctor.email,
           subject: `Nueva cita asignada: ${patient.firstName} ${patient.lastName}`,
+          title: 'Nueva cita asignada',
           bodyHtml: `<p>Hola Dr. ${newDoctor.firstName},</p>
             <p>Se te asignó una cita con <strong>${patient.firstName} ${patient.lastName}</strong> para el ${aptTime}.</p>
             <p>La cita fue reasignada desde Dr./Dra. ${originalDoctor.firstName} ${originalDoctor.lastName} por ${callerName}.</p>`,

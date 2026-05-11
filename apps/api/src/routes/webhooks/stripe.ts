@@ -70,7 +70,7 @@ export async function webhookStripe(server: FastifyInstance) {
             subject: `💰 Nueva suscripción — Plan ${planLabels[plan] ?? plan}`,
             html: `
               <p style="font-family:sans-serif">
-                <strong>Nueva suscripción iniciada en MedClinic PRO</strong>
+                <strong>Nueva suscripción iniciada en Mediaclinic</strong>
               </p>
               <table style="font-family:sans-serif;font-size:14px;border-collapse:collapse">
                 <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Plan</td><td>${planLabels[plan] ?? plan}</td></tr>
