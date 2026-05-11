@@ -242,15 +242,24 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
 
     if (!clinic) return reply.status(404).send({ error: { message: 'Clínica no encontrada' } })
 
-    // Enrich doctors with emailConfirmed from Supabase auth
-    const supabaseAdmin = getSupabaseAdmin()
-    const enrichedDoctors = await Promise.all(
-      clinic.doctors.map(async (doc) => {
-        if (!doc.authUserId) return { ...doc, emailConfirmed: false }
-        const { data } = await supabaseAdmin.auth.admin.getUserById(doc.authUserId)
-        return { ...doc, emailConfirmed: !!data?.user?.email_confirmed_at }
-      })
-    )
+    // Enrich doctors with emailConfirmed — per-doctor try/catch so one bad authUserId doesn't crash the response
+    let enrichedDoctors = clinic.doctors.map(doc => ({ ...doc, emailConfirmed: false }))
+    try {
+      const supabaseAdmin = getSupabaseAdmin()
+      enrichedDoctors = await Promise.all(
+        clinic.doctors.map(async (doc) => {
+          if (!doc.authUserId) return { ...doc, emailConfirmed: false }
+          try {
+            const { data } = await supabaseAdmin.auth.admin.getUserById(doc.authUserId)
+            return { ...doc, emailConfirmed: !!data?.user?.email_confirmed_at }
+          } catch {
+            return { ...doc, emailConfirmed: false }
+          }
+        })
+      )
+    } catch (err) {
+      fastify.log.warn('[GET /clinics/:id] Supabase enrichment failed, returning doctors without emailConfirmed: %s', err)
+    }
 
     return { data: { ...clinic, plan: clinic.planId ?? null, doctors: enrichedDoctors } }
   })

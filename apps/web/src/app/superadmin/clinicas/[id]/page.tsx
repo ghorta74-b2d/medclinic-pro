@@ -49,6 +49,7 @@ export default function ClinicDetailPage() {
   const router = useRouter()
   const [clinic, setClinic] = useState<ClinicDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [showAddDoctor, setShowAddDoctor] = useState(false)
   const [resendingId, setResendingId] = useState<string | null>(null)
@@ -60,11 +61,15 @@ export default function ClinicDetailPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const res = await (api as any).superadmin.getClinic(id) as { data: ClinicDetail }
       setClinic(res.data)
       setForm({ name: res.data.name, phone: res.data.phone, email: res.data.email, address: res.data.address ?? '', rfc: res.data.rfc ?? '', plan: res.data.plan })
-    } catch (err) { console.error(err) }
+    } catch (err) {
+      console.error('[clinic detail]', err)
+      setLoadError(err instanceof Error ? err.message : String(err))
+    }
     finally { setLoading(false) }
   }, [id])
 
@@ -125,7 +130,10 @@ export default function ClinicDetailPage() {
     <div className="flex justify-center py-24"><Loader2 className="w-6 h-6 animate-spin text-purple-500" /></div>
   )
   if (!clinic) return (
-    <div className="p-6 text-center text-gray-400">Clínica no encontrada</div>
+    <div className="p-6 text-center text-gray-400">
+      <p className="font-medium mb-1">Clínica no encontrada</p>
+      {loadError && <p className="text-xs text-red-400 mt-1">{loadError}</p>}
+    </div>
   )
 
   return (
