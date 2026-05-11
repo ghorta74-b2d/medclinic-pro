@@ -86,7 +86,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
         doctorCount,
         patientCount,
         appointmentMonthCount,
-        recentClinics,
+        recentClinics: recentClinics.map(c => ({ ...c, plan: c.planId ?? null })),
       },
     }
   })

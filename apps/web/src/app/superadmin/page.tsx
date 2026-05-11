@@ -21,11 +21,18 @@ interface PlatformStats {
   }>
 }
 
+const PLAN_LABELS: Record<string, string> = {
+  esencial: 'Esencial', profesional: 'Profesional', clinica: 'Clínica', 'clinica-plus': 'Clínica Plus',
+  BASIC: 'Esencial', PRO: 'Profesional', ENTERPRISE: 'Clínica',
+}
 const PLAN_COLORS: Record<string, string> = {
-  FREE: 'bg-gray-100 text-gray-600',
-  STARTER: 'bg-blue-100 text-blue-700',
-  PRO: 'bg-purple-100 text-purple-700',
-  ENTERPRISE: 'bg-yellow-100 text-yellow-700',
+  esencial: 'bg-blue-900 text-blue-300',
+  profesional: 'bg-purple-900 text-purple-300',
+  clinica: 'bg-yellow-900 text-yellow-300',
+  'clinica-plus': 'bg-green-900 text-green-300',
+  BASIC: 'bg-blue-900 text-blue-300',
+  PRO: 'bg-purple-900 text-purple-300',
+  ENTERPRISE: 'bg-yellow-900 text-yellow-300',
 }
 
 export default function SuperAdminDashboard() {
@@ -103,8 +110,8 @@ export default function SuperAdminDashboard() {
                 </p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLAN_COLORS[clinic.plan] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {clinic.plan}
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLAN_COLORS[clinic.plan] ?? 'bg-gray-700 text-gray-300'}`}>
+                  {PLAN_LABELS[clinic.plan] ?? clinic.plan ?? '—'}
                 </span>
                 <div className={`w-2 h-2 rounded-full ${clinic.isActive ? 'bg-green-400' : 'bg-red-400'}`} />
                 <p className="text-xs text-gray-500">{formatDate(clinic.createdAt)}</p>

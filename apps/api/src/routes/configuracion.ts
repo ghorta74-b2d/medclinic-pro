@@ -16,16 +16,20 @@ function getSupabaseAdmin() {
 }
 
 // ── Plan limits ───────────────────────────────────────────────────────────────
-const LIMITS = {
-  BASIC:      { DOCTOR: 1,  STAFF: 1 },
-  PRO:        { DOCTOR: 4,  STAFF: 1 },
-  ENTERPRISE: { DOCTOR: 15, STAFF: 5 },
-} as const
+// Values match the landing page: esencial=2 users, profesional=5, clinica=20, plus=unlimited
+const LIMITS: Record<string, { DOCTOR: number; STAFF: number }> = {
+  esencial:     { DOCTOR: 2,   STAFF: 1  },
+  profesional:  { DOCTOR: 5,   STAFF: 2  },
+  clinica:      { DOCTOR: 20,  STAFF: 5  },
+  'clinica-plus': { DOCTOR: 999, STAFF: 99 },
+  // Backward-compat aliases for clinics created with old plan IDs
+  BASIC:        { DOCTOR: 2,   STAFF: 1  },
+  PRO:          { DOCTOR: 5,   STAFF: 2  },
+  ENTERPRISE:   { DOCTOR: 20,  STAFF: 5  },
+}
 
-type PlanKey = keyof typeof LIMITS
-
-function getLimits(planId: string | null | undefined) {
-  return LIMITS[(planId as PlanKey) ?? 'BASIC'] ?? LIMITS['BASIC']
+function getLimits(planId: string | null | undefined): { DOCTOR: number; STAFF: number } {
+  return LIMITS[planId ?? 'esencial'] ?? { DOCTOR: 2, STAFF: 1 }
 }
 
 // ── Plugin ────────────────────────────────────────────────────────────────────

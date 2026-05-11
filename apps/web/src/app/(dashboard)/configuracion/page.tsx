@@ -68,10 +68,24 @@ function ClinicTab() {
 }
 
 // ── Plan badge ────────────────────────────────────────────────────
+const PLAN_LABELS: Record<string, string> = {
+  esencial:     'Esencial',
+  profesional:  'Profesional',
+  clinica:      'Clínica',
+  'clinica-plus': 'Clínica Plus',
+  // backward-compat
+  BASIC:        'Esencial',
+  PRO:          'Profesional',
+  ENTERPRISE:   'Clínica',
+}
 const PLAN_COLORS: Record<string, string> = {
-  BASIC:      'bg-muted text-foreground/80',
-  PRO:        'bg-primary/15 text-primary',
-  ENTERPRISE: 'bg-primary/15 text-primary',
+  esencial:     'bg-blue-500/15 text-blue-400',
+  profesional:  'bg-primary/15 text-primary',
+  clinica:      'bg-yellow-500/15 text-yellow-400',
+  'clinica-plus': 'bg-green-500/15 text-green-400',
+  BASIC:        'bg-blue-500/15 text-blue-400',
+  PRO:          'bg-primary/15 text-primary',
+  ENTERPRISE:   'bg-yellow-500/15 text-yellow-400',
 }
 
 // ── Users / Team Management ──────────────────────────────────────
@@ -214,7 +228,7 @@ function UsuariosTab() {
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">Usuarios de tu plan</h3>
           <span className={cn('text-xs font-semibold px-2.5 py-0.5 rounded-full', PLAN_COLORS[plan] ?? 'bg-muted text-foreground/80')}>
-            Plan {plan}
+            Plan {PLAN_LABELS[plan] ?? plan}
           </span>
         </div>
         <div className="grid grid-cols-2 gap-3">
