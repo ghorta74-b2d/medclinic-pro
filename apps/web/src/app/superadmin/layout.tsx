@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Shield, LayoutDashboard, Building2, Settings } from 'lucide-react'
+import { LayoutDashboard, Building2, Settings } from 'lucide-react'
 import { LogoutButton } from './logout-button'
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
@@ -8,15 +8,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       {/* Top navbar */}
       <header className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-              <Shield className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-white leading-none">MedClinic Pro</p>
-              <p className="text-xs text-purple-400 font-semibold uppercase tracking-wider">Super Admin</p>
-            </div>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo_white_comp.svg" alt="Mediaclinic" className="h-7 w-auto" />
 
           <nav className="flex items-center gap-1 ml-6">
             <Link href="/superadmin"
