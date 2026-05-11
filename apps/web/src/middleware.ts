@@ -13,50 +13,62 @@ const STAFF_BLOCKED_PREFIXES = [
   '/configuracion',
 ]
 
+function makeSupabase(request: NextRequest, response: NextResponse) {
+  return createServerClient(
+    process.env['NEXT_PUBLIC_SUPABASE_URL']!,
+    process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!,
+    {
+      cookies: {
+        getAll() { return request.cookies.getAll() },
+        setAll(cookiesToSet: { name: string; value: string; options?: Parameters<typeof response.cookies.set>[2] }[]) {
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+        },
+      },
+    }
+  )
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const response = NextResponse.next()
 
-  // Only check STAFF restrictions for known restricted paths
+  // ── Superadmin guard: require active SUPER_ADMIN session ───────────────────
+  if (pathname.startsWith('/superadmin')) {
+    try {
+      const supabase = makeSupabase(request, response)
+      const { data: { session } } = await supabase.auth.getSession()
+      const role = session?.user?.user_metadata?.role as string | undefined
+      if (!session || role !== 'SUPER_ADMIN') {
+        const loginUrl = new URL('/login', request.url)
+        loginUrl.searchParams.set('next', pathname)
+        return NextResponse.redirect(loginUrl)
+      }
+    } catch {
+      // On error allow through — don't lock out on transient Supabase failures
+    }
+    return response
+  }
+
+  // ── STAFF restrictions ─────────────────────────────────────────────────────
   const isRestricted = STAFF_BLOCKED_PREFIXES.some(prefix => pathname.startsWith(prefix))
   if (!isRestricted) return NextResponse.next()
 
   try {
-    const response = NextResponse.next()
-
-    const supabase = createServerClient(
-      process.env['NEXT_PUBLIC_SUPABASE_URL']!,
-      process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet: { name: string; value: string; options?: Parameters<typeof response.cookies.set>[2] }[]) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              response.cookies.set(name, value, options)
-            })
-          },
-        },
-      }
-    )
-
+    const supabase = makeSupabase(request, response)
     const { data: { session } } = await supabase.auth.getSession()
     const role = session?.user?.user_metadata?.role as string | undefined
-
-    // Redirect STAFF to dashboard for restricted routes
     if (role === 'STAFF') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
-
     return response
   } catch {
-    // If session check fails, allow through (don't accidentally block legitimate users)
     return NextResponse.next()
   }
 }
 
 export const config = {
   matcher: [
+    '/superadmin/:path*',
     '/expediente/:path*',
     '/recetas/:path*',
     '/resultados/:path*',

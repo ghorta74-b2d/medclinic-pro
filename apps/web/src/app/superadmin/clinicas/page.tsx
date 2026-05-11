@@ -34,17 +34,23 @@ const PLAN_COLORS: Record<string, string> = {
 export default function ClinicasPage() {
   const [clinics, setClinics] = useState<ClinicRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
   const load = useCallback(async (showSkeleton = false) => {
     if (showSkeleton) setLoading(true)
+    setLoadError(null)
     try {
       const params: Record<string, string> = {}
       if (search) params['q'] = search
       const res = await (api as any).superadmin.listClinics(params) as { data: ClinicRow[] }
       setClinics(res.data)
-    } catch (err) { console.error(err) }
+    } catch (err) {
+      console.error('[clinics list]', err)
+      const msg = err instanceof Error ? err.message : String(err)
+      setLoadError(msg)
+    }
     finally { setLoading(false) }
   }, [search])
 
@@ -75,6 +81,16 @@ export default function ClinicasPage() {
           <Plus className="w-4 h-4" /> Nueva clínica
         </Link>
       </div>
+
+      {/* Error banner */}
+      {loadError && (
+        <div className="bg-red-900/40 border border-red-700 rounded-lg px-4 py-3 text-sm text-red-300 flex items-start gap-2">
+          <span className="font-semibold shrink-0">Error:</span> {loadError}
+          {(loadError.includes('401') || loadError.includes('403') || loadError.toLowerCase().includes('acceso') || loadError.toLowerCase().includes('unauthorized')) && (
+            <a href="/superadmin/login" className="ml-2 underline text-red-200 hover:text-white shrink-0">Volver a iniciar sesión</a>
+          )}
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative max-w-sm">
