@@ -37,7 +37,12 @@ interface ClinicDetail {
   _count: { patients: number; appointments: number; invoices: number }
 }
 
-const PLAN_OPTIONS = ['FREE', 'STARTER', 'PRO', 'ENTERPRISE']
+const PLAN_OPTIONS: { id: string; label: string }[] = [
+  { id: 'esencial', label: 'Esencial' },
+  { id: 'profesional', label: 'Profesional' },
+  { id: 'clinica', label: 'Clínica' },
+  { id: 'clinica-plus', label: 'Clínica Plus' },
+]
 
 export default function ClinicDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -137,7 +142,7 @@ export default function ClinicDetailPage() {
               clinic.isActive ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300')}>
               {clinic.isActive ? 'Activa' : 'Inactiva'}
             </span>
-            <span className="text-xs bg-purple-900 text-purple-300 px-2 py-0.5 rounded-full font-medium">{clinic.plan}</span>
+            <span className="text-xs bg-purple-900 text-purple-300 px-2 py-0.5 rounded-full font-medium">{PLAN_OPTIONS.find(p => p.id === clinic.plan)?.label ?? clinic.plan ?? '—'}</span>
           </div>
           <p className="text-sm text-gray-400">{clinic.email} · Alta: {formatDate(clinic.createdAt)}</p>
         </div>
@@ -206,9 +211,9 @@ export default function ClinicDetailPage() {
             {editMode
               ? <select value={form.plan} onChange={(e) => setForm({...form, plan: e.target.value})}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1.5 text-sm text-white focus:outline-none focus:border-purple-500">
-                  {PLAN_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                  {PLAN_OPTIONS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
                 </select>
-              : <p className="text-sm text-purple-300 font-semibold">{clinic.plan}</p>
+              : <p className="text-sm text-purple-300 font-semibold">{PLAN_OPTIONS.find(p => p.id === clinic.plan)?.label ?? clinic.plan ?? '—'}</p>
             }
           </div>
         </div>

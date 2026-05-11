@@ -18,12 +18,17 @@ interface ClinicRow {
   _count: { doctors: number; patients: number }
 }
 
-const PLAN_LABELS: Record<string, string> = { FREE: 'Free', STARTER: 'Starter', PRO: 'Pro', ENTERPRISE: 'Enterprise' }
+const PLAN_LABELS: Record<string, string> = {
+  esencial: 'Esencial',
+  profesional: 'Profesional',
+  clinica: 'Clínica',
+  'clinica-plus': 'Clínica Plus',
+}
 const PLAN_COLORS: Record<string, string> = {
-  FREE: 'bg-gray-700 text-gray-300',
-  STARTER: 'bg-blue-900 text-blue-300',
-  PRO: 'bg-purple-900 text-purple-300',
-  ENTERPRISE: 'bg-yellow-900 text-yellow-300',
+  esencial: 'bg-blue-900 text-blue-300',
+  profesional: 'bg-purple-900 text-purple-300',
+  clinica: 'bg-yellow-900 text-yellow-300',
+  'clinica-plus': 'bg-green-900 text-green-300',
 }
 
 export default function ClinicasPage() {

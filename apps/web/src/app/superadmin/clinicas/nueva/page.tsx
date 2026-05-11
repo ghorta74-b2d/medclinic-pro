@@ -15,10 +15,26 @@ const STEPS: { id: Step; label: string; icon: React.ComponentType<any> }[] = [
 ]
 
 const PLANS = [
-  { id: 'FREE', name: 'Free', price: '$0 / mes', features: ['1 médico', '50 pacientes', 'Sin WhatsApp'], color: 'border-gray-600' },
-  { id: 'STARTER', name: 'Starter', price: '$499 / mes', features: ['3 médicos', '500 pacientes', 'WhatsApp básico'], color: 'border-blue-500', popular: false },
-  { id: 'PRO', name: 'Pro', price: '$999 / mes', features: ['Médicos ilimitados', 'Pacientes ilimitados', 'WhatsApp + Voz IA', 'Telemedicina'], color: 'border-purple-500', popular: true },
-  { id: 'ENTERPRISE', name: 'Enterprise', price: 'Precio especial', features: ['Todo lo de Pro', 'SLA garantizado', 'Onboarding dedicado'], color: 'border-yellow-500' },
+  {
+    id: 'esencial', name: 'Esencial', price: '$1,299 / mes',
+    features: ['Hasta 2 usuarios', 'Agenda + WhatsApp', 'Expediente NOM-004', 'Recetas digitales'],
+    color: 'border-blue-500',
+  },
+  {
+    id: 'profesional', name: 'Profesional', price: '$2,499 / mes',
+    features: ['Hasta 5 usuarios', 'Todo de Esencial', 'Cobros + aseguradoras', 'Asistente IA 24/7'],
+    color: 'border-purple-500', popular: true,
+  },
+  {
+    id: 'clinica', name: 'Clínica', price: '$4,999 / mes',
+    features: ['Hasta 20 usuarios', 'Todo de Profesional', 'Telemedicina', 'Soporte dedicado'],
+    color: 'border-yellow-500',
+  },
+  {
+    id: 'clinica-plus', name: 'Clínica Plus', price: 'Precio especial',
+    features: ['Usuarios ilimitados', 'Multi-sucursal', 'Integración HL7/FHIR', 'SLA garantizado'],
+    color: 'border-green-500',
+  },
 ]
 
 export default function NuevaClinicaPage() {
@@ -34,7 +50,7 @@ export default function NuevaClinicaPage() {
   const [admin, setAdmin] = useState({
     firstName: '', lastName: '', email: '', specialty: '', licenseNumber: '',
   })
-  const [plan, setPlan] = useState('PRO')
+  const [plan, setPlan] = useState('profesional')
 
   const stepIndex = ['clinica', 'admin', 'plan'].indexOf(step)
 
@@ -247,7 +263,7 @@ export default function NuevaClinicaPage() {
               <div className="flex justify-between"><span className="text-gray-400">Clínica</span><span className="text-white font-medium">{clinic.name}</span></div>
               <div className="flex justify-between"><span className="text-gray-400">Admin</span><span className="text-white">{admin.firstName} {admin.lastName}</span></div>
               <div className="flex justify-between"><span className="text-gray-400">Invitación a</span><span className="text-purple-300">{admin.email}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Plan</span><span className="text-white font-semibold">{plan}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Plan</span><span className="text-white font-semibold">{PLANS.find(p => p.id === plan)?.name ?? plan}</span></div>
             </div>
 
             <div className="flex justify-between pt-2">

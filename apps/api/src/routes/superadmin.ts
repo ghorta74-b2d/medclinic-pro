@@ -105,7 +105,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       orderBy: { createdAt: 'desc' },
     })
 
-    return { data: clinics }
+    return { data: clinics.map(c => ({ ...c, plan: c.planId ?? null })) }
   })
 
   // ── POST /api/superadmin/clinics ──────────────────────────────
@@ -153,7 +153,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
         phone: body.clinic.phone,
         email: body.clinic.email,
         address: body.clinic.address ?? null,
-        planId: body.clinic.plan ?? 'BASIC',
+        planId: body.clinic.plan ?? 'esencial',
         isActive: true,
       },
     })
@@ -252,7 +252,7 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       })
     )
 
-    return { data: { ...clinic, doctors: enrichedDoctors } }
+    return { data: { ...clinic, plan: clinic.planId ?? null, doctors: enrichedDoctors } }
   })
 
   // ── PATCH /api/superadmin/clinics/:id ─────────────────────────
