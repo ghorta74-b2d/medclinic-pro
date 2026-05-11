@@ -6,7 +6,7 @@ import { api } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import {
   Building2, User, Plus, Mail, ChevronLeft, Loader2,
-  CheckCircle, XCircle, RefreshCw, Save, Users
+  CheckCircle, XCircle, RefreshCw, Save, Users, KeyRound
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -19,6 +19,7 @@ interface Doctor {
   licenseNumber: string
   isActive: boolean
   authUserId?: string
+  emailConfirmed?: boolean
   createdAt: string
 }
 
@@ -46,6 +47,7 @@ export default function ClinicDetailPage() {
   const [saving, setSaving] = useState(false)
   const [showAddDoctor, setShowAddDoctor] = useState(false)
   const [resendingId, setResendingId] = useState<string | null>(null)
+  const [resettingId, setResettingId] = useState<string | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', rfc: '', plan: '' })
   const [newDoctor, setNewDoctor] = useState({ firstName: '', lastName: '', email: '', specialty: '', licenseNumber: '', role: 'DOCTOR' })
@@ -98,6 +100,15 @@ export default function ClinicDetailPage() {
       alert(`Invitación reenviada a ${doctor.email}`)
     } catch (err) { alert(err instanceof Error ? err.message : 'Error al reenviar') }
     finally { setResendingId(null) }
+  }
+
+  async function handleResetPassword(doctor: Doctor) {
+    setResettingId(doctor.id)
+    try {
+      await (api as any).superadmin.resetPassword(id, doctor.id)
+      alert(`Email de restablecimiento enviado a ${doctor.email}`)
+    } catch (err) { alert(err instanceof Error ? err.message : 'Error al enviar') }
+    finally { setResettingId(null) }
   }
 
   async function handleToggleDoctor(doctor: Doctor) {
@@ -287,7 +298,7 @@ export default function ClinicDetailPage() {
                 <td className="px-4 py-3 text-sm text-gray-300">{doc.specialty}</td>
                 <td className="px-4 py-3 text-xs text-gray-400 font-mono">{doc.licenseNumber}</td>
                 <td className="px-4 py-3">
-                  {doc.authUserId ? (
+                  {doc.emailConfirmed ? (
                     <span className="text-xs text-green-400 flex items-center gap-1">
                       <CheckCircle className="w-3 h-3" /> Activo
                     </span>
@@ -305,11 +316,18 @@ export default function ClinicDetailPage() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
-                    {!doc.authUserId && (
+                    {!doc.emailConfirmed && (
                       <button onClick={() => handleResendInvite(doc)} disabled={resendingId === doc.id}
                         className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 border border-blue-800 px-2 py-1 rounded-lg disabled:opacity-50">
                         {resendingId === doc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
                         Reenviar
+                      </button>
+                    )}
+                    {doc.emailConfirmed && (
+                      <button onClick={() => handleResetPassword(doc)} disabled={resettingId === doc.id}
+                        className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 border border-orange-800 px-2 py-1 rounded-lg disabled:opacity-50">
+                        {resettingId === doc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <KeyRound className="w-3 h-3" />}
+                        Reset pwd
                       </button>
                     )}
                     <button onClick={() => handleToggleDoctor(doc)}

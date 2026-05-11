@@ -31,6 +31,39 @@ async function generateInviteLink(email: string, metadata: Record<string, unknow
   return { actionLink, userId }
 }
 
+async function sendPasswordResetEmail(to: string, resetUrl: string, firstName: string) {
+  const resendKey = process.env['RESEND_API_KEY']
+  if (!resendKey) throw new Error('RESEND_API_KEY not configured')
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${resendKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'MedClinic PRO <noreply@mediaclinic.mx>',
+      to: [to],
+      subject: 'Restablece tu contraseña — MedClinic PRO',
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <h2>Hola ${firstName},</h2>
+          <p>Recibiste este email porque se solicitó un restablecimiento de contraseña para tu cuenta en MedClinic PRO.</p>
+          <a href="${resetUrl}" style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0">
+            Restablecer contraseña
+          </a>
+          <p style="color:#888;font-size:12px">Este enlace expira en 1 hora. Si no solicitaste este cambio, ignora este mensaje.</p>
+        </div>
+      `,
+    }),
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(`Resend error ${res.status}: ${(body as any).message ?? res.statusText}`)
+  }
+}
+
 async function sendInviteEmail(to: string, inviteUrl: string, firstName: string) {
   const resendKey = process.env['RESEND_API_KEY']
   if (!resendKey) throw new Error('RESEND_API_KEY not configured')
@@ -42,7 +75,7 @@ async function sendInviteEmail(to: string, inviteUrl: string, firstName: string)
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'MedClinic PRO <medclinic@glasshaus.mx>',
+      from: 'MedClinic PRO <noreply@mediaclinic.mx>',
       to: [to],
       subject: 'Invitación a MedClinic PRO',
       html: `
@@ -255,7 +288,18 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
     })
 
     if (!clinic) return reply.status(404).send({ error: { message: 'Clínica no encontrada' } })
-    return { data: clinic }
+
+    // Enrich doctors with emailConfirmed from Supabase auth
+    const supabaseAdmin = getSupabaseAdmin()
+    const enrichedDoctors = await Promise.all(
+      clinic.doctors.map(async (doc) => {
+        if (!doc.authUserId) return { ...doc, emailConfirmed: false }
+        const { data } = await supabaseAdmin.auth.admin.getUserById(doc.authUserId)
+        return { ...doc, emailConfirmed: !!data?.user?.email_confirmed_at }
+      })
+    )
+
+    return { data: { ...clinic, doctors: enrichedDoctors } }
   })
 
   // ── PATCH /api/superadmin/clinics/:id ─────────────────────────
@@ -396,6 +440,35 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       const msg = err?.message || String(err) || 'Error al enviar invitación'
       console.error('[resend-invite] error:', msg)
       return reply.status(400).send({ error: { message: msg } })
+    }
+  })
+
+  // ── POST /api/superadmin/clinics/:id/doctors/:doctorId/reset-password ──
+  fastify.post('/clinics/:id/doctors/:doctorId/reset-password', async (request, reply) => {
+    const { doctorId } = request.params as { id: string; doctorId: string }
+
+    const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } })
+    if (!doctor?.authUserId) return reply.status(400).send({ error: { message: 'El usuario no tiene cuenta activa' } })
+
+    const supabaseAdmin = getSupabaseAdmin()
+    const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/reset-password`
+
+    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'recovery',
+      email: doctor.email,
+      options: { redirectTo },
+    })
+
+    if (error) return reply.status(400).send({ error: { message: error.message } })
+
+    const actionLink: string = (data as any).properties?.action_link ?? (data as any).action_link
+    if (!actionLink) return reply.status(500).send({ error: { message: 'No se pudo generar el enlace de recuperación' } })
+
+    try {
+      await sendPasswordResetEmail(doctor.email, actionLink, doctor.firstName)
+      return { data: { sent: true, email: doctor.email } }
+    } catch (err: any) {
+      return reply.status(400).send({ error: { message: err?.message || 'Error al enviar email' } })
     }
   })
 

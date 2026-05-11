@@ -407,6 +407,9 @@ export const api = {
     resendInvite: (clinicId: string, doctorId: string) =>
       request(`/api/superadmin/clinics/${clinicId}/doctors/${doctorId}/resend-invite`, { method: 'POST' }),
 
+    resetPassword: (clinicId: string, doctorId: string) =>
+      request(`/api/superadmin/clinics/${clinicId}/doctors/${doctorId}/reset-password`, { method: 'POST' }),
+
     updateDoctor: (doctorId: string, data: unknown) =>
       request(`/api/superadmin/doctors/${doctorId}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
