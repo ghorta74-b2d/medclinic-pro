@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { LayoutDashboard, Building2, Settings } from 'lucide-react'
 import { LogoutButton } from './logout-button'
 
@@ -8,8 +9,13 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       {/* Top navbar */}
       <header className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo_white_comp.svg" alt="Mediaclinic" className="h-7 w-auto" />
+          <Image
+            src="/logo-white.svg"
+            alt="MediaClinic"
+            width={165}
+            height={36}
+            className="h-9 w-auto object-contain"
+          />
 
           <nav className="flex items-center gap-1 ml-6">
             <Link href="/superadmin"

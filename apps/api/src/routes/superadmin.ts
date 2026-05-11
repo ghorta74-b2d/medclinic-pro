@@ -129,6 +129,20 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       }
     }
 
+    // Validar duplicados antes de crear
+    const [existingClinic, existingDoctor] = await Promise.all([
+      prisma.clinic.findFirst({
+        where: { OR: [{ name: { equals: body.clinic.name, mode: 'insensitive' } }, { email: body.clinic.email }] },
+        select: { id: true, name: true },
+      }),
+      prisma.doctor.findFirst({
+        where: { email: body.admin.email },
+        select: { id: true, email: true },
+      }),
+    ])
+    if (existingClinic) return reply.status(409).send({ error: { message: `Ya existe una clínica con ese nombre o email: "${existingClinic.name}"` } })
+    if (existingDoctor) return reply.status(409).send({ error: { message: `Ya existe un usuario registrado con el email: ${body.admin.email}` } })
+
     const supabaseAdmin = getSupabaseAdmin()
 
     // 1. Create clinic
@@ -281,6 +295,10 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       licenseNumber: string
       role?: string
     }
+
+    // Validar duplicado por email
+    const existingDoctor = await prisma.doctor.findFirst({ where: { email: body.email }, select: { id: true } })
+    if (existingDoctor) return reply.status(409).send({ error: { message: `Ya existe un usuario registrado con el email: ${body.email}` } })
 
     const supabaseAdmin = getSupabaseAdmin()
 

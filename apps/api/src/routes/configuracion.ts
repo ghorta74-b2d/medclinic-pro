@@ -281,6 +281,10 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
       })
     }
 
+    // Validar que el email no exista ya en la DB
+    const existingUser = await prisma.doctor.findFirst({ where: { email: body.email }, select: { id: true } })
+    if (existingUser) return reply.status(409).send({ error: { message: `Ya existe un usuario registrado con el email: ${body.email}` } })
+
     const supabaseAdmin = getSupabaseAdmin()
 
     // STAFF users don't need a Doctor record — they have no schedule and must
