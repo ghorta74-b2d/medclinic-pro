@@ -51,9 +51,10 @@ const UpdateAppointmentSchema = CreateAppointmentSchema.partial().extend({
 })
 
 const AvailabilityQuerySchema = z.object({
-  doctorId: z.string(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
-  duration: z.coerce.number().int().min(5).max(480).optional(), // override slot size (minutes)
+  doctorId:  z.string(),
+  date:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
+  duration:  z.coerce.number().int().min(5).max(480).optional(),  // slot size override (minutes)
+  utcOffset: z.coerce.number().int().min(-720).max(720).default(0), // JS getTimezoneOffset() value: UTC-local in minutes (360 = UTC-6)
 })
 
 // ── Routes ───────────────────────────────────────────────────
@@ -100,7 +101,7 @@ export async function appointmentsRoutes(server: FastifyInstance) {
     if (!parsed.success) return Errors.VALIDATION(reply, parsed.error.format())
 
     const { clinicId } = request.authUser
-    const { doctorId, date, duration: durationOverride } = parsed.data
+    const { doctorId, date, duration: durationOverride, utcOffset } = parsed.data
 
     const doctor = await prisma.doctor.findFirst({
       where: { id: doctorId, clinicId },
@@ -108,35 +109,51 @@ export async function appointmentsRoutes(server: FastifyInstance) {
     })
     if (!doctor) return Errors.NOT_FOUND(reply, 'Doctor')
 
-    const dayStart = new Date(`${date}T00:00:00`)
-    const dayEnd = new Date(`${date}T23:59:59`)
+    // utcOffset follows JS convention: getTimezoneOffset() = UTC - local (minutes).
+    // e.g. Mexico City (UTC-6) → utcOffset = 360.
+    // offsetMs: subtract from UTC to get local time.
+    const offsetMs = utcOffset * 60_000
+
+    // Query window covers the full LOCAL day regardless of server timezone.
+    // Local midnight = UTC midnight minus offsetMs; local 23:59:59 = that + 86399s.
+    const dayStartUtc = new Date(new Date(`${date}T00:00:00Z`).getTime() - offsetMs)
+    const dayEndUtc   = new Date(new Date(`${date}T23:59:59Z`).getTime() - offsetMs)
 
     const booked = await prisma.appointment.findMany({
       where: {
         doctorId,
         clinicId,
-        startsAt: { gte: dayStart, lte: dayEnd },
+        startsAt: { gte: dayStartUtc, lte: dayEndUtc },
         status: { notIn: ['CANCELLED', 'NO_SHOW'] },
       },
       select: { startsAt: true, endsAt: true },
     })
 
+    // Determine day-of-week using LOCAL date (not UTC, to avoid midnight boundary issues)
+    const localMidnight = new Date(`${date}T12:00:00Z`) // noon UTC is always same local day
+    localMidnight.setTime(localMidnight.getTime() - offsetMs)
+    const dayName = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][
+      new Date(new Date(`${date}T12:00:00Z`).getTime()).getUTCDay()
+    ]!
+
     // Generate slots from schedule config — fallback to default Mon-Fri 9-18 / Sat 9-14
     const config = (doctor.scheduleConfig as Record<string, { start: string; end: string }[]> | null) ?? DEFAULT_SCHEDULE
-    const dayName = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][dayStart.getDay()]!
     const daySchedule = config[dayName] ?? []
     const duration = durationOverride ?? doctor.consultationDuration ?? 30
 
-    // Helper: "HH:MM" from hours+minutes ints
+    // Helper: "HH:MM" from int
     const pad = (n: number) => String(n).padStart(2, '0')
 
-    // Build booked ranges as plain "HH:MM" strings (interpreted from the stored UTC
-    // datetimes as if they were local times — this matches how the frontend stores them:
-    // new Date(`${date}T${localTime}`) → local → UTC, so UTC hour == schedule hour on UTC server)
-    const bookedRanges = booked.map(b => ({
-      start: b.startsAt.getHours() * 60 + b.startsAt.getMinutes(),
-      end:   b.endsAt.getHours()   * 60 + b.endsAt.getMinutes(),
-    }))
+    // Convert booked UTC DateTimes → local minutes-since-midnight for comparison.
+    // UTC → local: subtract offsetMs, then read UTC hours/minutes.
+    const bookedRanges = booked.map(b => {
+      const localStart = new Date(b.startsAt.getTime() - offsetMs)
+      const localEnd   = new Date(b.endsAt.getTime()   - offsetMs)
+      return {
+        start: localStart.getUTCHours() * 60 + localStart.getUTCMinutes(),
+        end:   localEnd.getUTCHours()   * 60 + localEnd.getUTCMinutes(),
+      }
+    })
 
     const slots: { time: string; startsAt: string; endsAt: string; available: boolean }[] = []
 

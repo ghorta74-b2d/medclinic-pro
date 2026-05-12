@@ -199,7 +199,11 @@ export const api = {
     },
     get: (id: string) => request(`/api/appointments/${id}`),
     availability: (doctorId: string, date: string, duration?: number) => {
-      const p = new URLSearchParams({ doctorId, date })
+      const p = new URLSearchParams({
+        doctorId,
+        date,
+        utcOffset: String(new Date().getTimezoneOffset()), // JS: UTC-local in minutes (360 for UTC-6)
+      })
       if (duration) p.set('duration', String(duration))
       return request(`/api/appointments/availability?${p}`)
     },
