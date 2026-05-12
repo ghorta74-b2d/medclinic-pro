@@ -359,10 +359,12 @@ export default function LandingPage() {
         <div className="relative z-10 max-w-6xl mx-auto px-6 pb-24 w-full">
           <p className="text-white/50 text-xs font-semibold tracking-[0.2em] uppercase mb-5">MediaClinic</p>
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.04] tracking-tight max-w-3xl mb-7">
-            La clínica del futuro,<br />disponible hoy.
+            La clínica del futuro, hoy.
           </h1>
-          <p className="text-white/65 text-lg max-w-md mb-10 leading-relaxed">
-            Gestión clínica impulsada por IA. Diseñada para médicos en Latinoamérica.
+          <p className="text-white/65 text-lg max-w-xl mb-10 leading-relaxed">
+            Agenda, expediente y recetas en una sola plataforma. Con{' '}
+            <strong className="text-white/90">IA que escucha la consulta</strong>, arma el expediente
+            y trabaja por ti.
           </p>
           <div className="flex flex-wrap gap-3">
             <a href="#demo" className="flex items-center gap-2 bg-white text-black px-7 py-3.5 rounded-full font-semibold text-sm hover:bg-white/90 transition-all hover:scale-[1.02]">

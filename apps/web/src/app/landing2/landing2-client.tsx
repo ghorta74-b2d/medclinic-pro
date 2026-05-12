@@ -584,15 +584,12 @@ export default function Landing2Client() {
             Mediaclinic
           </p>
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.04] tracking-tight max-w-3xl mb-7">
-            La clínica del futuro,
-            <br />
-            disponible hoy.
+            La clínica del futuro, hoy.
           </h1>
           <p className="text-white/75 text-lg max-w-xl mb-10 leading-relaxed">
-            Mediaclinic es la plataforma todo-en-uno para clínicas y consultorios en México.
-            Agenda, <strong className="text-white/90">expediente clínico electrónico</strong>, recetas digitales
-            y <strong className="text-white/90">consultas asistidas por IA</strong> que captura la conversación
-            con el paciente y organiza el expediente sin que muevas un dedo.
+            Agenda, expediente y recetas en una sola plataforma. Con{' '}
+            <strong className="text-white/90">IA que escucha la consulta</strong>, arma el expediente
+            y trabaja por ti.
           </p>
           <div className="flex flex-wrap gap-3">
             <a
