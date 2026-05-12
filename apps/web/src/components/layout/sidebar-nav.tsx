@@ -145,13 +145,15 @@ export function SidebarNav() {
       >
         {/* Brand */}
         <div className="flex h-16 shrink-0 items-center border-b border-sidebar-border px-5">
-          <Image
-            src="/logo-white.svg"
-            alt="MedClinic Pro"
-            width={165}
-            height={36}
-            className="h-9 w-auto object-contain"
-          />
+          <Link href="/dashboard">
+            <Image
+              src="/logo-white.svg"
+              alt="MedClinic Pro"
+              width={165}
+              height={36}
+              className="h-9 w-auto object-contain"
+            />
+          </Link>
         </div>
 
         {/* Sections */}
