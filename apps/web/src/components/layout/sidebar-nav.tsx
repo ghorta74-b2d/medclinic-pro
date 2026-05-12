@@ -11,7 +11,6 @@ import {
   Users,
   CreditCard,
   Settings,
-  Video,
   LayoutDashboard,
   LogOut,
   Brain,
@@ -36,7 +35,6 @@ const SECTIONS: NavSection[] = [
     label: 'Operaciones',
     items: [
       { href: '/cobros', label: 'Cobros', icon: CreditCard },
-      { href: '/telemedicina', label: 'Telemedicina', icon: Video },
       { href: '/consulta-ia', label: 'Consulta con IA', icon: Brain },
     ],
   },
