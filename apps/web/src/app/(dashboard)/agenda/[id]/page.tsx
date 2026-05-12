@@ -94,6 +94,10 @@ function ReschedulePanel({
   const [error, setError]         = useState('')
 
   const todayStr = new Date().toLocaleDateString('sv-SE')
+  // Duration of original appointment in minutes — slots generated with same step
+  const apptDurationMins = Math.round(
+    (new Date(appt.endsAt).getTime() - new Date(appt.startsAt).getTime()) / 60_000
+  )
 
   async function loadSlots(date: string) {
     if (!appt.doctorId || !date) return
@@ -101,7 +105,7 @@ function ReschedulePanel({
     setSlots([])
     setSelectedSlot(null)
     try {
-      const res = await api.appointments.availability(appt.doctorId, date) as { data: { time: string; startsAt: string; endsAt: string; available: boolean }[] }
+      const res = await api.appointments.availability(appt.doctorId, date, apptDurationMins) as { data: { time: string; startsAt: string; endsAt: string; available: boolean }[] }
       // Exclude the current slot (compare by date + local time to avoid UTC drift)
       const apptDate    = new Date(appt.startsAt).toLocaleDateString('sv-SE')
       const apptHH      = String(new Date(appt.startsAt).getHours()).padStart(2, '0')
@@ -244,6 +248,9 @@ function ReassignPanel({
   const [error, setError] = useState('')
 
   const otherDoctors = clinicDoctors.filter(d => d.id !== appt.doctorId)
+  const apptDurationMins = Math.round(
+    (new Date(appt.endsAt).getTime() - new Date(appt.startsAt).getTime()) / 60_000
+  )
 
   async function loadSlots(doctorId: string, date: string) {
     if (!doctorId || !date) return
@@ -251,7 +258,7 @@ function ReassignPanel({
     setSlots([])
     setSelectedSlot(null)
     try {
-      const res = await api.appointments.availability(doctorId, date) as { data: { time: string; startsAt: string; endsAt: string; available: boolean }[] }
+      const res = await api.appointments.availability(doctorId, date, apptDurationMins) as { data: { time: string; startsAt: string; endsAt: string; available: boolean }[] }
       setSlots(res.data.filter(s => s.available))
     } catch { setSlots([]) }
     finally { setLoadingSlots(false) }

@@ -198,8 +198,11 @@ export const api = {
       return request(`/api/appointments${qs}`)
     },
     get: (id: string) => request(`/api/appointments/${id}`),
-    availability: (doctorId: string, date: string) =>
-      request(`/api/appointments/availability?doctorId=${doctorId}&date=${date}`),
+    availability: (doctorId: string, date: string, duration?: number) => {
+      const p = new URLSearchParams({ doctorId, date })
+      if (duration) p.set('duration', String(duration))
+      return request(`/api/appointments/availability?${p}`)
+    },
     create: (data: unknown) =>
       request('/api/appointments', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: unknown) =>

@@ -53,6 +53,7 @@ const UpdateAppointmentSchema = CreateAppointmentSchema.partial().extend({
 const AvailabilityQuerySchema = z.object({
   doctorId: z.string(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
+  duration: z.coerce.number().int().min(5).max(480).optional(), // override slot size (minutes)
 })
 
 // ── Routes ───────────────────────────────────────────────────
@@ -99,7 +100,7 @@ export async function appointmentsRoutes(server: FastifyInstance) {
     if (!parsed.success) return Errors.VALIDATION(reply, parsed.error.format())
 
     const { clinicId } = request.authUser
-    const { doctorId, date } = parsed.data
+    const { doctorId, date, duration: durationOverride } = parsed.data
 
     const doctor = await prisma.doctor.findFirst({
       where: { id: doctorId, clinicId },
@@ -124,7 +125,7 @@ export async function appointmentsRoutes(server: FastifyInstance) {
     const config = (doctor.scheduleConfig as Record<string, { start: string; end: string }[]> | null) ?? DEFAULT_SCHEDULE
     const dayName = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][dayStart.getDay()]!
     const daySchedule = config[dayName] ?? []
-    const duration = doctor.consultationDuration || 30 // default 30 min if not set
+    const duration = durationOverride ?? doctor.consultationDuration ?? 30
 
     // Helper: "HH:MM" from hours+minutes ints
     const pad = (n: number) => String(n).padStart(2, '0')
