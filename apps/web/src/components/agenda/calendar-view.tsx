@@ -139,7 +139,7 @@ function AppointmentRow({
       {appointment.doctor && (
         <div className="shrink-0 text-right">
           <p className="text-xs text-muted-foreground">
-            Dr. {appointment.doctor.lastName}
+            Dr. {appointment.doctor.firstName?.[0]}. {appointment.doctor.lastName}
           </p>
         </div>
       )}
