@@ -628,8 +628,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
             {[
               { end: 2500, suffix: '+', label: 'Médicos activos',     desc: 'En México y LATAM' },
-              { end: 60,   suffix: '%', label: 'Menos inasistencias', desc: 'Gracias al asistente IA' },
-              { end: 30,   suffix: 's', label: 'Respuesta IA',        desc: 'Disponible las 24 horas' },
+              { end: 70,   suffix: '%', label: 'Menos inasistencias', desc: 'Gracias al asistente IA' },
+              { end: 1,    suffix: 's', label: 'Respuesta IA',        desc: 'Disponible las 24 horas' },
               { end: 100,  suffix: '%', label: 'En la nube',          desc: 'Sin instalación ni servidores' },
             ].map((s, i) => (
               <FadeUp key={s.label} delay={i * 80}>
@@ -656,7 +656,7 @@ export default function LandingPage() {
           </FadeUp>
           <div className="grid md:grid-cols-3 gap-4">
             {[
-              { quote: 'Mis inasistencias bajaron 60% en el primer mes. El asistente confirma citas mientras yo duermo.', name: 'Dr. Alejandro Reyes', role: 'Cardiólogo · Monterrey', init: 'AR' },
+              { quote: 'Mis inasistencias bajaron 70% en el primer mes. El asistente confirma citas mientras yo duermo.', name: 'Dr. Alejandro Reyes', role: 'Cardiólogo · Monterrey', init: 'AR' },
               { quote: 'Por fin un sistema pensado para México. Elegante, rápido y mis pacientes lo aman desde el primer día.', name: 'Dra. Fernanda Castillo', role: 'Dermatóloga · CDMX', init: 'FC' },
               { quote: 'En 2 semanas recuperé la inversión. Ahora cobro el 100% y tengo todo el historial en mi celular.', name: 'Dr. Ricardo Soto', role: 'Medicina General · Guadalajara', init: 'RS' },
             ].map((t, i) => (

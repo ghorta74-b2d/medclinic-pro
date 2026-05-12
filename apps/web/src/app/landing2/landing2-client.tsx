@@ -862,7 +862,7 @@ export default function Landing2Client() {
                 },
                 {
                   time: '1:00 PM',
-                  text: 'Comes tranquilo. La agenda se llenó sola: tres pacientes agendaron desde el portal en la mañana.',
+                  text: 'Comes tranquilo. La agenda se llenó sola: tres pacientes agendaron desde WhatsApp de manera automática en la mañana.',
                 },
                 {
                   time: '6:00 PM',
@@ -891,8 +891,8 @@ export default function Landing2Client() {
         <div className="max-w-[980px] mx-auto grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
           {([
             { end: 2500, suffix: '+', label: 'Médicos activos', color: '#0071e3', icon: Stethoscope },
-            { end: 60, suffix: '%', label: 'Menos inasistencias', color: '#1a7f37', icon: Calendar },
-            { end: 30, suffix: 's', label: 'Respuesta IA', color: '#0071e3', icon: Brain },
+            { end: 70, suffix: '%', label: 'Menos inasistencias', color: '#1a7f37', icon: Calendar },
+            { end: 1, suffix: 's', label: 'Respuesta IA', color: '#0071e3', icon: Brain },
             { end: 100, suffix: '%', label: 'En la nube', color: '#1a7f37', icon: Zap },
           ] as const).map(({ end, suffix, label, color, icon: Icon }, i) => (
             <FadeUp key={label} delay={i * 60}>
