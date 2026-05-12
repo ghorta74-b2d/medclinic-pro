@@ -8,7 +8,7 @@ import { formatTime, formatCurrency, formatDate } from '@/lib/utils'
 import {
   Users, TrendingUp, Clock, Plus, UserPlus,
   FileText, Link2, Video, MessageSquare, Bot, Loader2,
-  ChevronRight, CreditCard, Stethoscope, Building2
+  ChevronRight, ChevronDown, CreditCard, Building2
 } from 'lucide-react'
 import { NewAppointmentDialog } from '@/components/agenda/new-appointment-dialog'
 import { NewPatientDialog } from '@/components/patients/new-patient-dialog'
@@ -274,38 +274,22 @@ export default function DashboardPage() {
         {/* Doctor filter — ADMIN only */}
         {userRole === 'ADMIN' && doctors.length > 0 && (
           <div className="flex items-center gap-3">
-            <span className="text-xs font-medium text-muted-foreground">Viendo datos de:</span>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => setSelectedFilterDoctorId(null)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all',
-                  selectedFilterDoctorId === null
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-card text-muted-foreground border-border hover:border-primary/50'
-                )}>
-                <Building2 className="w-3.5 h-3.5" />
-                Clínica completa
-              </button>
-              {doctors.map(d => {
-                const isOwn = d.id === ownDoctorId
-                const isSelected = selectedFilterDoctorId === d.id
-                return (
-                  <button
-                    key={d.id}
-                    onClick={() => setSelectedFilterDoctorId(d.id)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all',
-                      isSelected
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-card text-muted-foreground border-border hover:border-primary/50'
-                    )}>
-                    <Stethoscope className="w-3.5 h-3.5" />
-                    {d.firstName} {d.lastName}
-                    {isOwn && <span className={cn('text-xs ml-0.5', isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground/60')}>(tú)</span>}
-                  </button>
-                )
-              })}
+            <span className="text-xs font-medium text-muted-foreground shrink-0">Viendo datos de:</span>
+            <div className="relative">
+              <select
+                value={selectedFilterDoctorId ?? ''}
+                onChange={e => setSelectedFilterDoctorId(e.target.value || null)}
+                className="appearance-none bg-card border border-border rounded-lg pl-8 pr-8 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer min-w-[200px]"
+              >
+                <option value="">Clínica completa</option>
+                {doctors.map(d => (
+                  <option key={d.id} value={d.id}>
+                    Dr. {d.firstName} {d.lastName}{d.id === ownDoctorId ? ' (tú)' : ''}
+                  </option>
+                ))}
+              </select>
+              <Building2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
             </div>
           </div>
         )}
