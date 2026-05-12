@@ -109,15 +109,15 @@ export async function appointmentsRoutes(server: FastifyInstance) {
     })
     if (!doctor) return Errors.NOT_FOUND(reply, 'Doctor')
 
-    // utcOffset follows JS convention: getTimezoneOffset() = UTC - local (minutes).
-    // e.g. Mexico City (UTC-6) → utcOffset = 360.
-    // offsetMs: subtract from UTC to get local time.
+    // JS getTimezoneOffset() = UTC − local (minutes). e.g. Mexico UTC-6 → 360.
+    // To convert:  local → UTC : add offsetMs  (local + 6h = UTC)
+    //              UTC → local : subtract offsetMs (UTC − 6h = local)
     const offsetMs = utcOffset * 60_000
 
-    // Query window covers the full LOCAL day regardless of server timezone.
-    // Local midnight = UTC midnight minus offsetMs; local 23:59:59 = that + 86399s.
-    const dayStartUtc = new Date(new Date(`${date}T00:00:00Z`).getTime() - offsetMs)
-    const dayEndUtc   = new Date(new Date(`${date}T23:59:59Z`).getTime() - offsetMs)
+    // Local midnight of `date` in UTC: 00:00 local = 00:00 + offsetMs UTC
+    // e.g. Mexico midnight 00:00-06:00 = 06:00Z
+    const dayStartUtc = new Date(new Date(`${date}T00:00:00Z`).getTime() + offsetMs)
+    const dayEndUtc   = new Date(new Date(`${date}T23:59:59Z`).getTime() + offsetMs)
 
     const booked = await prisma.appointment.findMany({
       where: {
@@ -129,11 +129,9 @@ export async function appointmentsRoutes(server: FastifyInstance) {
       select: { startsAt: true, endsAt: true },
     })
 
-    // Determine day-of-week using LOCAL date (not UTC, to avoid midnight boundary issues)
-    const localMidnight = new Date(`${date}T12:00:00Z`) // noon UTC is always same local day
-    localMidnight.setTime(localMidnight.getTime() - offsetMs)
+    // Day-of-week: use noon UTC of the date — safe for any UTC-12…UTC+14 timezone
     const dayName = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][
-      new Date(new Date(`${date}T12:00:00Z`).getTime()).getUTCDay()
+      new Date(`${date}T12:00:00Z`).getUTCDay()
     ]!
 
     // Generate slots from schedule config — fallback to default Mon-Fri 9-18 / Sat 9-14
@@ -141,11 +139,12 @@ export async function appointmentsRoutes(server: FastifyInstance) {
     const daySchedule = config[dayName] ?? []
     const duration = durationOverride ?? doctor.consultationDuration ?? 30
 
-    // Helper: "HH:MM" from int
+    // Helper: zero-pad integer to 2 digits
     const pad = (n: number) => String(n).padStart(2, '0')
 
-    // Convert booked UTC DateTimes → local minutes-since-midnight for comparison.
-    // UTC → local: subtract offsetMs, then read UTC hours/minutes.
+    // Convert stored UTC timestamps → local minutes-since-midnight.
+    // UTC → local: subtract offsetMs, then read the resulting UTC fields.
+    // e.g. Jorge at 18:00Z (UTC-6 clinic) → 18:00Z − 6h = 12:00Z → getUTCHours()=12 ✓
     const bookedRanges = booked.map(b => {
       const localStart = new Date(b.startsAt.getTime() - offsetMs)
       const localEnd   = new Date(b.endsAt.getTime()   - offsetMs)
