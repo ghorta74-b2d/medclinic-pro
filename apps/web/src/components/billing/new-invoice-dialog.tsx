@@ -377,7 +377,7 @@ export function NewInvoiceDialog({ onClose, onCreated }: NewInvoiceDialogProps) 
                           onClick={() => updateLine(idx, 'taxRate', 0)}
                           className={cn('flex-1 py-2 text-center font-medium transition-colors',
                             line.taxRate === 0
-                              ? 'bg-foreground text-white'
+                              ? 'bg-muted text-foreground'
                               : 'bg-card text-muted-foreground hover:bg-muted/50')}>
                           No
                         </button>
