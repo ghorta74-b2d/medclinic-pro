@@ -55,10 +55,14 @@ export function AuthSplitLayout({ headline, subline, features, children }: AuthS
         </div>
 
         {/* Footer */}
-        <p className="text-white/35 text-xs">
-          © 2026 MediaClinic · Powered by{' '}
-          <span className="font-semibold text-white/55">B2D Automation</span>
-        </p>
+        <div className="flex items-center gap-2 text-white/35 text-xs">
+          <span>© 2026 MediaClinic · Powered by</span>
+          <img
+            src="/logo-b2d.png"
+            alt="B2D Automation"
+            className="h-4 w-auto object-contain brightness-0 invert opacity-50"
+          />
+        </div>
       </div>
 
       {/* Right panel */}
