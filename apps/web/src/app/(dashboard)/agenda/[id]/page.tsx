@@ -77,6 +77,149 @@ function getActions(status: AppointmentStatus): Action[] {
   }
 }
 
+// ── Subcomponent: Reschedule panel (same doctor, new date/time) ─
+function ReschedulePanel({
+  appt,
+  onRescheduled,
+}: {
+  appt: any
+  onRescheduled: () => void
+}) {
+  const [open, setOpen]           = useState(false)
+  const [newDate, setNewDate]     = useState(new Date(appt.startsAt).toLocaleDateString('sv-SE'))
+  const [slots, setSlots]         = useState<{ startsAt: string; endsAt: string; available: boolean }[]>([])
+  const [selectedSlot, setSelectedSlot] = useState<{ startsAt: string; endsAt: string } | null>(null)
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [saving, setSaving]       = useState(false)
+  const [error, setError]         = useState('')
+
+  const todayStr = new Date().toLocaleDateString('sv-SE')
+
+  async function loadSlots(date: string) {
+    if (!appt.doctorId || !date) return
+    setLoadingSlots(true)
+    setSlots([])
+    setSelectedSlot(null)
+    try {
+      const res = await api.appointments.availability(appt.doctorId, date) as { data: { startsAt: string; endsAt: string; available: boolean }[] }
+      // Exclude the current slot so doctor doesn't re-select the same time
+      const currentStart = new Date(appt.startsAt).toISOString()
+      setSlots(res.data.filter(s => s.available && s.startsAt !== currentStart))
+    } catch { setSlots([]) }
+    finally { setLoadingSlots(false) }
+  }
+
+  function handleOpen() {
+    setOpen(true)
+    loadSlots(newDate)
+  }
+
+  useEffect(() => {
+    if (open) loadSlots(newDate)
+  }, [newDate])
+
+  async function handleReschedule() {
+    if (!selectedSlot) { setError('Selecciona un horario'); return }
+    setSaving(true)
+    setError('')
+    try {
+      await api.appointments.update(appt.id, {
+        startsAt: selectedSlot.startsAt,
+        endsAt:   selectedSlot.endsAt,
+      })
+      setOpen(false)
+      onRescheduled()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al reagendar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={handleOpen}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-border text-muted-foreground hover:bg-muted/50 hover:border-border transition-colors">
+        <Calendar className="w-4 h-4" />
+        Reagendar cita
+      </button>
+    )
+  }
+
+  return (
+    <div className="bg-muted/50 border border-border rounded-xl p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-foreground">Reagendar cita</p>
+        <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground/80 text-xs">Cancelar</button>
+      </div>
+
+      {/* Doctor badge */}
+      <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
+        <Stethoscope className="w-3.5 h-3.5 text-primary shrink-0" />
+        <span className="text-sm text-foreground">
+          Dr. {appt.doctor?.firstName} {appt.doctor?.lastName}
+          {appt.doctor?.specialty && <span className="text-muted-foreground text-xs ml-1">· {appt.doctor.specialty}</span>}
+        </span>
+      </div>
+
+      {/* Date picker */}
+      <div>
+        <label className="block text-xs font-medium text-muted-foreground mb-1">Nueva fecha</label>
+        <input
+          type="date"
+          value={newDate}
+          min={todayStr}
+          onChange={e => setNewDate(e.target.value)}
+          className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-card"
+        />
+      </div>
+
+      {/* Available slots */}
+      <div>
+        <label className="block text-xs font-medium text-muted-foreground mb-2">Horario disponible</label>
+        {loadingSlots ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando disponibilidad...
+          </div>
+        ) : slots.length === 0 ? (
+          <p className="text-xs text-muted-foreground bg-muted rounded-lg px-3 py-2">No hay horarios disponibles para este día</p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
+            {slots.map(s => {
+              const isSelected = selectedSlot?.startsAt === s.startsAt
+              return (
+                <button
+                  key={s.startsAt}
+                  type="button"
+                  onClick={() => setSelectedSlot(isSelected ? null : s)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-xs font-medium border transition-all',
+                    isSelected
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-card text-foreground/80 border-border hover:border-primary'
+                  )}>
+                  {formatTime(s.startsAt)}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {error && <p className="text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>}
+
+      <button
+        onClick={handleReschedule}
+        disabled={!selectedSlot || saving}
+        className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors">
+        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
+        {saving ? 'Reagendando...' : 'Confirmar nuevo horario'}
+      </button>
+    </div>
+  )
+}
+
 // ── Subcomponent: Reassign panel (ADMIN only) ───────────────────
 function ReassignPanel({
   appt,
@@ -647,7 +790,14 @@ export default function AppointmentDetailPage() {
                 </div>
               )}
 
-              {/* Feature 3: ADMIN / STAFF can reassign appointment */}
+              {/* Reagendar: same doctor, new date/time — visible to all roles */}
+              {!showCancelForm && (
+                <div className="pt-2 border-t border-border">
+                  <ReschedulePanel appt={appt} onRescheduled={load} />
+                </div>
+              )}
+
+              {/* Reasignar: change doctor — ADMIN / STAFF only */}
               {canReassign && !showCancelForm && (
                 <div className="pt-2 border-t border-border">
                   <ReassignPanel
