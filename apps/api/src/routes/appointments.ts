@@ -126,33 +126,50 @@ export async function appointmentsRoutes(server: FastifyInstance) {
     const daySchedule = config[dayName] ?? []
     const duration = doctor.consultationDuration || 30 // default 30 min if not set
 
-    const slots: { startsAt: string; endsAt: string; available: boolean }[] = []
+    // Helper: "HH:MM" from hours+minutes ints
+    const pad = (n: number) => String(n).padStart(2, '0')
+
+    // Build booked ranges as plain "HH:MM" strings (interpreted from the stored UTC
+    // datetimes as if they were local times — this matches how the frontend stores them:
+    // new Date(`${date}T${localTime}`) → local → UTC, so UTC hour == schedule hour on UTC server)
+    const bookedRanges = booked.map(b => ({
+      start: b.startsAt.getHours() * 60 + b.startsAt.getMinutes(),
+      end:   b.endsAt.getHours()   * 60 + b.endsAt.getMinutes(),
+    }))
+
+    const slots: { time: string; startsAt: string; endsAt: string; available: boolean }[] = []
 
     for (const window of daySchedule) {
       const [startH, startM] = window.start.split(':').map(Number)
       const [endH, endM] = window.end.split(':').map(Number)
       if (startH === undefined || startM === undefined || endH === undefined || endM === undefined) continue
 
-      let current = new Date(dayStart)
-      current.setHours(startH, startM, 0, 0)
-      const windowEnd = new Date(dayStart)
-      windowEnd.setHours(endH, endM, 0, 0)
+      let curH = startH, curM = startM ?? 0
+      const endTotalM = (endH ?? 0) * 60 + (endM ?? 0)
 
-      while (current < windowEnd) {
-        const slotEnd = new Date(current.getTime() + duration * 60_000)
-        if (slotEnd > windowEnd) break
+      while (curH * 60 + curM < endTotalM) {
+        const slotStartM = curH * 60 + curM
+        const slotEndM   = slotStartM + duration
+        if (slotEndM > endTotalM) break
 
-        const isBooked = booked.some(
-          (b) => current < b.endsAt && slotEnd > b.startsAt
+        const isBooked = bookedRanges.some(
+          r => slotStartM < r.end && slotEndM > r.start
         )
 
+        // Return the schedule time as plain "HH:MM" — timezone-safe display.
+        // startsAt/endsAt are built as local-time ISO strings (no Z) so the
+        // frontend treats them as local time when constructing new Date().
+        const slotEndH = Math.floor(slotEndM / 60)
+        const slotEndMin = slotEndM % 60
         slots.push({
-          startsAt: current.toISOString(),
-          endsAt: slotEnd.toISOString(),
+          time:     `${pad(curH)}:${pad(curM)}`,
+          startsAt: `${date}T${pad(curH)}:${pad(curM)}:00`,
+          endsAt:   `${date}T${pad(slotEndH)}:${pad(slotEndMin)}:00`,
           available: !isBooked,
         })
 
-        current = new Date(slotEnd)
+        curM += duration
+        if (curM >= 60) { curH += Math.floor(curM / 60); curM = curM % 60 }
       }
     }
 

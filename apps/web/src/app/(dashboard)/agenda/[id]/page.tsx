@@ -87,8 +87,8 @@ function ReschedulePanel({
 }) {
   const [open, setOpen]           = useState(false)
   const [newDate, setNewDate]     = useState(new Date(appt.startsAt).toLocaleDateString('sv-SE'))
-  const [slots, setSlots]         = useState<{ startsAt: string; endsAt: string; available: boolean }[]>([])
-  const [selectedSlot, setSelectedSlot] = useState<{ startsAt: string; endsAt: string } | null>(null)
+  const [slots, setSlots]         = useState<{ time: string; startsAt: string; endsAt: string; available: boolean }[]>([])
+  const [selectedSlot, setSelectedSlot] = useState<{ time: string; startsAt: string; endsAt: string } | null>(null)
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [saving, setSaving]       = useState(false)
   const [error, setError]         = useState('')
@@ -101,10 +101,13 @@ function ReschedulePanel({
     setSlots([])
     setSelectedSlot(null)
     try {
-      const res = await api.appointments.availability(appt.doctorId, date) as { data: { startsAt: string; endsAt: string; available: boolean }[] }
-      // Exclude the current slot so doctor doesn't re-select the same time
-      const currentStart = new Date(appt.startsAt).toISOString()
-      setSlots(res.data.filter(s => s.available && s.startsAt !== currentStart))
+      const res = await api.appointments.availability(appt.doctorId, date) as { data: { time: string; startsAt: string; endsAt: string; available: boolean }[] }
+      // Exclude the current slot (compare by date + local time to avoid UTC drift)
+      const apptDate    = new Date(appt.startsAt).toLocaleDateString('sv-SE')
+      const apptHH      = String(new Date(appt.startsAt).getHours()).padStart(2, '0')
+      const apptMM      = String(new Date(appt.startsAt).getMinutes()).padStart(2, '0')
+      const apptLocalTime = `${apptHH}:${apptMM}`
+      setSlots(res.data.filter(s => s.available && !(date === apptDate && s.time === apptLocalTime)))
     } catch { setSlots([]) }
     finally { setLoadingSlots(false) }
   }
@@ -123,10 +126,11 @@ function ReschedulePanel({
     setSaving(true)
     setError('')
     try {
-      await api.appointments.update(appt.id, {
-        startsAt: selectedSlot.startsAt,
-        endsAt:   selectedSlot.endsAt,
-      })
+      // Construct as local datetime (browser converts local→UTC) — same as new-appointment-dialog
+      const duration = new Date(appt.endsAt).getTime() - new Date(appt.startsAt).getTime()
+      const startsAt = new Date(`${newDate}T${selectedSlot.time}:00`).toISOString()
+      const endsAt   = new Date(new Date(startsAt).getTime() + duration).toISOString()
+      await api.appointments.update(appt.id, { startsAt, endsAt })
       setOpen(false)
       onRescheduled()
     } catch (err) {
@@ -187,10 +191,10 @@ function ReschedulePanel({
         ) : (
           <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
             {slots.map(s => {
-              const isSelected = selectedSlot?.startsAt === s.startsAt
+              const isSelected = selectedSlot?.time === s.time
               return (
                 <button
-                  key={s.startsAt}
+                  key={s.time}
                   type="button"
                   onClick={() => setSelectedSlot(isSelected ? null : s)}
                   className={cn(
@@ -199,7 +203,7 @@ function ReschedulePanel({
                       ? 'bg-primary text-white border-primary'
                       : 'bg-card text-foreground/80 border-border hover:border-primary'
                   )}>
-                  {formatTime(s.startsAt)}
+                  {s.time}
                 </button>
               )
             })}
@@ -233,8 +237,8 @@ function ReassignPanel({
   const [open, setOpen] = useState(false)
   const [newDoctorId, setNewDoctorId] = useState('')
   const [newDate, setNewDate] = useState(new Date(appt.startsAt).toLocaleDateString('sv-SE'))
-  const [slots, setSlots] = useState<{ startsAt: string; endsAt: string; available: boolean }[]>([])
-  const [selectedSlot, setSelectedSlot] = useState<{ startsAt: string; endsAt: string } | null>(null)
+  const [slots, setSlots] = useState<{ time: string; startsAt: string; endsAt: string; available: boolean }[]>([])
+  const [selectedSlot, setSelectedSlot] = useState<{ time: string; startsAt: string; endsAt: string } | null>(null)
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -247,7 +251,7 @@ function ReassignPanel({
     setSlots([])
     setSelectedSlot(null)
     try {
-      const res = await api.appointments.availability(doctorId, date) as { data: typeof slots }
+      const res = await api.appointments.availability(doctorId, date) as { data: { time: string; startsAt: string; endsAt: string; available: boolean }[] }
       setSlots(res.data.filter(s => s.available))
     } catch { setSlots([]) }
     finally { setLoadingSlots(false) }
@@ -264,8 +268,10 @@ function ReassignPanel({
     try {
       const body: Record<string, string> = { doctorId: newDoctorId }
       if (selectedSlot) {
-        body['startsAt'] = selectedSlot.startsAt
-        body['endsAt'] = selectedSlot.endsAt
+        // Construct as local datetime (browser converts local→UTC) — timezone-safe
+        const duration = new Date(appt.endsAt).getTime() - new Date(appt.startsAt).getTime()
+        body['startsAt'] = new Date(`${newDate}T${selectedSlot.time}:00`).toISOString()
+        body['endsAt']   = new Date(new Date(body['startsAt']!).getTime() + duration).toISOString()
       }
       await api.appointments.update(appt.id, body)
       setOpen(false)
@@ -337,10 +343,10 @@ function ReassignPanel({
           ) : (
             <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
               {slots.map(s => {
-                const isSelected = selectedSlot?.startsAt === s.startsAt
+                const isSelected = selectedSlot?.time === s.time
                 return (
                   <button
-                    key={s.startsAt}
+                    key={s.time}
                     type="button"
                     onClick={() => setSelectedSlot(isSelected ? null : s)}
                     className={cn(
@@ -349,7 +355,7 @@ function ReassignPanel({
                         ? 'bg-primary text-white border-primary'
                         : 'bg-card text-foreground/80 border-border hover:border-primary'
                     )}>
-                    {formatTime(s.startsAt)}
+                    {s.time}
                   </button>
                 )
               })}
