@@ -9,7 +9,7 @@ import { DayStats } from '@/components/agenda/day-stats'
 import { NewAppointmentDialog } from '@/components/agenda/new-appointment-dialog'
 import { api, getUserRole, getOwnDoctorId, sessionCache } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
-import { ChevronLeft, ChevronRight, Plus, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Loader2, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Appointment } from 'medclinic-shared'
 
@@ -228,40 +228,29 @@ export default function AgendaPage() {
 
           {/* Doctor filter — visible para ADMIN y STAFF (vista global de clínica) */}
           {(isStaff || isAdmin) && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center">
               {doctorsLoading ? (
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground px-2">
                   <Loader2 className="w-3 h-3 animate-spin" /> Cargando médicos...
                 </span>
               ) : doctors.length > 0 ? (
-                <>
-                  <button
-                    onClick={() => setSelectedDoctorId(null)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                      selectedDoctorId === null ? 'bg-primary text-white' : 'bg-card border border-border text-muted-foreground hover:bg-muted/50'
-                    )}
+                <div className="relative">
+                  <select
+                    value={selectedDoctorId ?? ''}
+                    onChange={e => setSelectedDoctorId(e.target.value || null)}
+                    className="appearance-none bg-card border border-border rounded-lg pl-8 pr-8 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer min-w-[180px]"
                   >
-                    Todos
-                  </button>
-                  {doctors.map((doc) => (
-                    <button
-                      key={doc.id}
-                      onClick={() => setSelectedDoctorId(doc.id)}
-                      className={cn(
-                        'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                        selectedDoctorId === doc.id ? 'bg-primary text-white' : 'bg-card border border-border text-muted-foreground hover:bg-muted/50'
-                      )}
-                    >
-                      Dr. {doc.lastName}
-                    </button>
-                  ))}
-                </>
-              ) : (
-                <span className="text-xs text-muted-foreground px-2 py-1.5 bg-muted/50 rounded-lg border border-border">
-                  Vista: clínica completa
-                </span>
-              )}
+                    <option value="">Todos los médicos</option>
+                    {doctors.map(doc => (
+                      <option key={doc.id} value={doc.id}>
+                        Dr. {doc.firstName} {doc.lastName}
+                      </option>
+                    ))}
+                  </select>
+                  <Users className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                </div>
+              ) : null}
             </div>
           )}
         </div>
