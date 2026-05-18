@@ -134,8 +134,34 @@ export async function appointmentsRoutes(server: FastifyInstance) {
       new Date(`${date}T12:00:00Z`).getUTCDay()
     ]!
 
+    // Normalize scheduleConfig: support both legacy long-key format (monday, tuesday…)
+    // and current short-key array format (mon, tue…). Long-key values can be
+    // { start, end, enabled } objects or arrays; normalize all to arrays of { start, end }.
+    const KEY_MAP: Record<string, string> = {
+      monday: 'mon', tuesday: 'tue', wednesday: 'wed', thursday: 'thu',
+      friday: 'fri', saturday: 'sat', sunday: 'sun',
+    }
+    function normalizeConfig(raw: Record<string, unknown>): Record<string, { start: string; end: string }[]> {
+      const out: Record<string, { start: string; end: string }[]> = {}
+      for (const [k, v] of Object.entries(raw)) {
+        const key = KEY_MAP[k] ?? k
+        if (Array.isArray(v)) {
+          out[key] = v as { start: string; end: string }[]
+        } else if (v && typeof v === 'object') {
+          const obj = v as { start?: string; end?: string; enabled?: boolean }
+          out[key] = obj.enabled !== false && obj.start && obj.end
+            ? [{ start: obj.start, end: obj.end }]
+            : []
+        } else {
+          out[key] = []
+        }
+      }
+      return out
+    }
+
     // Generate slots from schedule config — fallback to default Mon-Fri 9-18 / Sat 9-14
-    const config = (doctor.scheduleConfig as Record<string, { start: string; end: string }[]> | null) ?? DEFAULT_SCHEDULE
+    const rawConfig = doctor.scheduleConfig as Record<string, unknown> | null
+    const config = rawConfig ? normalizeConfig(rawConfig) : DEFAULT_SCHEDULE
     const daySchedule = config[dayName] ?? []
     const duration = durationOverride ?? doctor.consultationDuration ?? 30
 

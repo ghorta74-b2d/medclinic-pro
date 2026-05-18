@@ -333,31 +333,34 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       },
     })
 
-    // 2. Send invite
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      body.email,
-      {
-        data: {
-          clinic_id: clinicId,
-          role: body.role ?? 'DOCTOR',
-          firstName: body.firstName,
-          lastName: body.lastName,
-          doctor_id: doctor.id,
-        },
-        redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`,
-      }
-    )
-
-    if (inviteError) {
-      await prisma.doctor.delete({ where: { id: doctor.id } }).catch(() => {})
-      return reply.status(400).send({ error: { message: inviteError.message } })
+    // 2. Send invite via generateInviteLink + Resend (never Supabase default template)
+    const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`
+    const metadata = {
+      clinic_id: clinicId,
+      role: body.role ?? 'DOCTOR',
+      firstName: body.firstName,
+      lastName: body.lastName,
+      doctor_id: doctor.id,
     }
 
-    if (inviteData?.user?.id) {
-      await prisma.doctor.update({
-        where: { id: doctor.id },
-        data: { authUserId: inviteData.user.id },
-      }).catch(() => {})
+    try {
+      const { actionLink, userId } = await generateInviteLink(body.email, metadata, redirectTo)
+
+      if (userId) {
+        await prisma.doctor.update({
+          where: { id: doctor.id },
+          data: { authUserId: userId },
+        }).catch(() => {})
+      }
+
+      await sendResendEmail({
+        to: body.email,
+        subject: 'Tu acceso a Mediaclinic',
+        html: buildInviteEmail({ firstName: body.firstName, email: body.email, role: body.role ?? 'DOCTOR', actionLink, isResend: false }),
+      })
+    } catch (err: any) {
+      await prisma.doctor.delete({ where: { id: doctor.id } }).catch(() => {})
+      return reply.status(400).send({ error: { message: err?.message || 'Error al enviar invitación' } })
     }
 
     return reply.status(201).send({ data: { doctor, inviteSent: true } })

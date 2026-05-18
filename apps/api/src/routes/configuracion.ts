@@ -6,6 +6,33 @@ import { authenticate, requireAdmin } from '../middleware/auth.js'
 import { buildInviteEmail, sendResendEmail } from '../lib/email.js'
 import type { Role } from '../../generated/index.js'
 
+// Call GoTrue admin generate_link directly (bypass JS SDK quirks)
+async function generateInviteLink(email: string, metadata: Record<string, unknown>, redirectTo: string) {
+  const supabaseUrl = process.env['SUPABASE_URL']!
+  const serviceKey = process.env['SUPABASE_SERVICE_ROLE_KEY']!
+
+  const res = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${serviceKey}`,
+      'apikey': serviceKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ type: 'invite', email, data: metadata, redirect_to: redirectTo }),
+  })
+
+  const body = await res.json() as any
+  if (!res.ok) {
+    throw new Error(body?.msg || body?.message || body?.error_description || `GoTrue ${res.status}`)
+  }
+
+  const actionLink: string = body.action_link ?? body.properties?.action_link
+  const userId: string = body.id ?? body.user?.id ?? body.data?.user?.id
+
+  if (!actionLink) throw new Error('GoTrue did not return action_link')
+  return { actionLink, userId }
+}
+
 // ── Supabase admin client (bypasses RLS, can invite users) ───────────────────
 function getSupabaseAdmin() {
   return createClient(
@@ -175,41 +202,45 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
         licenseNumber: body.licenseNumber,
         isActive: true,
         scheduleConfig: {
-          monday:    { start: '09:00', end: '18:00', enabled: true },
-          tuesday:   { start: '09:00', end: '18:00', enabled: true },
-          wednesday: { start: '09:00', end: '18:00', enabled: true },
-          thursday:  { start: '09:00', end: '18:00', enabled: true },
-          friday:    { start: '09:00', end: '18:00', enabled: true },
-          saturday:  { start: '09:00', end: '14:00', enabled: false },
-          sunday:    { start: '09:00', end: '14:00', enabled: false },
+          mon: [{ start: '09:00', end: '18:00' }],
+          tue: [{ start: '09:00', end: '18:00' }],
+          wed: [{ start: '09:00', end: '18:00' }],
+          thu: [{ start: '09:00', end: '18:00' }],
+          fri: [{ start: '09:00', end: '18:00' }],
+          sat: [],
+          sun: [],
         },
       },
     })
 
-    const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      body.email,
-      {
-        data: {
-          clinic_id: clinicId,
-          role: body.role ?? 'DOCTOR',
-          firstName: body.firstName,
-          lastName: body.lastName,
-          doctor_id: doctor.id,
-        },
-        redirectTo: `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`,
-      }
-    )
-
-    if (inviteError) {
-      await prisma.doctor.delete({ where: { id: doctor.id } }).catch(() => {})
-      return reply.status(400).send({ error: { message: inviteError.message } })
+    // Send invite via generateInviteLink + Resend (never Supabase default template)
+    const redirectTo = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/auth/invite`
+    const metadata = {
+      clinic_id: clinicId,
+      role: body.role ?? 'DOCTOR',
+      firstName: body.firstName,
+      lastName: body.lastName,
+      doctor_id: doctor.id,
     }
 
-    if (inviteData?.user?.id) {
-      await prisma.doctor.update({
-        where: { id: doctor.id },
-        data: { authUserId: inviteData.user.id },
-      }).catch(() => {})
+    try {
+      const { actionLink, userId } = await generateInviteLink(body.email, metadata, redirectTo)
+
+      if (userId) {
+        await prisma.doctor.update({
+          where: { id: doctor.id },
+          data: { authUserId: userId },
+        }).catch(() => {})
+      }
+
+      await sendResendEmail({
+        to: body.email,
+        subject: 'Tu acceso a Mediaclinic',
+        html: buildInviteEmail({ firstName: body.firstName, email: body.email, role: body.role ?? 'DOCTOR', actionLink, isResend: false }),
+      })
+    } catch (err: any) {
+      await prisma.doctor.delete({ where: { id: doctor.id } }).catch(() => {})
+      return reply.status(400).send({ error: { message: err?.message || 'Error al enviar invitación' } })
     }
 
     return reply.status(201).send({ data: { doctor, inviteSent: true } })
