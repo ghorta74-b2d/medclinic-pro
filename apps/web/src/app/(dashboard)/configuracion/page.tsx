@@ -13,7 +13,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'clinica',     label: 'Perfil clínica' },
   { id: 'usuarios',    label: 'Usuarios' },
   { id: 'horarios',    label: 'Horarios' },
-  { id: 'tipos-cita',  label: 'Tipos de cita' },
   { id: 'catalogo',    label: 'Catálogo' },
   { id: 'plantillas',  label: 'Plantillas' },
   { id: 'whatsapp',    label: 'WhatsApp' },
