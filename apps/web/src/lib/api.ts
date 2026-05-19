@@ -373,6 +373,8 @@ export const api = {
       request(`/api/configuracion/users/${id}/resend-invite`, { method: 'POST' }),
     deleteUser: (id: string) =>
       request(`/api/configuracion/users/${id}`, { method: 'DELETE' }),
+    upgradeSession: (plan: string, annual?: boolean) =>
+      request('/api/configuracion/upgrade-session', { method: 'POST', body: JSON.stringify({ plan, annual: annual ?? false }) }),
     getSchedule: () => request('/api/configuracion/schedule'),
     updateSchedule: (data: unknown) =>
       request('/api/configuracion/schedule', { method: 'PATCH', body: JSON.stringify(data) }),

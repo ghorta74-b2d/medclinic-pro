@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { getUserRole } from '@/lib/api'
 import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
-import { Save, Plus, Loader2, Mail, UserCheck, UserX, RefreshCw, Shield, Stethoscope, Pencil, Trash2, Check, X } from 'lucide-react'
+import { Save, Plus, Loader2, Mail, UserCheck, UserX, RefreshCw, Shield, Stethoscope, Pencil, Trash2, Check, X, MoreHorizontal, TrendingUp, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type TabId = 'clinica' | 'usuarios' | 'horarios' | 'tipos-cita' | 'catalogo' | 'plantillas' | 'whatsapp' | 'pagos' | 'privacidad'
@@ -88,6 +88,16 @@ const PLAN_COLORS: Record<string, string> = {
   ENTERPRISE:   'bg-yellow-500/15 text-yellow-400',
 }
 
+// ── Plan definitions (must match API LIMITS) ─────────────────────
+const PLAN_ORDER = ['esencial', 'profesional', 'clinica', 'clinica-plus']
+const PLAN_CANONICAL: Record<string, string> = { BASIC: 'esencial', PRO: 'profesional', ENTERPRISE: 'clinica' }
+
+const UPGRADE_PLANS = [
+  { id: 'esencial',    name: 'Esencial',     monthly: 1299, doctors: 2,   staff: 1,  features: ['2 médicos', '1 administrativo', 'Agenda', 'Recetas', 'Cobros'] },
+  { id: 'profesional', name: 'Profesional',  monthly: 2499, doctors: 5,   staff: 2,  features: ['5 médicos', '2 administrativos', 'WhatsApp', 'IA', 'Facturación'] },
+  { id: 'clinica',     name: 'Clínica',      monthly: 4999, doctors: 20,  staff: 5,  features: ['20 médicos', '5 administrativos', 'Soporte prioritario', 'API access'] },
+]
+
 // ── Users / Team Management ──────────────────────────────────────
 function UsuariosTab() {
   const [data, setData] = useState<{
@@ -99,6 +109,7 @@ function UsuariosTab() {
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
+  const [showUpgrade, setShowUpgrade] = useState(false)
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', role: 'DOCTOR', specialty: '', licenseNumber: '' })
   const [saving, setSaving] = useState(false)
   const [actionId, setActionId] = useState<string | null>(null)
@@ -106,8 +117,20 @@ function UsuariosTab() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', specialty: '' })
   const [callerRole, setCallerRole] = useState<string>('')
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
+  const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null)
+  const [upgradeError, setUpgradeError] = useState('')
 
   useEffect(() => { getUserRole().then(r => setCallerRole(r ?? '')).catch(() => {}) }, [])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!openMenu) return
+    const handler = () => setOpenMenu(null)
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [openMenu])
 
   const load = () => {
     setLoading(true)
@@ -139,11 +162,12 @@ function UsuariosTab() {
 
   async function handleToggleActive(user: any) {
     setActionId(user.id)
+    setOpenMenu(null)
     try {
       await api.configuracion.updateUser(user.id, { isActive: !user.isActive })
       load()
     } catch (e: any) {
-      alert(e.message ?? 'Error')
+      setError(e.message ?? 'Error')
     } finally {
       setActionId(null)
     }
@@ -163,10 +187,12 @@ function UsuariosTab() {
   }
 
   async function handleDelete(user: any) {
-    if (!confirm(`¿Eliminar a ${user.firstName} ${user.lastName}? Esta acción no se puede deshacer.`)) return
     setActionId(user.id + '_delete')
+    setPendingDelete(null)
+    setOpenMenu(null)
     try {
       await api.configuracion.deleteUser(user.id)
+      setError(`✓ ${user.firstName} ${user.lastName} eliminado`)
       load()
     } catch (e: any) {
       setError(e.message ?? 'Error al eliminar')
@@ -176,9 +202,8 @@ function UsuariosTab() {
   }
 
   async function handleChangeRole(user: any, newRole: 'DOCTOR' | 'ADMIN') {
-    const label = newRole === 'ADMIN' ? 'Administrador' : 'Médico'
-    if (!confirm(`¿Cambiar el rol de ${user.firstName} ${user.lastName} a ${label}?\n\nEl usuario deberá cerrar sesión y volver a entrar para ver los cambios.`)) return
     setActionId(user.id + '_role')
+    setOpenMenu(null)
     setError('')
     try {
       await api.configuracion.changeUserRole(user.id, newRole)
@@ -192,6 +217,7 @@ function UsuariosTab() {
 
   async function handleResend(user: any) {
     setActionId(user.id + '_resend')
+    setOpenMenu(null)
     setError('')
     try {
       await api.configuracion.resendInvite(user.id)
@@ -203,12 +229,28 @@ function UsuariosTab() {
     }
   }
 
+  async function handleUpgrade(planId: string) {
+    setUpgradeLoading(planId)
+    setUpgradeError('')
+    try {
+      const res: any = await api.configuracion.upgradeSession(planId, false)
+      if (res?.data?.url) window.location.href = res.data.url
+    } catch (e: any) {
+      setUpgradeError(e.message ?? 'Error al iniciar el upgrade')
+    } finally {
+      setUpgradeLoading(null)
+    }
+  }
+
   if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
 
   const plan = data?.plan ?? 'BASIC'
-  const limits = data?.limits ?? { DOCTOR: 1, STAFF: 1 }
+  const canonicalPlan = PLAN_CANONICAL[plan] ?? plan
+  const currentPlanIdx = PLAN_ORDER.indexOf(canonicalPlan)
+  const limits = data?.limits ?? { DOCTOR: 2, STAFF: 1 }
   const doctors = (data?.users ?? []).filter((u: any) => u.role === 'DOCTOR' || u.role === 'ADMIN')
   const staff   = (data?.users ?? []).filter((u: any) => u.role === 'STAFF')
+  const availableUpgrades = UPGRADE_PLANS.filter(p => PLAN_ORDER.indexOf(p.id) > currentPlanIdx)
 
   return (
     <div className="space-y-5 max-w-3xl">
@@ -220,6 +262,7 @@ function UsuariosTab() {
           error.startsWith('✓') ? 'bg-success/10 text-success border border-success/15' : 'bg-destructive/10 text-destructive border border-destructive/15'
         )}>
           {error}
+          <button onClick={() => setError('')} className="float-right text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -227,9 +270,17 @@ function UsuariosTab() {
       <div className="bg-card rounded-xl border border-border p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">Usuarios de tu plan</h3>
-          <span className={cn('text-xs font-semibold px-2.5 py-0.5 rounded-full', PLAN_COLORS[plan] ?? 'bg-muted text-foreground/80')}>
-            Plan {PLAN_LABELS[plan] ?? plan}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={cn('text-xs font-semibold px-2.5 py-0.5 rounded-full', PLAN_COLORS[plan] ?? 'bg-muted text-foreground/80')}>
+              Plan {PLAN_LABELS[plan] ?? plan}
+            </span>
+            {callerRole === 'ADMIN' && availableUpgrades.length > 0 && (
+              <button onClick={() => setShowUpgrade(v => !v)}
+                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium border border-primary/30 hover:border-primary/60 px-2.5 py-0.5 rounded-full transition-colors">
+                <TrendingUp className="w-3 h-3" /> Mejorar plan
+              </button>
+            )}
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {/* Médicos + Admins */}
@@ -245,7 +296,7 @@ function UsuariosTab() {
                   <p className={cn('text-xs font-medium', full ? 'text-destructive' : 'text-primary')}>Médicos y Admins</p>
                 </div>
                 <p className={cn('text-2xl font-bold', full ? 'text-destructive' : 'text-primary')}>
-                  {used}<span className={cn('text-sm font-normal', full ? 'text-muted-foreground/60' : 'text-muted-foreground/60')}> / {max}</span>
+                  {used}<span className="text-sm font-normal text-muted-foreground/60"> / {max}</span>
                 </p>
                 <div className={cn('w-full rounded-full h-1.5 mt-2', full ? 'bg-destructive/15' : 'bg-primary/15')}>
                   <div className={cn('h-1.5 rounded-full transition-all', full ? 'bg-destructive' : 'bg-primary')} style={{ width: `${pct}%` }} />
@@ -267,7 +318,7 @@ function UsuariosTab() {
                   <p className={cn('text-xs font-medium', full ? 'text-destructive' : 'text-warning')}>Administrativos</p>
                 </div>
                 <p className={cn('text-2xl font-bold', full ? 'text-destructive' : 'text-warning')}>
-                  {used}<span className={cn('text-sm font-normal', full ? 'text-muted-foreground/60' : 'text-muted-foreground/60')}> / {max}</span>
+                  {used}<span className="text-sm font-normal text-muted-foreground/60"> / {max}</span>
                 </p>
                 <div className={cn('w-full rounded-full h-1.5 mt-2', full ? 'bg-destructive/15' : 'bg-warning/15')}>
                   <div className={cn('h-1.5 rounded-full transition-all', full ? 'bg-destructive' : 'bg-warning')} style={{ width: `${pct}%` }} />
@@ -279,21 +330,64 @@ function UsuariosTab() {
         </div>
       </div>
 
+      {/* Upgrade panel */}
+      {showUpgrade && availableUpgrades.length > 0 && (
+        <div className="bg-card rounded-xl border border-primary/30 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Mejora tu plan</p>
+              <p className="text-xs text-muted-foreground">Solo puedes hacer upgrade, no downgrade</p>
+            </div>
+            <button onClick={() => setShowUpgrade(false)} className="text-muted-foreground hover:text-foreground p-1 rounded">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {upgradeError && (
+            <p className="text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{upgradeError}</p>
+          )}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {availableUpgrades.map(p => (
+              <div key={p.id} className="border border-border rounded-xl p-4 space-y-3 hover:border-primary/50 transition-colors">
+                <div>
+                  <p className="text-sm font-bold text-foreground">{p.name}</p>
+                  <p className="text-xl font-bold text-primary mt-0.5">${p.monthly.toLocaleString()}<span className="text-xs font-normal text-muted-foreground">/mes</span></p>
+                </div>
+                <ul className="space-y-1">
+                  {p.features.map(f => (
+                    <li key={f} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Check className="w-3 h-3 text-success shrink-0" />{f}
+                    </li>
+                  ))}
+                </ul>
+                <button onClick={() => handleUpgrade(p.id)} disabled={upgradeLoading === p.id}
+                  className="w-full flex items-center justify-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-medium px-3 py-2 rounded-lg disabled:opacity-50 transition-colors">
+                  {upgradeLoading === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
+                  Cambiar a {p.name}
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">Serás redirigido a Stripe para completar el pago de forma segura.</p>
+        </div>
+      )}
+
       {/* Users table */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">Equipo</h3>
-          <button onClick={() => { setShowInvite(true); setError('') }}
-            className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-medium px-3 py-1.5 rounded-lg">
-            <Plus className="w-3.5 h-3.5" /> Invitar usuario
-          </button>
+          {callerRole === 'ADMIN' && (
+            <button onClick={() => { setShowInvite(true); setError('') }}
+              className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-xs font-medium px-3 py-1.5 rounded-lg">
+              <Plus className="w-3.5 h-3.5" /> Invitar usuario
+            </button>
+          )}
         </div>
 
         <table className="w-full">
           <thead className="bg-muted/50 border-b border-border">
             <tr>
-              {['Nombre', 'Email', 'Rol', 'Estado', 'Acciones'].map(h => (
-                <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
+              {['Nombre', 'Email', 'Rol', 'Estado', ''].map((h, i) => (
+                <th key={i} className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
               ))}
             </tr>
           </thead>
@@ -302,8 +396,12 @@ function UsuariosTab() {
               const isPending = !user.authUserId
               const isDoctor  = user.role === 'DOCTOR' || user.role === 'ADMIN'
               const isEditing = editingId === user.id
+              const isDeleting = actionId === user.id + '_delete'
+              const confirmDel = pendingDelete === user.id
+
               return (
-                <tr key={user.id} className={cn('hover:bg-muted/50', !user.isActive && 'opacity-50')}>
+                <tr key={user.id} className={cn('hover:bg-muted/30 transition-colors', !user.isActive && 'opacity-50')}>
+                  {/* Name cell */}
                   <td className="px-4 py-3">
                     {isEditing ? (
                       <div className="flex flex-col gap-1">
@@ -327,7 +425,11 @@ function UsuariosTab() {
                       </>
                     )}
                   </td>
+
+                  {/* Email */}
                   <td className="px-4 py-3 text-sm text-muted-foreground">{user.email}</td>
+
+                  {/* Role badge */}
                   <td className="px-4 py-3">
                     <span className={cn(
                       'inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full',
@@ -338,6 +440,8 @@ function UsuariosTab() {
                       {user.role === 'ADMIN' ? 'Admin' : isDoctor ? 'Médico' : 'Administrativo'}
                     </span>
                   </td>
+
+                  {/* Status badge */}
                   <td className="px-4 py-3">
                     {isPending ? (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-warning bg-warning/15 px-2 py-0.5 rounded-full">
@@ -353,81 +457,96 @@ function UsuariosTab() {
                       </span>
                     )}
                   </td>
+
+                  {/* Actions */}
                   <td className="px-4 py-3">
                     {isEditing ? (
                       <div className="flex items-center gap-1.5">
                         <button onClick={() => handleSaveEdit(user)} disabled={actionId === user.id + '_edit'}
-                          className="text-xs text-white bg-primary hover:bg-primary/90 px-2.5 py-1 rounded-lg disabled:opacity-50 flex items-center gap-1">
+                          className="text-xs text-white bg-primary hover:bg-primary/90 px-2.5 py-1.5 rounded-lg disabled:opacity-50 flex items-center gap-1">
                           {actionId === user.id + '_edit' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                           Guardar
                         </button>
                         <button onClick={() => setEditingId(null)}
-                          className="text-xs text-muted-foreground hover:text-foreground/80 px-2 py-1 rounded-lg border border-border">
-                          <X className="w-3 h-3" />
+                          className="p-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted/50">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : confirmDel ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-destructive font-medium">¿Eliminar?</span>
+                        <button onClick={() => handleDelete(user)} disabled={isDeleting}
+                          className="text-xs bg-destructive text-white px-2.5 py-1 rounded-lg hover:bg-destructive/90 disabled:opacity-50 flex items-center gap-1">
+                          {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                          Sí, eliminar
+                        </button>
+                        <button onClick={() => setPendingDelete(null)}
+                          className="text-xs border border-border px-2.5 py-1 rounded-lg text-muted-foreground hover:bg-muted/50">
+                          Cancelar
                         </button>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-1.5">
-                        {/* Fila primaria */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                        {/* Edit */}
+                        <button
+                          onClick={() => { setEditingId(user.id); setEditForm({ firstName: user.firstName, lastName: user.lastName, specialty: user.specialty ?? '' }) }}
+                          title="Editar"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-muted/50 transition-colors">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        {/* Resend */}
+                        <button onClick={() => handleResend(user)} disabled={actionId === user.id + '_resend'}
+                          title="Reenviar acceso"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-muted/50 transition-colors disabled:opacity-50">
+                          {actionId === user.id + '_resend' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                        </button>
+                        {/* More dropdown */}
+                        <div className="relative">
                           <button
-                            onClick={() => { setEditingId(user.id); setEditForm({ firstName: user.firstName, lastName: user.lastName, specialty: user.specialty ?? '' }) }}
-                            title="Editar nombre / especialidad"
-                            className="text-muted-foreground hover:text-primary p-1 rounded">
-                            <Pencil className="w-3.5 h-3.5" />
+                            onClick={() => setOpenMenu(openMenu === user.id ? null : user.id)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+                            <MoreHorizontal className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => handleResend(user)}
-                            disabled={actionId === user.id + '_resend'}
-                            className="text-xs text-primary hover:underline disabled:opacity-50 flex items-center gap-1">
-                            {actionId === user.id + '_resend' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                            {isPending ? 'Reenviar' : 'Reenviar acceso'}
-                          </button>
-                          {user.role !== 'ADMIN' && (
-                            <button
-                              onClick={() => handleToggleActive(user)}
-                              disabled={actionId === user.id}
-                              className={cn('text-xs hover:underline disabled:opacity-50', user.isActive ? 'text-destructive' : 'text-success')}>
-                              {actionId === user.id
-                                ? <Loader2 className="w-3 h-3 animate-spin inline" />
-                                : user.isActive ? 'Desactivar' : 'Activar'}
-                            </button>
+                          {openMenu === user.id && (
+                            <div className="absolute right-0 top-full mt-1 z-20 w-48 bg-popover border border-border rounded-xl shadow-lg overflow-hidden py-1">
+                              {/* Activate / Deactivate */}
+                              {user.role !== 'ADMIN' && (
+                                <button onClick={() => handleToggleActive(user)} disabled={actionId === user.id}
+                                  className={cn('w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/50 transition-colors',
+                                    user.isActive ? 'text-warning' : 'text-success')}>
+                                  {actionId === user.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : user.isActive ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+                                  {user.isActive ? 'Desactivar' : 'Activar'}
+                                </button>
+                              )}
+                              {/* Role actions — ADMIN only */}
+                              {callerRole === 'ADMIN' && user.role === 'DOCTOR' && (
+                                <button onClick={() => handleChangeRole(user, 'ADMIN')} disabled={actionId === user.id + '_role'}
+                                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-foreground/80 hover:bg-muted/50 transition-colors disabled:opacity-50">
+                                  {actionId === user.id + '_role' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+                                  Hacer Admin
+                                </button>
+                              )}
+                              {callerRole === 'ADMIN' && user.role === 'ADMIN' && (
+                                <button onClick={() => handleChangeRole(user, 'DOCTOR')} disabled={actionId === user.id + '_role'}
+                                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-foreground/80 hover:bg-muted/50 transition-colors disabled:opacity-50">
+                                  {actionId === user.id + '_role' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Stethoscope className="w-3.5 h-3.5" />}
+                                  Quitar Admin
+                                </button>
+                              )}
+                              {/* Delete — ADMIN only, non-admin target */}
+                              {callerRole === 'ADMIN' && user.role !== 'ADMIN' && (
+                                <>
+                                  <div className="h-px bg-border/60 my-1" />
+                                  <button onClick={() => { setPendingDelete(user.id); setOpenMenu(null) }}
+                                    className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    Eliminar usuario
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           )}
                         </div>
-                        {/* Fila secundaria — acciones de rol (solo ADMIN caller) */}
-                        {callerRole === 'ADMIN' && (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {user.role === 'DOCTOR' && (
-                              <button
-                                onClick={() => handleChangeRole(user, 'ADMIN')}
-                                disabled={actionId === user.id + '_role'}
-                                title="Promover a Administrador"
-                                className="text-xs text-primary hover:underline disabled:opacity-50 flex items-center gap-1">
-                                {actionId === user.id + '_role' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
-                                Hacer Admin
-                              </button>
-                            )}
-                            {user.role === 'ADMIN' && (
-                              <button
-                                onClick={() => handleChangeRole(user, 'DOCTOR')}
-                                disabled={actionId === user.id + '_role'}
-                                title="Quitar permisos de Admin"
-                                className="text-xs text-muted-foreground hover:text-primary hover:underline disabled:opacity-50 flex items-center gap-1">
-                                {actionId === user.id + '_role' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Stethoscope className="w-3 h-3" />}
-                                Quitar Admin
-                              </button>
-                            )}
-                            {user.role !== 'ADMIN' && (
-                              <button
-                                onClick={() => handleDelete(user)}
-                                disabled={actionId === user.id + '_delete'}
-                                title="Eliminar usuario"
-                                className="text-muted-foreground hover:text-destructive p-1 rounded disabled:opacity-50">
-                                {actionId === user.id + '_delete' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                              </button>
-                            )}
-                          </div>
-                        )}
                       </div>
                     )}
                   </td>
@@ -447,18 +566,16 @@ function UsuariosTab() {
           <p className="text-sm font-semibold text-foreground">Invitar nuevo usuario</p>
 
           {/* Role selector */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {[
-              { value: 'DOCTOR', label: 'Médico',          desc: 'Acceso completo a la plataforma',       icon: Stethoscope, color: 'border-primary bg-primary/10',   activeColor: 'text-primary' },
-              { value: 'STAFF',  label: 'Administrativo',  desc: 'Dashboard, Agenda, Pacientes y Cobros', icon: Shield,       color: 'border-warning bg-warning/10', activeColor: 'text-warning' },
-              ...(callerRole === 'ADMIN' ? [
-                { value: 'ADMIN',  label: 'Administrador',  desc: 'Gestión completa de la clínica y usuarios', icon: Shield, color: 'border-primary bg-primary/10', activeColor: 'text-primary' },
-              ] : []),
+              { value: 'DOCTOR', label: 'Médico',         desc: 'Acceso completo',          icon: Stethoscope, color: 'border-primary bg-primary/10',  activeColor: 'text-primary' },
+              { value: 'STAFF',  label: 'Administrativo', desc: 'Agenda, Pacientes, Cobros', icon: Shield,      color: 'border-warning bg-warning/10', activeColor: 'text-warning' },
+              { value: 'ADMIN',  label: 'Administrador',  desc: 'Gestión completa',          icon: Shield,      color: 'border-primary bg-primary/10',  activeColor: 'text-primary' },
             ].map(opt => (
               <button key={opt.value}
                 onClick={() => setForm(f => ({ ...f, role: opt.value }))}
                 className={cn('text-left p-3 rounded-xl border-2 transition-all',
-                  form.role === opt.value ? opt.color : 'border-border hover:border-border')}>
+                  form.role === opt.value ? opt.color : 'border-border hover:border-border/80')}>
                 <div className="flex items-center gap-2 mb-1">
                   <opt.icon className={cn('w-4 h-4', form.role === opt.value ? opt.activeColor : 'text-muted-foreground')} />
                   <p className="text-sm font-semibold text-foreground">{opt.label}</p>
@@ -468,27 +585,31 @@ function UsuariosTab() {
             ))}
           </div>
 
-          {/* Quota warning */}
+          {/* Quota warnings */}
           {form.role === 'DOCTOR' && (data?.doctorCount ?? 0) >= limits.DOCTOR && (
-            <div className="bg-destructive/10 border border-destructive/15 rounded-lg px-3 py-2 text-xs text-destructive">
-              ⚠️ Has alcanzado el límite de médicos de tu plan ({limits.DOCTOR}). Actualiza tu plan para agregar más.
+            <div className="bg-destructive/10 border border-destructive/15 rounded-lg px-3 py-2 text-xs text-destructive flex items-center justify-between">
+              <span>⚠️ Límite de médicos alcanzado ({limits.DOCTOR}). Actualiza tu plan para agregar más.</span>
+              <button onClick={() => { setShowInvite(false); setShowUpgrade(true) }}
+                className="ml-2 underline font-medium whitespace-nowrap">Ver planes</button>
             </div>
           )}
           {form.role === 'STAFF' && (data?.staffCount ?? 0) >= limits.STAFF && (
-            <div className="bg-destructive/10 border border-destructive/15 rounded-lg px-3 py-2 text-xs text-destructive">
-              ⚠️ Has alcanzado el límite de administrativos de tu plan ({limits.STAFF}). Actualiza tu plan para agregar más.
+            <div className="bg-destructive/10 border border-destructive/15 rounded-lg px-3 py-2 text-xs text-destructive flex items-center justify-between">
+              <span>⚠️ Límite de administrativos alcanzado ({limits.STAFF}). Actualiza tu plan para agregar más.</span>
+              <button onClick={() => { setShowInvite(false); setShowUpgrade(true) }}
+                className="ml-2 underline font-medium whitespace-nowrap">Ver planes</button>
             </div>
           )}
 
           {/* Fields */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { key: 'firstName',     label: 'Nombre',       placeholder: 'Mariana', required: true },
-              { key: 'lastName',      label: 'Apellido',      placeholder: 'López',   required: true },
-              { key: 'email',         label: 'Email',         placeholder: 'doc@clinica.mx', required: true },
+              { key: 'firstName',     label: 'Nombre',             placeholder: 'Mariana'        },
+              { key: 'lastName',      label: 'Apellido',            placeholder: 'López'          },
+              { key: 'email',         label: 'Email',               placeholder: 'doc@clinica.mx' },
               ...(form.role === 'DOCTOR' ? [
-                { key: 'specialty',     label: 'Especialidad',  placeholder: 'Ginecología', required: false },
-                { key: 'licenseNumber', label: 'Cédula profesional', placeholder: '1234567', required: false },
+                { key: 'specialty',     label: 'Especialidad',      placeholder: 'Ginecología'    },
+                { key: 'licenseNumber', label: 'Cédula profesional', placeholder: '1234567'       },
               ] : []),
             ].map(({ key, label, placeholder }) => (
               <div key={key}>
@@ -515,28 +636,43 @@ function UsuariosTab() {
               Cancelar
             </button>
           </div>
-          <p className="text-xs text-muted-foreground">El usuario recibirá un email con un link para activar su cuenta.</p>
+          <p className="text-xs text-muted-foreground">El usuario recibirá un email para activar su cuenta.</p>
         </div>
       )}
 
-      {/* Plan info */}
+      {/* Plan limits table */}
       <div className="bg-muted/50 rounded-xl border border-border p-4">
-        <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Límites por plan</p>
-        <div className="grid grid-cols-3 gap-3 text-center">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Límites por plan</p>
+          {callerRole === 'ADMIN' && availableUpgrades.length > 0 && (
+            <button onClick={() => setShowUpgrade(v => !v)}
+              className="text-xs text-primary hover:underline font-medium flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" /> Mejorar plan
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-4 gap-2 text-center">
           {[
-            { plan: 'BASIC',      doctors: 1, staff: 1 },
-            { plan: 'PRO',        doctors: 4, staff: 1 },
-            { plan: 'ENTERPRISE', doctors: 15, staff: 5 },
-          ].map(p => (
-            <div key={p.plan} className={cn(
-              'rounded-lg p-3 border',
-              plan === p.plan ? 'border-primary bg-primary/10' : 'border-border bg-card'
-            )}>
-              <p className={cn('text-xs font-bold mb-1', plan === p.plan ? 'text-primary' : 'text-muted-foreground')}>{p.plan}</p>
-              <p className="text-xs text-muted-foreground">{p.doctors} médico{p.doctors > 1 ? 's' : ''}</p>
-              <p className="text-xs text-muted-foreground">{p.staff} administrativo{p.staff > 1 ? 's' : ''}</p>
-            </div>
-          ))}
+            { id: 'esencial',    name: 'Esencial',    doctors: 2,   staff: 1,  price: '$1,299' },
+            { id: 'profesional', name: 'Profesional', doctors: 5,   staff: 2,  price: '$2,499' },
+            { id: 'clinica',     name: 'Clínica',     doctors: 20,  staff: 5,  price: '$4,999' },
+            { id: 'clinica-plus', name: 'Clínica Plus', doctors: null, staff: null, price: 'A medida' },
+          ].map(p => {
+            const isCurrent = p.id === canonicalPlan
+            const isLower = PLAN_ORDER.indexOf(p.id) < currentPlanIdx
+            return (
+              <div key={p.id} className={cn(
+                'rounded-lg p-3 border transition-colors',
+                isCurrent ? 'border-primary bg-primary/10' : isLower ? 'border-border bg-card opacity-50' : 'border-border bg-card'
+              )}>
+                <p className={cn('text-xs font-bold mb-1', isCurrent ? 'text-primary' : 'text-muted-foreground')}>{p.name}</p>
+                <p className="text-xs text-muted-foreground">{p.doctors !== null ? `${p.doctors} médico${p.doctors > 1 ? 's' : ''}` : 'Ilimitado'}</p>
+                <p className="text-xs text-muted-foreground">{p.staff !== null ? `${p.staff} admin${p.staff > 1 ? 's' : ''}` : 'Ilimitado'}</p>
+                <p className={cn('text-xs font-medium mt-1.5', isCurrent ? 'text-primary' : 'text-muted-foreground/70')}>{p.price}/mes</p>
+                {isCurrent && <span className="text-xs text-primary font-semibold">← Tu plan</span>}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

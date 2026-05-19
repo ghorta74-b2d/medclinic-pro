@@ -273,8 +273,7 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/users/invite', async (request, reply) => {
     const { clinicId, role: callerRole } = request.authUser
 
-    // Only ADMIN or DOCTOR can invite; only ADMIN can invite other ADMINs
-    if (callerRole !== 'ADMIN' && callerRole !== 'DOCTOR') {
+    if (callerRole !== 'ADMIN') {
       return Errors.FORBIDDEN(reply)
     }
 
@@ -285,11 +284,6 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
       role: 'DOCTOR' | 'STAFF' | 'ADMIN'
       specialty?: string
       licenseNumber?: string
-    }
-
-    // Only ADMIN can invite other ADMINs
-    if (body.role === 'ADMIN' && callerRole !== 'ADMIN') {
-      return Errors.FORBIDDEN(reply)
     }
 
     const clinic = await prisma.clinic.findUnique({ where: { id: clinicId } })
@@ -575,5 +569,57 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
     // No history → safe to hard-delete
     await prisma.doctor.delete({ where: { id } })
     return { data: { deleted: true, soft: false } }
+  })
+
+  // ── POST /api/configuracion/upgrade-session ───────────────────────────────
+  // Creates a Stripe checkout session to upgrade the current clinic's plan.
+  // Only allows upgrading to a higher plan (no downgrade).
+  fastify.post('/upgrade-session', async (request, reply) => {
+    const { clinicId, role: callerRole } = request.authUser
+    if (callerRole !== 'ADMIN') return Errors.FORBIDDEN(reply)
+
+    const { plan, annual } = request.body as { plan: string; annual?: boolean }
+
+    const PLAN_ORDER = ['esencial', 'profesional', 'clinica', 'clinica-plus']
+    const PLAN_CANONICAL: Record<string, string> = { BASIC: 'esencial', PRO: 'profesional', ENTERPRISE: 'clinica' }
+
+    const clinic = await prisma.clinic.findUnique({ where: { id: clinicId } })
+    if (!clinic) return Errors.NOT_FOUND(reply, 'Clínica')
+
+    const currentPlanId = PLAN_CANONICAL[clinic.planId ?? ''] ?? clinic.planId ?? 'esencial'
+    const currentIdx = PLAN_ORDER.indexOf(currentPlanId)
+    const targetIdx = PLAN_ORDER.indexOf(plan)
+
+    if (targetIdx <= currentIdx) {
+      return reply.status(400).send({ error: { message: 'Solo se puede hacer upgrade al plan actual' } })
+    }
+
+    const { default: Stripe } = await import('stripe')
+    const stripe = new Stripe(process.env['STRIPE_SECRET_KEY']!, { apiVersion: '2024-04-10' })
+    const BASE_URL = process.env['APP_BASE_URL'] ?? 'https://medclinic-web.vercel.app'
+
+    const PRICE_MAP: Record<string, { monthly: string; annual: string }> = {
+      esencial:    { monthly: process.env['STRIPE_PRICE_ESENCIAL_MONTHLY'] ?? '',    annual: process.env['STRIPE_PRICE_ESENCIAL_ANNUAL'] ?? '' },
+      profesional: { monthly: process.env['STRIPE_PRICE_PROFESIONAL_MONTHLY'] ?? '', annual: process.env['STRIPE_PRICE_PROFESIONAL_ANNUAL'] ?? '' },
+      clinica:     { monthly: process.env['STRIPE_PRICE_CLINICA_MONTHLY'] ?? '',     annual: process.env['STRIPE_PRICE_CLINICA_ANNUAL'] ?? '' },
+    }
+
+    const prices = PRICE_MAP[plan]
+    if (!prices) return reply.status(400).send({ error: { message: 'Plan inválido' } })
+    const priceId = annual ? prices.annual : prices.monthly
+    if (!priceId) return reply.status(503).send({ error: { message: 'Plan no disponible. Contacta a soporte.' } })
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${BASE_URL}/configuracion?tab=usuarios&upgrade_ok=${plan}`,
+      cancel_url:  `${BASE_URL}/configuracion?tab=usuarios`,
+      allow_promotion_codes: true,
+      locale: 'es-419',
+      metadata: { plan, clinicId },
+      subscription_data: { metadata: { plan, clinicId } },
+    })
+
+    return { data: { url: session.url } }
   })
 }
