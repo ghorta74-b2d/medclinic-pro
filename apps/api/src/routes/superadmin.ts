@@ -248,12 +248,16 @@ export const superadminRoutes: FastifyPluginAsync = async (fastify) => {
       const supabaseAdmin = getSupabaseAdmin()
       enrichedDoctors = await Promise.all(
         clinic.doctors.map(async (doc) => {
-          if (!doc.authUserId) return { ...doc, emailConfirmed: false }
+          if (!doc.authUserId) return { ...doc, emailConfirmed: false, lastSignInAt: null }
           try {
             const { data } = await supabaseAdmin.auth.admin.getUserById(doc.authUserId)
-            return { ...doc, emailConfirmed: !!data?.user?.email_confirmed_at }
+            return {
+              ...doc,
+              emailConfirmed: !!data?.user?.email_confirmed_at,
+              lastSignInAt: data?.user?.last_sign_in_at ?? null,
+            }
           } catch {
-            return { ...doc, emailConfirmed: false }
+            return { ...doc, emailConfirmed: false, lastSignInAt: null }
           }
         })
       )

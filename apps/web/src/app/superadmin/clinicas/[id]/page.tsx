@@ -20,6 +20,7 @@ interface Doctor {
   isActive: boolean
   authUserId?: string
   emailConfirmed?: boolean
+  lastSignInAt?: string | null
   createdAt: string
 }
 
@@ -287,14 +288,14 @@ export default function ClinicDetailPage() {
         <table className="w-full">
           <thead className="bg-gray-800/30">
             <tr>
-              {['Médico', 'Especialidad', 'Cédula', 'Invitación', 'Estado', 'Acciones'].map(h => (
+              {['Médico', 'Especialidad', 'Último acceso', 'Estado', 'Acciones'].map(h => (
                 <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
             {clinic.doctors.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">No hay médicos. Agrega el primero.</td></tr>
+              <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-500">No hay médicos. Agrega el primero.</td></tr>
             ) : clinic.doctors.map((doc) => (
               <tr key={doc.id} className="hover:bg-gray-800/30 transition-colors">
                 <td className="px-4 py-3">
@@ -309,23 +310,21 @@ export default function ClinicDetailPage() {
                   </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-300">{doc.specialty}</td>
-                <td className="px-4 py-3 text-xs text-gray-400 font-mono">{doc.licenseNumber}</td>
-                <td className="px-4 py-3">
-                  {doc.emailConfirmed ? (
-                    <span className="text-xs text-green-400 flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" /> Activo
-                    </span>
-                  ) : (
-                    <span className="text-xs text-yellow-400 flex items-center gap-1">
-                      <Mail className="w-3 h-3" /> Pendiente
-                    </span>
-                  )}
+                <td className="px-4 py-3 text-xs text-gray-400">
+                  {doc.lastSignInAt
+                    ? new Date(doc.lastSignInAt).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })
+                    : <span className="text-gray-600">—</span>}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={cn('text-xs px-2 py-0.5 rounded-full',
-                    doc.isActive ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300')}>
-                    {doc.isActive ? 'Activo' : 'Inactivo'}
-                  </span>
+                  {!doc.isActive ? (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-red-900 text-red-300">Inactivo</span>
+                  ) : !doc.emailConfirmed ? (
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-yellow-900/60 text-yellow-300">
+                      <Mail className="w-3 h-3" /> Invitación pendiente
+                    </span>
+                  ) : (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-green-900 text-green-300">Activo</span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
