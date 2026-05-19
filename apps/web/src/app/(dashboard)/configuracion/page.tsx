@@ -175,9 +175,17 @@ function UsuariosTab() {
 
   async function handleSaveEdit(user: any) {
     setActionId(user.id + '_edit')
+    setError('')
     try {
-      await api.configuracion.updateUser(user.id, editForm)
+      const res: any = await api.configuracion.updateUser(user.id, editForm)
       setEditingId(null)
+      // If email was changed, confirm it actually updated
+      const savedEmail = res?.data?.email ?? res?.email
+      if (editForm.email && savedEmail && savedEmail !== editForm.email) {
+        setError('Cambios guardados. El correo no se actualizó (reintenta en unos segundos).')
+      } else {
+        setError('✓ Cambios guardados')
+      }
       load()
     } catch (e: any) {
       setError(e.message ?? 'Error al guardar')
@@ -248,8 +256,10 @@ function UsuariosTab() {
   const canonicalPlan = PLAN_CANONICAL[plan] ?? plan
   const currentPlanIdx = PLAN_ORDER.indexOf(canonicalPlan)
   const limits = data?.limits ?? { DOCTOR: 2, STAFF: 1 }
-  const doctors = (data?.users ?? []).filter((u: any) => u.role === 'DOCTOR' || u.role === 'ADMIN')
-  const staff   = (data?.users ?? []).filter((u: any) => u.role === 'STAFF')
+  // Only show active users — inactive (soft-deleted) have their access revoked and are hidden
+  const activeUsers = (data?.users ?? []).filter((u: any) => u.isActive !== false)
+  const doctors = activeUsers.filter((u: any) => u.role === 'DOCTOR' || u.role === 'ADMIN')
+  const staff   = activeUsers.filter((u: any) => u.role === 'STAFF')
   const availableUpgrades = UPGRADE_PLANS.filter(p => PLAN_ORDER.indexOf(p.id) > currentPlanIdx)
 
   return (

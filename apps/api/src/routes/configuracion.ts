@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { createClient } from '@supabase/supabase-js'
+import Stripe from 'stripe'
 import { prisma } from '../lib/prisma.js'
 import { Errors } from '../lib/errors.js'
 import { authenticate, requireAdmin } from '../middleware/auth.js'
@@ -600,7 +601,6 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(400).send({ error: { message: 'Solo se puede hacer upgrade al plan actual' } })
     }
 
-    const { default: Stripe } = await import('stripe')
     const stripe = new Stripe(process.env['STRIPE_SECRET_KEY']!, { apiVersion: '2024-04-10' })
     const BASE_URL = process.env['APP_BASE_URL'] ?? 'https://medclinic-web.vercel.app'
 
