@@ -114,7 +114,7 @@ function UsuariosTab() {
   const [actionId, setActionId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '', specialty: '' })
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '', specialty: '', licenseNumber: '' })
   const [callerRole, setCallerRole] = useState<string>('')
   const [menuPos, setMenuPos] = useState<{ id: string; top: number; right: number; user: any } | null>(null)
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
@@ -421,15 +421,22 @@ function UsuariosTab() {
                             className="w-full border border-primary rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Apellido" />
                         </div>
                         {isDoctor && (
-                          <input value={editForm.specialty} onChange={e => setEditForm(f => ({ ...f, specialty: e.target.value }))}
-                            className="w-full border border-primary rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Especialidad" />
+                          <div className="flex gap-1">
+                            <input value={editForm.specialty} onChange={e => setEditForm(f => ({ ...f, specialty: e.target.value }))}
+                              className="w-full border border-primary rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Especialidad" />
+                            <input value={editForm.licenseNumber} onChange={e => setEditForm(f => ({ ...f, licenseNumber: e.target.value }))}
+                              className="w-full border border-primary rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Cédula" />
+                          </div>
                         )}
                       </div>
                     ) : (
                       <>
                         <p className="text-sm font-medium text-foreground">{user.firstName} {user.lastName}</p>
-                        {user.role === 'DOCTOR' && user.specialty && user.specialty.trim().length > 1 && (
+                        {isDoctor && user.specialty && user.specialty.trim().length > 1 && (
                           <p className="text-xs text-muted-foreground">{user.specialty.trim()}</p>
+                        )}
+                        {isDoctor && user.licenseNumber && user.licenseNumber.trim().length > 0 && (
+                          <p className="text-xs text-muted-foreground/60">Céd. {user.licenseNumber.trim()}</p>
                         )}
                       </>
                     )}
@@ -504,7 +511,7 @@ function UsuariosTab() {
                       <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                         {/* Edit */}
                         <button
-                          onClick={() => { setEditingId(user.id); setEditForm({ firstName: user.firstName, lastName: user.lastName, email: user.email ?? '', specialty: user.specialty ?? '' }) }}
+                          onClick={() => { setEditingId(user.id); setEditForm({ firstName: user.firstName, lastName: user.lastName, email: user.email ?? '', specialty: user.specialty ?? '', licenseNumber: user.licenseNumber ?? '' }) }}
                           title="Editar"
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-muted/50 transition-colors">
                           <Pencil className="w-3.5 h-3.5" />
