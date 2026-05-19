@@ -83,7 +83,7 @@ export default function InvitePage() {
       setPwError(error.message)
       setPwLoading(false)
     } else {
-      router.replace('/agenda')
+      router.replace('/dashboard')
     }
   }
 
