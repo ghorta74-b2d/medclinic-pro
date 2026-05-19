@@ -58,6 +58,7 @@ export async function buildServer() {
       }
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
   })
 
   await server.register(rateLimit, {
