@@ -391,7 +391,6 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   // ── PATCH /api/configuracion/users/:id ────────────────────────────────────
-  // Update user: isActive toggle, specialty, licenseNumber
   fastify.patch('/users/:id', async (request, reply) => {
     const { id } = request.params as { id: string }
     const { clinicId } = request.authUser
@@ -399,14 +398,20 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
       isActive?: boolean
       firstName?: string
       lastName?: string
+      email?: string
       specialty?: string
       licenseNumber?: string
     }
 
-    // Ensure the user belongs to this clinic
     const existing = await prisma.doctor.findUnique({ where: { id } })
     if (!existing || existing.clinicId !== clinicId) {
       return Errors.NOT_FOUND(reply, 'Usuario')
+    }
+
+    // Sync email in Supabase Auth when changed
+    if (body.email && body.email !== existing.email && existing.authUserId) {
+      const supabaseAdmin = getSupabaseAdmin()
+      await supabaseAdmin.auth.admin.updateUserById(existing.authUserId, { email: body.email }).catch(() => {})
     }
 
     const doctor = await prisma.doctor.update({
@@ -415,6 +420,7 @@ export const configuracionRoutes: FastifyPluginAsync = async (fastify) => {
         ...(body.isActive      !== undefined && { isActive:      body.isActive }),
         ...(body.firstName     !== undefined && { firstName:     body.firstName }),
         ...(body.lastName      !== undefined && { lastName:      body.lastName }),
+        ...(body.email         !== undefined && { email:         body.email }),
         ...(body.specialty     !== undefined && { specialty:     body.specialty }),
         ...(body.licenseNumber !== undefined && { licenseNumber: body.licenseNumber }),
       },

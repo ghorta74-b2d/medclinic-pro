@@ -115,9 +115,9 @@ function UsuariosTab() {
   const [actionId, setActionId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', specialty: '' })
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '', specialty: '' })
   const [callerRole, setCallerRole] = useState<string>('')
-  const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ id: string; top: number; right: number; user: any } | null>(null)
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null)
   const [upgradeError, setUpgradeError] = useState('')
@@ -126,11 +126,11 @@ function UsuariosTab() {
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    if (!openMenu) return
-    const handler = () => setOpenMenu(null)
+    if (!menuPos) return
+    const handler = () => setMenuPos(null)
     document.addEventListener('click', handler)
     return () => document.removeEventListener('click', handler)
-  }, [openMenu])
+  }, [menuPos])
 
   const load = () => {
     setLoading(true)
@@ -162,7 +162,7 @@ function UsuariosTab() {
 
   async function handleToggleActive(user: any) {
     setActionId(user.id)
-    setOpenMenu(null)
+    setMenuPos(null)
     try {
       await api.configuracion.updateUser(user.id, { isActive: !user.isActive })
       load()
@@ -189,7 +189,7 @@ function UsuariosTab() {
   async function handleDelete(user: any) {
     setActionId(user.id + '_delete')
     setPendingDelete(null)
-    setOpenMenu(null)
+    setMenuPos(null)
     try {
       await api.configuracion.deleteUser(user.id)
       setError(`✓ ${user.firstName} ${user.lastName} eliminado`)
@@ -203,7 +203,7 @@ function UsuariosTab() {
 
   async function handleChangeRole(user: any, newRole: 'DOCTOR' | 'ADMIN') {
     setActionId(user.id + '_role')
-    setOpenMenu(null)
+    setMenuPos(null)
     setError('')
     try {
       await api.configuracion.changeUserRole(user.id, newRole)
@@ -217,7 +217,7 @@ function UsuariosTab() {
 
   async function handleResend(user: any) {
     setActionId(user.id + '_resend')
-    setOpenMenu(null)
+    setMenuPos(null)
     setError('')
     try {
       await api.configuracion.resendInvite(user.id)
@@ -427,7 +427,13 @@ function UsuariosTab() {
                   </td>
 
                   {/* Email */}
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{user.email}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                    {isEditing ? (
+                      <input value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                        type="email"
+                        className="w-full border border-primary rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary" placeholder="correo@clinica.mx" />
+                    ) : user.email}
+                  </td>
 
                   {/* Role badge */}
                   <td className="px-4 py-3">
@@ -489,7 +495,7 @@ function UsuariosTab() {
                       <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                         {/* Edit */}
                         <button
-                          onClick={() => { setEditingId(user.id); setEditForm({ firstName: user.firstName, lastName: user.lastName, specialty: user.specialty ?? '' }) }}
+                          onClick={() => { setEditingId(user.id); setEditForm({ firstName: user.firstName, lastName: user.lastName, email: user.email ?? '', specialty: user.specialty ?? '' }) }}
                           title="Editar"
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-muted/50 transition-colors">
                           <Pencil className="w-3.5 h-3.5" />
@@ -500,53 +506,21 @@ function UsuariosTab() {
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-muted/50 transition-colors disabled:opacity-50">
                           {actionId === user.id + '_resend' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                         </button>
-                        {/* More dropdown */}
-                        <div className="relative">
-                          <button
-                            onClick={() => setOpenMenu(openMenu === user.id ? null : user.id)}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
-                            <MoreHorizontal className="w-3.5 h-3.5" />
-                          </button>
-                          {openMenu === user.id && (
-                            <div className="absolute right-0 top-full mt-1 z-20 w-48 bg-popover border border-border rounded-xl shadow-lg overflow-hidden py-1">
-                              {/* Activate / Deactivate */}
-                              {user.role !== 'ADMIN' && (
-                                <button onClick={() => handleToggleActive(user)} disabled={actionId === user.id}
-                                  className={cn('w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/50 transition-colors',
-                                    user.isActive ? 'text-warning' : 'text-success')}>
-                                  {actionId === user.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : user.isActive ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
-                                  {user.isActive ? 'Desactivar' : 'Activar'}
-                                </button>
-                              )}
-                              {/* Role actions — ADMIN only */}
-                              {callerRole === 'ADMIN' && user.role === 'DOCTOR' && (
-                                <button onClick={() => handleChangeRole(user, 'ADMIN')} disabled={actionId === user.id + '_role'}
-                                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-foreground/80 hover:bg-muted/50 transition-colors disabled:opacity-50">
-                                  {actionId === user.id + '_role' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
-                                  Hacer Admin
-                                </button>
-                              )}
-                              {callerRole === 'ADMIN' && user.role === 'ADMIN' && (
-                                <button onClick={() => handleChangeRole(user, 'DOCTOR')} disabled={actionId === user.id + '_role'}
-                                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-foreground/80 hover:bg-muted/50 transition-colors disabled:opacity-50">
-                                  {actionId === user.id + '_role' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Stethoscope className="w-3.5 h-3.5" />}
-                                  Quitar Admin
-                                </button>
-                              )}
-                              {/* Delete — ADMIN only, non-admin target */}
-                              {callerRole === 'ADMIN' && user.role !== 'ADMIN' && (
-                                <>
-                                  <div className="h-px bg-border/60 my-1" />
-                                  <button onClick={() => { setPendingDelete(user.id); setOpenMenu(null) }}
-                                    className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors">
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    Eliminar usuario
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                        {/* More — fixed-position dropdown to avoid overflow-hidden clipping */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            setMenuPos(menuPos?.id === user.id ? null : {
+                              id: user.id,
+                              top: rect.bottom + 4,
+                              right: window.innerWidth - rect.right,
+                              user,
+                            })
+                          }}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+                          <MoreHorizontal className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     )}
                   </td>
@@ -559,6 +533,48 @@ function UsuariosTab() {
           </tbody>
         </table>
       </div>
+
+      {/* Fixed-position dropdown — renders outside overflow-hidden table container */}
+      {menuPos && (
+        <div
+          style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 50 }}
+          className="w-52 bg-popover border border-border rounded-xl shadow-xl overflow-hidden py-1"
+          onClick={e => e.stopPropagation()}
+        >
+          {menuPos.user.role !== 'ADMIN' && (
+            <button onClick={() => handleToggleActive(menuPos.user)} disabled={actionId === menuPos.user.id}
+              className={cn('w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/50 transition-colors',
+                menuPos.user.isActive ? 'text-warning' : 'text-success')}>
+              {actionId === menuPos.user.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : menuPos.user.isActive ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+              {menuPos.user.isActive ? 'Desactivar' : 'Activar'}
+            </button>
+          )}
+          {callerRole === 'ADMIN' && menuPos.user.role === 'DOCTOR' && (
+            <button onClick={() => handleChangeRole(menuPos.user, 'ADMIN')} disabled={actionId === menuPos.user.id + '_role'}
+              className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-foreground/80 hover:bg-muted/50 transition-colors disabled:opacity-50">
+              {actionId === menuPos.user.id + '_role' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+              Hacer Admin
+            </button>
+          )}
+          {callerRole === 'ADMIN' && menuPos.user.role === 'ADMIN' && (
+            <button onClick={() => handleChangeRole(menuPos.user, 'DOCTOR')} disabled={actionId === menuPos.user.id + '_role'}
+              className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-foreground/80 hover:bg-muted/50 transition-colors disabled:opacity-50">
+              {actionId === menuPos.user.id + '_role' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Stethoscope className="w-3.5 h-3.5" />}
+              Quitar Admin
+            </button>
+          )}
+          {callerRole === 'ADMIN' && menuPos.user.role !== 'ADMIN' && (
+            <>
+              <div className="h-px bg-border/60 my-1" />
+              <button onClick={() => { setPendingDelete(menuPos.user.id); setMenuPos(null) }}
+                className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />
+                Eliminar usuario
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Invite form */}
       {showInvite && (
