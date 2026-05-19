@@ -455,7 +455,7 @@ function UsuariosTab() {
                   <td className="px-4 py-3">
                     <span className={cn(
                       'inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full',
-                      user.role === 'ADMIN' ? 'bg-primary/15 text-primary' :
+                      user.role === 'ADMIN' ? 'bg-violet-500/15 text-violet-400' :
                       isDoctor ? 'bg-primary/15 text-primary' : 'bg-warning/15 text-warning'
                     )}>
                       {user.role === 'ADMIN' ? <Shield className="w-3 h-3" /> : isDoctor ? <Stethoscope className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
