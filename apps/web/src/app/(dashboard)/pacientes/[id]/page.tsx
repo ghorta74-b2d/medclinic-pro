@@ -954,6 +954,7 @@ function ConsultasTab({
   autoOpen?: boolean
   autoOpenAppointmentId?: string
 }) {
+  const router = useRouter()
   const [newConsulta, setNewConsulta] = useState(() => autoOpen === true)
 
   useEffect(() => {
@@ -1004,13 +1005,22 @@ function ConsultasTab({
 
       {/* New consultation */}
       {!newConsulta ? (
-        <button
-          onClick={() => setNewConsulta(true)}
-          className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-primary/30 text-primary hover:border-primary/60 hover:bg-primary/5 rounded-xl py-3 text-sm font-semibold transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Iniciar nueva consulta
-        </button>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => setNewConsulta(true)}
+            className="flex items-center justify-center gap-2 border-2 border-dashed border-primary/30 text-primary hover:border-primary/60 hover:bg-primary/5 rounded-xl py-3 text-sm font-semibold transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Nueva consulta
+          </button>
+          <button
+            onClick={() => router.push(`/consulta-ia?patientId=${patientId}`)}
+            className="flex items-center justify-center gap-2 border-2 border-dashed border-violet-500/30 text-violet-400 hover:border-violet-500/60 hover:bg-violet-500/5 rounded-xl py-3 text-sm font-semibold transition-colors"
+          >
+            <Brain className="w-4 h-4" />
+            Consulta con IA
+          </button>
+        </div>
       ) : (
         <div className="bg-card rounded-xl border-2 border-primary/20 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 bg-primary/5 border-b border-primary/10">

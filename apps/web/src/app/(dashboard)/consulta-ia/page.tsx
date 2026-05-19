@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
 import { calculateAge, getInitials } from '@/lib/utils'
@@ -711,7 +711,11 @@ function DoneStep({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-export default function ConsultaIaPage() {
+function ConsultaIaContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialPatientId = searchParams.get('patientId')
+
   const [step, setStep] = useState<Step>('patient')
   const [patient, setPatient] = useState<SelectedPatient | null>(null)
   const [consentAt, setConsentAt] = useState<string | null>(null)
@@ -719,7 +723,22 @@ export default function ConsultaIaPage() {
   const [result, setResult] = useState<ProcessResult | null>(null)
   const [error, setError] = useState('')
 
+  // When launched from a patient page, pre-load the patient and skip to consent
+  useEffect(() => {
+    if (!initialPatientId) return
+    api.patients.get(initialPatientId)
+      .then((res: any) => {
+        const p = res?.data ?? res
+        if (p?.id) { setPatient(p); setStep('consent') }
+      })
+      .catch(() => {})
+  }, [initialPatientId])
+
   function reset() {
+    if (initialPatientId) {
+      router.push(`/pacientes/${initialPatientId}`)
+      return
+    }
     setStep('patient')
     setPatient(null)
     setConsentAt(null)
@@ -772,16 +791,22 @@ export default function ConsultaIaPage() {
           )}
 
           {step === 'patient' && (
-            <PatientStep
-              onSelect={p => { setPatient(p); setStep('consent') }}
-            />
+            initialPatientId ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              </div>
+            ) : (
+              <PatientStep
+                onSelect={p => { setPatient(p); setStep('consent') }}
+              />
+            )
           )}
 
           {step === 'consent' && patient && (
             <ConsentStep
               patient={patient}
               onConsent={ts => { setConsentAt(ts); setStep('microphone') }}
-              onBack={() => setStep('patient')}
+              onBack={() => initialPatientId ? router.push(`/pacientes/${initialPatientId}`) : setStep('patient')}
             />
           )}
 
@@ -813,5 +838,17 @@ export default function ConsultaIaPage() {
         </div>
       </div>
     </>
+  )
+}
+
+export default function ConsultaIaPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+      </div>
+    }>
+      <ConsultaIaContent />
+    </Suspense>
   )
 }
