@@ -3,23 +3,100 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env['RESEND_API_KEY'])
 
-// Logo rendered as HTML — compatible with all email clients (Gmail, Outlook, Apple Mail)
-const LOGO_HTML = `
-  <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:32px;">
-    <!-- ECG icon box -->
-    <div style="display:inline-block;width:44px;height:44px;border:2px solid #0E1320;border-radius:10px;position:relative;overflow:hidden;">
-      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="44" height="44" rx="8" fill="white"/>
-        <rect x="2" y="2" width="40" height="40" rx="7" stroke="#0E1320" stroke-width="2"/>
-        <polyline points="4,22 10,22 13,14 17,30 21,10 25,26 28,18 32,22 40,22" fill="none" stroke="#438EE8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </div>
-    <!-- Wordmark -->
-    <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.3px;">
-      <span style="color:#0E1320;">med</span><span style="color:#438EE8;">clinic</span>
-    </span>
-  </div>
-`
+function buildDemoEmail(opts: {
+  nombre: string
+  email: string
+  telefono: string
+  clinica?: string
+  mensaje?: string
+}) {
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0;padding:40px 20px;background:#f0f2f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td align="center">
+
+      <table width="540" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 2px 24px rgba(0,0,0,0.08);max-width:100%">
+
+        <!-- Header / Logo -->
+        <tr>
+          <td style="padding:32px 40px 28px;border-bottom:1px solid #f3f4f6;text-align:center">
+            <img src="https://mediaclinic.mx/logo-color.svg"
+                 alt="Mediaclinic"
+                 width="160"
+                 style="height:auto;display:block;margin:0 auto">
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:40px 40px 32px">
+            <p style="margin:0 0 8px;font-size:24px;font-weight:600;color:#111827;letter-spacing:-0.3px">Nueva solicitud de demo</p>
+            <p style="margin:0 0 32px;font-size:15px;color:#6b7280;line-height:1.7">Un médico quiere conocer Mediaclinic.</p>
+
+            <!-- Data table -->
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:13px;color:#9ca3af;width:130px;vertical-align:top">Nombre</td>
+                <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:15px;color:#111827;font-weight:500">${opts.nombre}</td>
+              </tr>
+              <tr>
+                <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:13px;color:#9ca3af;vertical-align:top">Correo</td>
+                <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:15px">
+                  <a href="mailto:${opts.email}" style="color:#0071e3;text-decoration:none">${opts.email}</a>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:13px;color:#9ca3af;vertical-align:top">Teléfono</td>
+                <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:15px;color:#111827">${opts.telefono}</td>
+              </tr>
+              ${opts.clinica ? `
+              <tr>
+                <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:13px;color:#9ca3af;vertical-align:top">Clínica</td>
+                <td style="padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:15px;color:#111827">${opts.clinica}</td>
+              </tr>` : ''}
+              ${opts.mensaje ? `
+              <tr>
+                <td style="padding:12px 0;font-size:13px;color:#9ca3af;vertical-align:top">Mensaje</td>
+                <td style="padding:12px 0;font-size:15px;color:#111827;line-height:1.6">${opts.mensaje}</td>
+              </tr>` : ''}
+            </table>
+
+            <!-- Reply hint -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px">
+              <tr>
+                <td style="padding:16px 20px">
+                  <p style="margin:0;font-size:13px;color:#6b7280">Responde directamente a este correo para contactar a <strong style="color:#111827">${opts.nombre}</strong>.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 40px 28px;border-top:1px solid #f3f4f6;text-align:center">
+            <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.7">
+              Mediaclinic · Plataforma de gestión clínica
+            </p>
+          </td>
+        </tr>
+
+      </table>
+
+      <p style="margin-top:24px;font-size:12px;color:#9ca3af;text-align:center">
+        © 2026 Mediaclinic · mediaclinic.mx
+      </p>
+
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,26 +112,7 @@ export async function POST(req: NextRequest) {
       to: ['mediaclinic@b2d.mx'],
       replyTo: email,
       subject: `Solicitud de demo — ${nombre}`,
-      html: `
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:40px 24px;background:#fff;">
-          ${LOGO_HTML}
-          <h2 style="font-size:24px;font-weight:600;color:#1d1d1f;margin:0 0 8px;">Nueva solicitud de demo</h2>
-          <p style="font-size:15px;color:#6e6e73;margin:0 0 32px;">Un médico quiere conocer MediaClinic.</p>
-
-          <table style="width:100%;border-collapse:collapse;">
-            <tr><td style="padding:12px 0;border-bottom:1px solid #d2d2d7;font-size:13px;color:#6e6e73;width:130px;">Nombre</td><td style="padding:12px 0;border-bottom:1px solid #d2d2d7;font-size:15px;color:#1d1d1f;font-weight:500;">${nombre}</td></tr>
-            <tr><td style="padding:12px 0;border-bottom:1px solid #d2d2d7;font-size:13px;color:#6e6e73;">Correo</td><td style="padding:12px 0;border-bottom:1px solid #d2d2d7;font-size:15px;color:#0071e3;"><a href="mailto:${email}" style="color:#0071e3;">${email}</a></td></tr>
-            <tr><td style="padding:12px 0;border-bottom:1px solid #d2d2d7;font-size:13px;color:#6e6e73;">Teléfono</td><td style="padding:12px 0;border-bottom:1px solid #d2d2d7;font-size:15px;color:#1d1d1f;">${telefono}</td></tr>
-            ${clinica ? `<tr><td style="padding:12px 0;border-bottom:1px solid #d2d2d7;font-size:13px;color:#6e6e73;">Clínica</td><td style="padding:12px 0;border-bottom:1px solid #d2d2d7;font-size:15px;color:#1d1d1f;">${clinica}</td></tr>` : ''}
-            ${mensaje ? `<tr><td style="padding:12px 0;font-size:13px;color:#6e6e73;vertical-align:top;">Mensaje</td><td style="padding:12px 0;font-size:15px;color:#1d1d1f;line-height:1.6;">${mensaje}</td></tr>` : ''}
-          </table>
-
-          <div style="margin-top:32px;padding:16px 20px;background:#f5f5f7;border-radius:12px;">
-            <p style="font-size:13px;color:#6e6e73;margin:0;">Responde directamente a este correo para contactar a ${nombre}.</p>
-          </div>
-          <p style="font-size:11px;color:#aeaeb2;margin-top:32px;">MediaClinic · B2D Automation · © 2026</p>
-        </div>
-      `,
+      html: buildDemoEmail({ nombre, email, telefono, clinica, mensaje }),
     })
 
     if (error) {
