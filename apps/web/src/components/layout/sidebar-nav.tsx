@@ -64,6 +64,7 @@ export function SidebarNav() {
   const [userRole, setUserRole] = useState<string>('DOCTOR')
   const [isOpen, setIsOpen] = useState(false)
 
+
   useEffect(() => {
     async function getSession() {
       try {
@@ -101,7 +102,8 @@ export function SidebarNav() {
       })).filter(s => s.items.length > 0)
     : SECTIONS
 
-  const allSections = isAdmin ? [...visibleSections, ...ADMIN_SECTIONS] : visibleSections
+  // Farmacias is a MedClinic platform section — only SUPER_ADMIN sees it
+  const allSections = userRole === 'SUPER_ADMIN' ? [...visibleSections, ...ADMIN_SECTIONS] : visibleSections
 
   async function handleLogout() {
     try {
