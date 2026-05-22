@@ -258,8 +258,29 @@ export const api = {
       request(`/api/prescriptions/${id}/generate-pdf`, { method: 'POST' }),
     sendWhatsApp: (id: string) =>
       request(`/api/prescriptions/${id}/send-whatsapp`, { method: 'POST' }),
+    generateRxe: (id: string) =>
+      request(`/api/prescriptions/${id}/generate-rxe`, { method: 'POST' }),
     searchMedications: (q: string) =>
       request(`/api/prescriptions/medications/search?q=${encodeURIComponent(q)}`),
+  },
+
+  pharmacies: {
+    list: () => request('/api/admin/pharmacies'),
+    create: (data: unknown) =>
+      request('/api/admin/pharmacies', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: unknown) =>
+      request(`/api/admin/pharmacies/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    addBranch: (pharmacyId: string, data: unknown) =>
+      request(`/api/admin/pharmacies/${pharmacyId}/branches`, { method: 'POST', body: JSON.stringify(data) }),
+    campaigns: {
+      list: () => request('/api/admin/pharmacies/campaigns'),
+      create: (data: unknown) =>
+        request('/api/admin/pharmacies/campaigns', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: unknown) =>
+        request(`/api/admin/pharmacies/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+      metrics: (id: string, days = 30) =>
+        request(`/api/admin/pharmacies/campaigns/${id}/metrics?days=${days}`),
+    },
   },
 
   consultaIa: {

@@ -8,6 +8,7 @@ import { Errors } from '../lib/errors.js'
 // (yoga layout engine crashes Vercel serverless on cold start)
 const getPdfGenerator = () => import('../services/pdf.js').then(m => m.generatePrescriptionPdf)
 import { sendWhatsAppMessage } from '../services/whatsapp.js'
+import { generateRxe, buildPublicUrl } from '../services/rxe.js'
 
 const PrescriptionItemSchema = z.object({
   medicationId: z.string().optional(),
@@ -272,37 +273,82 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
     return reply.send({ data: { pdfUrl: updated.pdfUrl } })
   })
 
+  // POST /api/prescriptions/:id/generate-rxe
+  server.post('/:id/generate-rxe', { preHandler: requireDoctor }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { clinicId, authUserId, role } = request.authUser
+
+    try {
+      const result = await generateRxe(id, clinicId)
+      const publicUrl = buildPublicUrl(result.publicSlug)
+
+      await auditLog({
+        user: { authUserId, clinicId, role },
+        action: 'CREATE',
+        resourceType: 'Prescription',
+        resourceId: id,
+        metadata: { action: 'rxe_generated', publicSlug: result.publicSlug },
+        ip: request.ip,
+        userAgent: request.headers['user-agent'],
+      })
+
+      return reply.status(201).send({ data: { ...result, publicUrl } })
+    } catch (err) {
+      if (err instanceof Error && err.message === 'Prescription not found') {
+        return Errors.NOT_FOUND(reply, 'Prescription')
+      }
+      throw err
+    }
+  })
+
   // POST /api/prescriptions/:id/send-whatsapp
+  // Ahora envía el link público de la RxE (no el PDF directo) — requiere RxE generada primero
   server.post('/:id/send-whatsapp', { preHandler: requireDoctor }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const { clinicId, authUserId, role } = request.authUser
 
     const prescription = await prisma.prescription.findFirst({
       where: { id, clinicId },
-      include: { patient: { select: { phone: true, firstName: true } } },
+      include: {
+        patient: { select: { phone: true, firstName: true, lastName: true } },
+        doctor: { select: { firstName: true, lastName: true } },
+      },
     })
     if (!prescription) return Errors.NOT_FOUND(reply, 'Prescription')
-    if (!prescription.pdfUrl) {
-      return Errors.VALIDATION(reply, { message: 'Generate PDF first' })
+
+    if (!prescription.publicSlug) {
+      return Errors.VALIDATION(reply, { message: 'Genera primero la Receta Electrónica (RxE)' })
+    }
+    if (prescription.expiresAt && prescription.expiresAt < new Date()) {
+      return Errors.VALIDATION(reply, { message: 'La RxE ha expirado. Genera una nueva.' })
     }
 
+    const publicUrl = buildPublicUrl(prescription.publicSlug)
+    const doctorName = `${prescription.doctor.firstName} ${prescription.doctor.lastName}`
+
     await sendWhatsAppMessage(prescription.patient.phone, {
-      type: 'prescription',
-      pdfUrl: prescription.pdfUrl,
+      type: 'prescriptionLink',
       patientName: prescription.patient.firstName,
+      doctorName,
+      publicUrl,
     })
 
-    await prisma.prescription.update({
-      where: { id },
-      data: { sentViaWhatsApp: true, sentAt: new Date() },
-    })
+    await prisma.$transaction([
+      prisma.prescription.update({
+        where: { id },
+        data: { sentViaWhatsApp: true, sentAt: new Date() },
+      }),
+      prisma.rxEvent.create({
+        data: { prescriptionId: id, type: 'WHATSAPP_SENT', metadata: { publicUrl } },
+      }),
+    ])
 
     await auditLog({
       user: { authUserId, clinicId, role },
       action: 'SEND',
       resourceType: 'Prescription',
       resourceId: id,
-      metadata: { channel: 'whatsapp' },
+      metadata: { channel: 'whatsapp_rxe_link' },
       ip: request.ip,
       userAgent: request.headers['user-agent'],
     })

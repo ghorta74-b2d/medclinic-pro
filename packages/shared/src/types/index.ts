@@ -174,6 +174,29 @@ export interface Medication {
   concentration?: string
 }
 
+// Art. 226 LGS — Clasificación por fracción regulatoria
+export type DrugFraction = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI'
+
+export type RxeStatus = 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'REVOKED'
+
+export const FRACTION_COLORS: Record<DrugFraction, string> = {
+  I:   '#EF4444', // rojo — estupefacientes
+  II:  '#F97316', // naranja — retención obligatoria
+  III: '#F59E0B', // ámbar — hasta 3 surtidos
+  IV:  '#3B82F6', // azul — antibióticos y similares
+  V:   '#22C55E', // verde — venta libre con receta
+  VI:  '#6B7280', // gris-verde — venta libre
+}
+
+export const FRACTION_LABELS: Record<DrugFraction, string> = {
+  I:   'Frac. I — Solo con permiso SS',
+  II:  'Frac. II — Retención obligatoria',
+  III: 'Frac. III — Hasta 3 surtidos',
+  IV:  'Frac. IV — Con receta médica',
+  V:   'Frac. V — Con o sin receta',
+  VI:  'Frac. VI — Venta libre',
+}
+
 export interface PrescriptionItem {
   id: string
   medicationId?: string
@@ -186,6 +209,8 @@ export interface PrescriptionItem {
   quantity?: string
   instructions?: string
   sortOrder: number
+  fraction?: DrugFraction
+  boughtQty?: number
 }
 
 export interface Prescription {
@@ -199,10 +224,50 @@ export interface Prescription {
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
   instructions?: string
   followUpDate?: string
+  // RxE fields
+  publicSlug?: string
+  signature?: string
+  rxeStatus?: RxeStatus
+  rxeGeneratedAt?: string
+  expiresAt?: string
   items: PrescriptionItem[]
   patient?: Pick<Patient, 'id' | 'firstName' | 'lastName'>
   doctor?: Pick<Doctor, 'id' | 'firstName' | 'lastName' | 'cedula' | 'specialty'>
   createdAt: string
+}
+
+// Pharmacy & Campaign types for admin panel
+export type PricingModel = 'CPM' | 'CPC' | 'FLAT_MONTHLY'
+
+export interface PharmacyBranch {
+  id: string
+  pharmacyId: string
+  name: string
+  address?: string
+  lat?: number
+  lng?: number
+  phone?: string
+}
+
+export interface PharmacyCampaign {
+  id: string
+  pharmacyId: string
+  displayName: string
+  description?: string
+  ctaLink: string
+  ctaLabel: string
+  displayPhone?: string
+  priority: number
+  geoStates: string[]
+  startsAt?: string
+  endsAt?: string
+  active: boolean
+  pricingModel: PricingModel
+  rateCents: number
+  impressions: number
+  clicks: number
+  pharmacy?: { name: string; logoUrl?: string; websiteUrl?: string }
+  branches?: PharmacyBranch[]
 }
 
 export interface LabResult {

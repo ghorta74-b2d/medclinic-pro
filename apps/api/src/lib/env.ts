@@ -35,6 +35,11 @@ const envSchema = z.object({
   ELEVENLABS_API_KEY: z.string().optional(),
   ELEVENLABS_WEBHOOK_SECRET: z.string().optional(),
   DAILY_API_KEY: z.string().optional(),
+
+  // RxE — Receta Electrónica
+  // HMAC secret for prescription signatures — set in production!
+  RXE_SECRET: z.string().min(16).optional(),
+  GOOGLE_MAPS_API_KEY: z.string().optional(),
 })
 
 function validateEnv() {

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
-import { Plus, FileText, MessageCircle, Loader2, Pencil, Printer, Calendar, User } from 'lucide-react'
+import { Plus, FileText, MessageCircle, Loader2, Pencil, Printer, Calendar, User, QrCode, ExternalLink, RefreshCw } from 'lucide-react'
 import type { Prescription } from 'medclinic-shared'
 import { PrescriptionBuilder } from '@/components/prescriptions/prescription-builder'
 
@@ -36,6 +36,8 @@ export default function RecetasPage() {
   const [showBuilder, setShowBuilder] = useState(false)
   const [editingRx, setEditingRx] = useState<EditingRx | null>(null)
   const [waLoading, setWaLoading] = useState<string | null>(null)
+  const [rxeLoading, setRxeLoading] = useState<string | null>(null)
+  const [waConfirm, setWaConfirm] = useState<Prescription | null>(null)
 
   function openEdit(rx: Prescription) {
     setEditingRx({
@@ -69,13 +71,40 @@ export default function RecetasPage() {
 
   useEffect(() => { load() }, [load])
 
+  async function handleGenerateRxe(rxId: string) {
+    setRxeLoading(rxId)
+    try {
+      await api.prescriptions.generateRxe(rxId)
+      await load()
+    } catch (err) { alert(err instanceof Error ? err.message : 'Error al generar RxE') }
+    finally { setRxeLoading(null) }
+  }
+
   async function handleSendWhatsApp(rxId: string) {
     setWaLoading(rxId)
+    setWaConfirm(null)
     try {
       await api.prescriptions.sendWhatsApp(rxId)
       await load()
-    } catch (err) { alert(err instanceof Error ? err.message : 'Error') }
+    } catch (err) { alert(err instanceof Error ? err.message : 'Error al enviar WhatsApp') }
     finally { setWaLoading(null) }
+  }
+
+  function rxeChip(rx: Prescription) {
+    const expired = rx.expiresAt && new Date(rx.expiresAt) < new Date()
+    if (!rx.publicSlug) return null
+    if (expired || rx.rxeStatus === 'EXPIRED') {
+      return (
+        <span className="text-xs bg-muted text-muted-foreground border border-border px-2 py-0.5 rounded-full font-medium">
+          RxE Expirada
+        </span>
+      )
+    }
+    return (
+      <span className="text-xs bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-medium">
+        RxE Activa
+      </span>
+    )
   }
 
   return (
@@ -130,6 +159,7 @@ export default function RecetasPage() {
                         ✓ Enviada
                       </span>
                     )}
+                    {rxeChip(rx)}
                     <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${STATUS_STYLE[rx.status] ?? STATUS_STYLE['ACTIVE']}`}>
                       {STATUS_LABEL[rx.status] ?? rx.status}
                     </span>
@@ -173,7 +203,7 @@ export default function RecetasPage() {
                 </div>
 
                 {/* Actions footer */}
-                <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-muted">
+                <div className="flex flex-wrap items-center gap-2 px-5 py-3 border-t border-border bg-muted">
                   {/* Print / PDF */}
                   <button
                     onClick={() => router.push(`/recetas/${rx.id}`)}
@@ -194,11 +224,46 @@ export default function RecetasPage() {
                     </button>
                   )}
 
-                  {/* WhatsApp — spacer then green */}
+                  {/* RxE — Generar o Ver pública */}
+                  {!rx.publicSlug ? (
+                    <button
+                      onClick={() => handleGenerateRxe(rx.id)}
+                      disabled={rxeLoading === rx.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border border-primary/30 bg-primary/5 text-primary rounded-lg text-xs font-medium hover:bg-primary/10 disabled:opacity-50 transition-colors"
+                    >
+                      {rxeLoading === rx.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <QrCode className="w-3.5 h-3.5" />}
+                      Generar RxE
+                    </button>
+                  ) : (rx.expiresAt && new Date(rx.expiresAt) < new Date()) ? (
+                    <button
+                      onClick={() => handleGenerateRxe(rx.id)}
+                      disabled={rxeLoading === rx.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-muted-foreground hover:bg-card disabled:opacity-50 transition-colors"
+                    >
+                      {rxeLoading === rx.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <RefreshCw className="w-3.5 h-3.5" />}
+                      Regenerar RxE
+                    </button>
+                  ) : (
+                    <a
+                      href={`${process.env['NEXT_PUBLIC_APP_URL'] ?? ''}/r/${rx.publicSlug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 border border-primary/30 bg-primary/5 text-primary rounded-lg text-xs font-medium hover:bg-primary/10 transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Ver Receta Pública
+                    </a>
+                  )}
+
+                  {/* WhatsApp — spacer then green; now sends RxE link */}
                   <div className="ml-auto">
-                    {!rx.sentViaWhatsApp && (
+                    {rx.publicSlug && !(rx.expiresAt && new Date(rx.expiresAt) < new Date()) && (
                       <button
-                        onClick={() => handleSendWhatsApp(rx.id)}
+                        onClick={() => setWaConfirm(rx)}
                         disabled={waLoading === rx.id}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-success hover:bg-success/90 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition-colors"
                       >
@@ -206,7 +271,7 @@ export default function RecetasPage() {
                           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           : <MessageCircle className="w-3.5 h-3.5" />
                         }
-                        Enviar WhatsApp
+                        {rx.sentViaWhatsApp ? 'Reenviar WhatsApp' : 'Enviar WhatsApp'}
                       </button>
                     )}
                   </div>
@@ -230,6 +295,43 @@ export default function RecetasPage() {
           onCreated={() => { setEditingRx(null); load() }}
           existing={editingRx}
         />
+      )}
+
+      {/* WhatsApp confirmation dialog */}
+      {waConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-sm font-semibold text-foreground mb-1">Enviar Receta por WhatsApp</h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              Se enviará el enlace de la receta electrónica al número:
+              <br />
+              <span className="font-mono font-semibold text-foreground mt-1 block">
+                {(waConfirm as any).patient?.phone ?? 'Número no disponible'}
+              </span>
+            </p>
+            <p className="text-xs text-muted-foreground mb-5">
+              Paciente: <strong>{waConfirm.patient?.firstName} {waConfirm.patient?.lastName}</strong>
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setWaConfirm(null)}
+                className="flex-1 px-4 py-2 border border-border rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleSendWhatsApp(waConfirm.id)}
+                disabled={waLoading === waConfirm.id}
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-success hover:bg-success/90 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition-colors"
+              >
+                {waLoading === waConfirm.id
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <MessageCircle className="w-3.5 h-3.5" />}
+                Confirmar envío
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

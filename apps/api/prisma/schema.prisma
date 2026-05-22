@@ -118,6 +118,34 @@ enum AuditAction {
   LOGOUT
 }
 
+// Art. 226 LGS — Clasificación por fracción (solo en PrescriptionItem)
+enum DrugFraction {
+  I
+  II
+  III
+  IV
+  V
+  VI
+}
+
+enum RxeStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum PricingModel {
+  CPM
+  CPC
+  FLAT_MONTHLY
+}
+
+enum CampaignEventType {
+  IMPRESSION
+  CLICK
+}
+
 // ============================================================
 // CLINIC & USERS
 // ============================================================
@@ -417,10 +445,18 @@ model Prescription {
   status          PrescriptionStatus @default(ACTIVE)
   instructions    String?            // General instructions / observations
   followUpDate    DateTime?
+  // --- RxE layer ---
+  publicSlug      String?            @unique // nanoid(10), URL pública /r/{slug}
+  signature       String?            @unique // HMAC-SHA256(prescriptionId, RXE_SECRET)
+  qrStoragePath   String?                    // reservado; QR generado on-the-fly por ahora
+  rxeStatus       RxeStatus?
+  rxeGeneratedAt  DateTime?
+  expiresAt       DateTime?                  // rxeGeneratedAt + 14 días
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
   items           PrescriptionItem[]
+  rxEvents        RxEvent[]
 
   @@index([clinicId, patientId])
   @@map("prescriptions")
@@ -442,6 +478,8 @@ model PrescriptionItem {
   quantity        String?      // e.g. "21 tabletas"
   instructions    String?      // Specific instructions for this drug
   sortOrder       Int          @default(0)
+  fraction        DrugFraction? // Art. 226 LGS; nullable, sin migración de items existentes
+  boughtQty       Int          @default(0) // surtido acumulado
 
   @@map("prescription_items")
 }
@@ -707,6 +745,91 @@ model PatientDocument {
 
   @@index([patientId])
   @@map("patient_documents")
+}
+
+// ============================================================
+// RxE — FARMACIAS Y MONETIZACIÓN
+// ============================================================
+
+model Pharmacy {
+  id          String   @id @default(cuid())
+  name        String
+  logoUrl     String?
+  websiteUrl  String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  campaigns   PharmacyCampaign[]
+  branches    PharmacyBranch[]
+
+  @@map("pharmacies")
+}
+
+model PharmacyBranch {
+  id         String   @id @default(cuid())
+  pharmacyId String
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  name       String
+  address    String?
+  lat        Float?
+  lng        Float?
+  phone      String?
+
+  @@index([pharmacyId])
+  @@map("pharmacy_branches")
+}
+
+model PharmacyCampaign {
+  id           String       @id @default(cuid())
+  pharmacyId   String
+  pharmacy     Pharmacy     @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  displayName  String
+  description  String?
+  ctaLink      String
+  ctaLabel     String       @default("Comprar")
+  displayPhone String?
+  priority     Int          @default(0)   // mayor = aparece primero
+  geoStates    String[]     @default([])  // ISO 3166-2 MX, e.g. ["MX-YUC","MX-CMX"]; vacío = nacional
+  startsAt     DateTime?
+  endsAt       DateTime?
+  active       Boolean      @default(true)
+  pricingModel PricingModel @default(FLAT_MONTHLY)
+  rateCents    Int          @default(0)
+  stripePriceId String?
+  stripeSubId  String?
+  // Métricas denormalizadas para dashboard rápido
+  impressions  Int          @default(0)
+  clicks       Int          @default(0)
+
+  events       CampaignEvent[]
+
+  @@index([active, startsAt, endsAt])
+  @@map("pharmacy_campaigns")
+}
+
+model CampaignEvent {
+  id         String            @id @default(cuid())
+  campaignId String
+  campaign   PharmacyCampaign  @relation(fields: [campaignId], references: [id])
+  type       CampaignEventType
+  rxSlug     String?           // qué publicSlug originó el evento
+  geoState   String?           // ISO 3166-2 MX del paciente
+  createdAt  DateTime          @default(now())
+
+  @@index([campaignId, type, createdAt])
+  @@map("campaign_events")
+}
+
+model RxEvent {
+  id             String   @id @default(cuid())
+  prescriptionId String
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  type           String   // RXE_GENERATED | VIEWED | QR_SCANNED | WHATSAPP_SENT | PHARMACY_CLICK
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([prescriptionId, createdAt])
+  @@map("rx_events")
 }
 
 // ============================================================

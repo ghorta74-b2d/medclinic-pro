@@ -5,6 +5,9 @@ import { useParams, useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { ArrowLeft, Printer, Loader2 } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
+
+const APP_URL = process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'
 
 export default function PrescriptionPrintPage() {
   const { id } = useParams<{ id: string }>()
@@ -159,7 +162,23 @@ export default function PrescriptionPrintPage() {
             )}
 
             {/* Signature area */}
-            <div className="mt-16 flex justify-end">
+            <div className="mt-16 flex justify-between items-end">
+              {/* QR code — only when RxE is active */}
+              {rx.publicSlug ? (
+                <div className="flex flex-col items-center gap-1.5">
+                  <QRCodeSVG
+                    value={`${APP_URL}/r/${rx.publicSlug}`}
+                    size={95}
+                    level="M"
+                    className="rounded"
+                    style={{ width: '2.5cm', height: '2.5cm' }}
+                  />
+                  <p className="text-[9px] text-muted-foreground text-center leading-tight max-w-[2.5cm]">
+                    Escanea para surtir tu receta
+                  </p>
+                </div>
+              ) : <div />}
+
               <div className="text-center w-56">
                 <div className="border-t border-foreground pt-2">
                   <p className="text-sm font-medium text-foreground">

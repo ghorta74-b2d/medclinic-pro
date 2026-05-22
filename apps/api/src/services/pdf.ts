@@ -1,7 +1,8 @@
 import React from 'react'
 import {
-  Document, Page, Text, View, StyleSheet, Font, renderToBuffer,
+  Document, Page, Text, View, StyleSheet, Font, Image, renderToBuffer,
 } from '@react-pdf/renderer'
+import QRCode from 'qrcode'
 import { supabase } from '../lib/supabase.js'
 
 // Prescription PDF generator
@@ -78,6 +79,7 @@ const styles = StyleSheet.create({
 
 interface PrescriptionForPdf {
   id: string
+  publicSlug?: string | null
   createdAt: Date
   instructions: string | null
   followUpDate: Date | null
@@ -116,9 +118,11 @@ type ClinicForPdf = {
 function PrescriptionDocument({
   prescription,
   clinic,
+  qrDataUri,
 }: {
   prescription: PrescriptionForPdf
   clinic: ClinicForPdf
+  qrDataUri?: string
 }) {
   const dateStr = new Date(prescription.createdAt).toLocaleDateString('es-MX', {
     day: 'numeric', month: 'long', year: 'numeric',
@@ -228,12 +232,20 @@ function PrescriptionDocument({
         ),
       ),
 
-      // Footer
+      // Footer with QR (if RxE generated)
       React.createElement(View, { style: styles.footer },
-        React.createElement(Text, { style: styles.footerText },
-          'Este documento es confidencial. Solo para uso del paciente indicado.'
+        React.createElement(View, null,
+          React.createElement(Text, { style: styles.footerText },
+            'Este documento es confidencial. Solo para uso del paciente indicado.'
+          ),
+          React.createElement(Text, { style: styles.footerText }, `ID: ${prescription.id}`),
         ),
-        React.createElement(Text, { style: styles.footerText }, `ID: ${prescription.id}`),
+        qrDataUri && React.createElement(View, { style: { alignItems: 'center' } },
+          React.createElement(Image, { src: qrDataUri, style: { width: 72, height: 72 } }),
+          React.createElement(Text, { style: { fontSize: 7, color: '#6b7280', textAlign: 'center', marginTop: 2 } },
+            'Escanea para surtir tu receta'
+          ),
+        ),
       ),
     )
   )
@@ -243,7 +255,15 @@ export async function generatePrescriptionPdf(
   prescription: PrescriptionForPdf,
   clinic: ClinicForPdf
 ): Promise<string> {
-  const element = React.createElement(PrescriptionDocument, { prescription, clinic })
+  // Generate QR data URI if RxE has been generated for this prescription
+  let qrDataUri: string | undefined
+  if (prescription.publicSlug) {
+    const publicUrl = `${process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000'}/r/${prescription.publicSlug}`
+    // Error correction level M for ~15% recovery — adequate for printed 72pt QR
+    qrDataUri = await QRCode.toDataURL(publicUrl, { errorCorrectionLevel: 'M', margin: 2 })
+  }
+
+  const element = React.createElement(PrescriptionDocument, { prescription, clinic, qrDataUri })
   const pdfBuffer = await renderToBuffer(element as unknown as React.ReactElement)
 
   const fileName = `prescriptions/${prescription.patient.firstName}_${prescription.id}.pdf`

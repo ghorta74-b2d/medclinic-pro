@@ -10,6 +10,7 @@ type MessagePayload =
   | { type: 'appointment_cancelled'; appointment: AppointmentLike; reason?: string }
   | { type: 'appointment_reminder'; appointment: AppointmentLike; hoursAhead: number }
   | { type: 'prescription'; pdfUrl: string; patientName: string }
+  | { type: 'prescriptionLink'; patientName: string; doctorName: string; publicUrl: string }
   | { type: 'lab_result_ready'; patientName: string; title: string; fileUrl: string }
   | { type: 'payment_link'; patientName: string; invoiceNumber: string; amount: number; currency: string; paymentUrl: string }
   | { type: 'payment_status'; patientName: string; invoice: InvoiceLike | null }
@@ -162,6 +163,18 @@ export async function sendWhatsAppMessage(to: string, payload: MessagePayload): 
       } else {
         await sendMessage(to, `📋 Hola ${patientName}, su receta está lista. Consulte con su médico.`)
       }
+      break
+    }
+
+    case 'prescriptionLink': {
+      const { patientName, doctorName, publicUrl } = payload
+      // Para escalar a mensajes iniciados por negocio se requiere HSM aprobado en Meta
+      // con template: "Hola {{1}}, tu medico {{2}} te compartio tu receta electronica... {{3}}"
+      await sendMessage(
+        to,
+        `Hola ${patientName}, tu medico ${doctorName} te compartio tu receta electronica. ` +
+        `Consulta el tratamiento, descargala y comparala en farmacias aqui: ${publicUrl}`
+      )
       break
     }
 
