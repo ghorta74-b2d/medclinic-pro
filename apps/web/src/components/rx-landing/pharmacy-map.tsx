@@ -84,9 +84,14 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
   async function loadGoogleMaps(userLat: number, userLng: number, sorted: NearbyBranch[]) {
     if (!apiKey) return
     if (window.google?.maps) { initMap(userLat, userLng, sorted); return }
-    const { Loader } = await import('@googlemaps/js-api-loader')
-    const loader = new Loader({ apiKey, version: 'weekly' })
-    await loader.load()
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly`
+      script.async = true
+      script.onload = () => resolve()
+      script.onerror = () => reject(new Error('Failed to load Google Maps'))
+      document.head.appendChild(script)
+    })
     initMap(userLat, userLng, sorted)
   }
 
@@ -186,6 +191,7 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
 // Augment window type for Google Maps
 declare global {
   interface Window {
-    google: typeof google
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    google: any
   }
 }

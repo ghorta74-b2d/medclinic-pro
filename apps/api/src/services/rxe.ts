@@ -53,11 +53,17 @@ export async function getPublicRxData(slug: string) {
         },
         orderBy: { sortOrder: 'asc' },
       },
-      clinic: { select: { name: true, logoUrl: true, phone: true } },
+      // Prescription has no direct clinic relation; query separately below
     },
   })
 
   if (!rx) return null
+
+  // Fetch clinic separately since Prescription only stores clinicId (no relation field)
+  const clinic = await prisma.clinic.findUnique({
+    where: { id: rx.clinicId },
+    select: { name: true, logoUrl: true, phone: true },
+  })
 
   const isExpired = rx.expiresAt ? rx.expiresAt < new Date() : false
 
@@ -88,6 +94,6 @@ export async function getPublicRxData(slug: string) {
       lastName: rx.patient.lastName.charAt(0) + '.',
     },
     doctor: rx.doctor,
-    clinic: rx.clinic,
+    clinic,
   }
 }
