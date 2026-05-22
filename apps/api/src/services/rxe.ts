@@ -1,6 +1,13 @@
-import { createHmac } from 'crypto'
-import { nanoid } from 'nanoid'
+import { createHmac, randomBytes } from 'crypto'
 import { prisma } from '../lib/prisma.js'
+
+// URL-safe random slug — nanoid replacement (nanoid v5 is ESM-only, incompatible with CJS)
+function generateSlug(size = 10): string {
+  return randomBytes(Math.ceil(size * 3 / 4))
+    .toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+    .slice(0, size)
+}
 
 const RXE_SECRET = process.env['RXE_SECRET'] ?? 'dev-rxe-secret-change-in-production'
 const RXE_TTL_DAYS = 14
@@ -17,7 +24,7 @@ export async function generateRxe(prescriptionId: string, clinicId: string) {
   })
   if (!existing) throw new Error('Prescription not found')
 
-  const publicSlug = nanoid(10)
+  const publicSlug = generateSlug(10)
   // HMAC-SHA256 of prescriptionId: deterministic sello, never exposes PII
   const signature = createHmac('sha256', RXE_SECRET)
     .update(prescriptionId)
