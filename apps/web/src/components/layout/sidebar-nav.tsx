@@ -15,7 +15,6 @@ import {
   LogOut,
   Brain,
   FileText,
-  Pill,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -43,21 +42,11 @@ const SECTIONS: NavSection[] = [
   },
 ]
 
-const ADMIN_SECTIONS: NavSection[] = [
-  {
-    label: 'Administración',
-    items: [
-      { href: '/admin/farmacias', label: 'Farmacias', icon: Pill },
-    ],
-  },
-]
-
 const BOTTOM_ITEMS: NavItem[] = [
   { href: '/configuracion', label: 'Configuración', icon: Settings },
 ]
 
 const STAFF_ALLOWED = ['/dashboard', '/agenda', '/pacientes', '/cobros']
-const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN']
 
 export function SidebarNav() {
   const pathname = usePathname()
@@ -93,17 +82,13 @@ export function SidebarNav() {
   useEffect(() => { setIsOpen(false) }, [pathname])
 
   const isStaff = userRole === 'STAFF'
-  const isAdmin = ADMIN_ROLES.includes(userRole)
 
-  const visibleSections: NavSection[] = isStaff
+  const allSections: NavSection[] = isStaff
     ? SECTIONS.map(s => ({
         ...s,
         items: s.items.filter(i => STAFF_ALLOWED.includes(i.href)),
       })).filter(s => s.items.length > 0)
     : SECTIONS
-
-  // Farmacias is a MedClinic platform section — only SUPER_ADMIN sees it
-  const allSections = userRole === 'SUPER_ADMIN' ? [...visibleSections, ...ADMIN_SECTIONS] : visibleSections
 
   async function handleLogout() {
     try {

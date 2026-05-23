@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
-import { Loader2, Plus, Building2, Megaphone, BarChart3, MapPin, Edit, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Loader2, Plus, Building2, Megaphone, BarChart3, MapPin, ToggleLeft, ToggleRight } from 'lucide-react'
 import type { PharmacyCampaign } from 'medclinic-shared'
 
 type Tab = 'farmacias' | 'campanas' | 'metricas'
@@ -51,32 +50,32 @@ export default function FarmaciasAdminPage() {
   ]
 
   return (
-    <>
-      <Header
-        title="Farmacias & Campañas"
-        subtitle="Gestión de espacios publicitarios en recetas electrónicas"
-        actions={
-          tab === 'farmacias' ? (
-            <button
-              onClick={() => setShowNewPharmacy(true)}
-              className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Nueva farmacia
-            </button>
-          ) : tab === 'campanas' ? (
-            <button
-              onClick={() => setShowNewCampaign(true)}
-              className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Nueva campaña
-            </button>
-          ) : null
-        }
-      />
+    <div className="p-6 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Farmacias &amp; Campañas</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Gestión global de espacios publicitarios en recetas electrónicas — MedClinic Pro</p>
+        </div>
+        {tab === 'farmacias' ? (
+          <button
+            onClick={() => setShowNewPharmacy(true)}
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Nueva farmacia
+          </button>
+        ) : tab === 'campanas' ? (
+          <button
+            onClick={() => setShowNewCampaign(true)}
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Nueva campaña
+          </button>
+        ) : null}
+      </div>
 
-      <div className="flex-1 p-3 sm:p-6 overflow-auto">
+      <div>
         {/* Tabs */}
         <div className="flex border-b border-border mb-6 gap-1">
           {tabs.map(t => (
@@ -242,7 +241,7 @@ export default function FarmaciasAdminPage() {
           onCreated={loadData}
         />
       )}
-    </>
+    </div>
   )
 }
 

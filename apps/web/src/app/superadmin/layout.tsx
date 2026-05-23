@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { LayoutDashboard, Building2, Settings } from 'lucide-react'
+import { LayoutDashboard, Building2, Settings, Pill } from 'lucide-react'
 import { LogoutButton } from './logout-button'
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
@@ -27,6 +27,11 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors">
               <Building2 className="w-4 h-4" />
               Clínicas
+            </Link>
+            <Link href="/superadmin/farmacias"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors">
+              <Pill className="w-4 h-4" />
+              Farmacias
             </Link>
             <Link href="/superadmin/configuracion"
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors">
