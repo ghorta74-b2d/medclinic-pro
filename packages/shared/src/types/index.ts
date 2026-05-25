@@ -197,6 +197,16 @@ export const FRACTION_LABELS: Record<DrugFraction, string> = {
   VI:  'Frac. VI — Venta libre',
 }
 
+// Categoría de dispensación — leyenda por tipo de medicamento (código de color)
+export type DispensingCategory = 'fisica' | 'aliadas' | 'libre' | 'laboratorio'
+
+export const DISPENSING_META: Record<DispensingCategory, { color: string; label: string; rule: string }> = {
+  fisica:      { color: '#F97316', label: 'Solo con receta física',     rule: 'Fracción II y III' },
+  aliadas:     { color: '#3B82F6', label: 'Solo en farmacias aliadas',  rule: 'Fracción IV / Antibióticos' },
+  libre:       { color: '#22C55E', label: 'En cualquier farmacia',      rule: 'Fracción IV, V y VI' },
+  laboratorio: { color: '#EAB308', label: 'Solo en laboratorio',        rule: 'Estudios médicos' },
+}
+
 export interface PrescriptionItem {
   id: string
   medicationId?: string

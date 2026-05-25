@@ -8,7 +8,7 @@ import { formatDate, formatDateTime, getInitials, calculateAge, formatCurrency }
 import {
   ArrowLeft, Phone, Mail, Calendar, Droplets, AlertTriangle,
   FileText, Pill, FlaskConical, ChevronDown, ChevronUp, ChevronRight, Clock,
-  Pencil, X, Check, Loader2, Printer, Plus, Stethoscope, UserCheck,
+  Pencil, X, Check, Loader2, Plus, Stethoscope, UserCheck,
   Upload, Sparkles, ExternalLink, Brain, Download, PenLine, Search,
   AlertCircle, CheckCircle2,
 } from 'lucide-react'
@@ -16,6 +16,7 @@ import type { Patient, ClinicalNote, Appointment, Prescription, LabResult, Vital
 import { GENDER_LABELS, BLOOD_TYPE_LABELS, STATUS_LABELS } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
 import { PrescriptionBuilder } from '@/components/prescriptions/prescription-builder'
+import { PrescriptionCard } from '@/components/prescriptions/prescription-card'
 import { ClinicalNoteEditor } from '@/components/clinical-notes/note-editor'
 
 // ── Phone helpers ──────────────────────────────────────────────────────────────
@@ -1076,7 +1077,6 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh, re
   onRefresh: () => void
   readOnly?: boolean
 }) {
-  const router = useRouter()
   const [showBuilder, setShowBuilder] = useState(false)
   const [editingRx, setEditingRx] = useState<any>(null)
 
@@ -1099,10 +1099,6 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh, re
     })
   }
 
-  const STATUS_STYLE: Record<string, string> = {
-    ACTIVE: 'bg-success/15 text-success', COMPLETED: 'bg-muted text-muted-foreground', CANCELLED: 'bg-destructive/15 text-destructive',
-  }
-
   return (
     <div>
       {!readOnly && (
@@ -1121,56 +1117,14 @@ function PrescriptionsTab({ patientId, patientName, prescriptions, onRefresh, re
       ) : (
         <div className="space-y-3">
           {prescriptions.map((rx) => (
-            <div key={rx.id} className="bg-card rounded-2xl border border-border overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 bg-muted border-b border-border">
-                <div className="flex items-center gap-2">
-                  <UserCheck className="w-3.5 h-3.5 text-primary" />
-                  <p className="text-xs text-foreground/80 font-medium">
-                    Dr. {rx.doctor?.firstName} {rx.doctor?.lastName}
-                    <span className="font-normal text-muted-foreground"> · {formatDate(rx.createdAt)}</span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {rx.sentViaWhatsApp && (
-                    <span className="text-xs bg-success/10 text-success border border-success/15 px-2 py-0.5 rounded-full">✓ Enviada</span>
-                  )}
-                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${STATUS_STYLE[rx.status] ?? STATUS_STYLE['ACTIVE']!}`}>
-                    {rx.status === 'ACTIVE' ? 'Activa' : rx.status === 'COMPLETED' ? 'Completada' : 'Cancelada'}
-                  </span>
-                </div>
-              </div>
-              <div className="px-4 py-3 space-y-2">
-                {rx.items?.map((item: any, i: number) => (
-                  <div key={i} className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">{i + 1}</span>
-                    <div>
-                      <span className="text-sm font-semibold text-foreground">{item.medicationName}</span>
-                      <span className="text-sm text-muted-foreground"> {item.dose}</span>
-                      <p className="text-xs text-muted-foreground mt-0.5">{item.route} · {item.frequency} · {item.duration}{item.instructions && ` · ${item.instructions}`}</p>
-                    </div>
-                  </div>
-                ))}
-                {rx.instructions && <p className="text-xs text-muted-foreground italic pt-2 border-t border-border">{rx.instructions}</p>}
-                {rx.followUpDate && (
-                  <div className="flex items-center gap-1.5 pt-2 border-t border-border">
-                    <Calendar className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-xs text-muted-foreground">Seguimiento: <span className="font-medium text-foreground/80">{formatDate(rx.followUpDate)}</span></span>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2.5 border-t border-border bg-muted/50">
-                <button onClick={() => router.push(`/recetas/${rx.id}`)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground/80 hover:bg-card transition-colors">
-                  <Printer className="w-3.5 h-3.5" /> Ver / Imprimir
-                </button>
-                {!readOnly && rx.status === 'ACTIVE' && (
-                  <button onClick={() => openEdit(rx)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-foreground/80 hover:bg-card transition-colors">
-                    <Pencil className="w-3.5 h-3.5" /> Editar
-                  </button>
-                )}
-              </div>
-            </div>
+            <PrescriptionCard
+              key={rx.id}
+              prescription={rx}
+              onChanged={onRefresh}
+              onEdit={openEdit}
+              readOnly={readOnly}
+              showPatientName={false}
+            />
           ))}
         </div>
       )}

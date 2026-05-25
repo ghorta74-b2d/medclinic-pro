@@ -3,12 +3,12 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { FractionChip, FractionLegend } from '@/components/rx-landing/fraction-legend'
+import { DispensingChip, FractionLegend } from '@/components/rx-landing/fraction-legend'
 import { PharmacyMap } from '@/components/rx-landing/pharmacy-map'
 import { CampaignCta } from '@/components/rx-landing/campaign-cta'
 import { RxActions } from '@/components/rx-landing/rx-actions'
 import type { DrugFraction, PharmacyCampaign } from 'medclinic-shared'
-import { FRACTION_LABELS } from 'medclinic-shared'
+import { getDispensingCategory, DISPENSING_META } from 'medclinic-shared'
 import { Clock, CheckCircle, AlertCircle } from 'lucide-react'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -126,6 +126,14 @@ export default async function RxLandingPage({ params }: { params: Promise<{ slug
           </div>
         )}
 
+        {/* Patient */}
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground">Paciente</p>
+          <p className="text-lg font-bold text-foreground">
+            {patient.firstName} {patient.lastName}
+          </p>
+        </div>
+
         {/* Doctor intro */}
         <div>
           <p className="text-xs text-muted-foreground">Tu médico</p>
@@ -139,13 +147,16 @@ export default async function RxLandingPage({ params }: { params: Promise<{ slug
           </p>
         </div>
 
-        {/* Fraction legend */}
-        {!expired && items.some(i => i.fraction) && <FractionLegend />}
+        {/* Dispensing category legend (per norm) */}
+        {!expired && <FractionLegend />}
 
         {/* Medications */}
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Medicamentos</h2>
-          {items.map((item, i) => (
+          {items.map((item, i) => {
+            const dispCat = getDispensingCategory(item.medicationName)
+            const dispMeta = DISPENSING_META[dispCat]
+            return (
             <div key={item.id} className="bg-card border border-border rounded-xl p-4">
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="flex items-center gap-2">
@@ -157,20 +168,24 @@ export default async function RxLandingPage({ params }: { params: Promise<{ slug
                     <p className="text-xs text-muted-foreground">{item.dose}</p>
                   </div>
                 </div>
-                {item.fraction && <FractionChip fraction={item.fraction} />}
+                <DispensingChip category={dispCat} />
               </div>
               <div className="text-xs text-muted-foreground space-y-0.5 pl-7">
                 <p>{item.route} · {item.frequency} · {item.duration}</p>
                 {item.quantity && <p>Cantidad: {item.quantity}</p>}
                 {item.instructions && <p className="italic">{item.instructions}</p>}
-                {item.fraction && (
-                  <p className="text-[10px] text-muted-foreground/70 mt-1">
-                    {FRACTION_LABELS[item.fraction]}
+                {/* Dispensing legend (per norm) */}
+                <p className="text-[10px] mt-1 font-medium" style={{ color: dispMeta.color }}>
+                  {dispMeta.label} · {dispMeta.rule}
+                </p>
+                {dispCat === 'aliadas' && (
+                  <p className="text-[10px] text-muted-foreground/70 italic">
+                    El uso inadecuado de antibióticos genera resistencia. Úsalo solo bajo prescripción médica y completa el tratamiento.
                   </p>
                 )}
               </div>
             </div>
-          ))}
+          )})}
         </section>
 
         {/* General instructions */}

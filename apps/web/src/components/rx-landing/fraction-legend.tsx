@@ -1,50 +1,57 @@
-import type { DrugFraction } from 'medclinic-shared'
-import { FRACTION_COLORS, FRACTION_LABELS } from 'medclinic-shared'
+import type { DispensingCategory } from 'medclinic-shared'
+import { DISPENSING_META } from 'medclinic-shared'
 
-const FRACTION_DESCRIPTION: Record<DrugFraction, string> = {
-  I:   'Solo con permiso especial de la Secretaría de Salud.',
-  II:  'Receta retenida en farmacia. Solo se surte 1 vez (30 días de vigencia).',
-  III: 'Receta sellada y registrada. Hasta 3 surtidos (6 meses de vigencia).',
-  IV:  'Con receta médica. Se surte mientras dure el tratamiento.',
-  V:   'Con o sin receta. Venta libre en cualquier farmacia.',
-  VI:  'Venta libre. Productos regulados de libre acceso.',
-}
+const LEGEND_ORDER: DispensingCategory[] = ['fisica', 'aliadas', 'libre', 'laboratorio']
 
-interface FractionChipProps {
-  fraction: DrugFraction
+interface DispensingChipProps {
+  category: DispensingCategory
   size?: 'sm' | 'md'
 }
 
-export function FractionChip({ fraction, size = 'sm' }: FractionChipProps) {
-  const color = FRACTION_COLORS[fraction]
-  const label = `Frac. ${fraction}`
+// Small colored pill marker (the "capsule" icon in the legend)
+function CapsuleDot({ color }: { color: string }) {
   return (
     <span
-      style={{ backgroundColor: color + '20', color, borderColor: color + '40' }}
-      className={`inline-flex items-center font-semibold border rounded-full ${
+      className="inline-block rounded-full shrink-0"
+      style={{ width: 18, height: 10, background: `linear-gradient(90deg, ${color} 50%, ${color}99 50%)` }}
+    />
+  )
+}
+
+export function DispensingChip({ category, size = 'sm' }: DispensingChipProps) {
+  const meta = DISPENSING_META[category]
+  return (
+    <span
+      style={{ backgroundColor: meta.color + '20', color: meta.color, borderColor: meta.color + '40' }}
+      className={`inline-flex items-center gap-1.5 font-semibold border rounded-full ${
         size === 'sm' ? 'text-[10px] px-2 py-0.5' : 'text-xs px-2.5 py-1'
       }`}
     >
-      {label}
+      <span className="inline-block w-2 h-2 rounded-full" style={{ background: meta.color }} />
+      {meta.label}
     </span>
   )
 }
 
+// Reference legend: 4 dispensing categories with color code (per NOM)
 export function FractionLegend() {
-  const fractions: DrugFraction[] = ['I', 'II', 'III', 'IV', 'V', 'VI']
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+    <div className="rounded-xl border border-border bg-card p-4 space-y-2.5">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-        Clasificación Art. 226 LGS
+        Clasificación de medicamentos
       </p>
-      {fractions.map(f => (
-        <div key={f} className="flex items-start gap-3">
-          <FractionChip fraction={f} size="md" />
-          <p className="text-xs text-muted-foreground leading-relaxed flex-1">
-            {FRACTION_DESCRIPTION[f]}
-          </p>
-        </div>
-      ))}
+      {LEGEND_ORDER.map(cat => {
+        const meta = DISPENSING_META[cat]
+        const isHighlight = cat === 'libre'
+        return (
+          <div key={cat} className="flex items-center gap-3">
+            <CapsuleDot color={meta.color} />
+            <p className={`text-xs leading-relaxed flex-1 ${isHighlight ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+              {meta.label} <span className="opacity-70">/ {meta.rule}</span>
+            </p>
+          </div>
+        )
+      })}
     </div>
   )
 }

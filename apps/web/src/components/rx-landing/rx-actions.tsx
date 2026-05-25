@@ -1,7 +1,6 @@
 'use client'
 
 import { Copy, Download, ExternalLink } from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
 
 interface Props {
   receiptId: string
@@ -10,7 +9,7 @@ interface Props {
   expired: boolean
 }
 
-export function RxActions({ receiptId, publicUrl, pdfUrl, expired }: Props) {
+export function RxActions({ receiptId, publicUrl, pdfUrl }: Props) {
   function handleCopy() {
     navigator.clipboard?.writeText(receiptId).catch(() => {})
   }
@@ -48,13 +47,6 @@ export function RxActions({ receiptId, publicUrl, pdfUrl, expired }: Props) {
           Compartir
         </button>
       </div>
-
-      {!expired && (
-        <div className="flex flex-col items-center pt-2 border-t border-border">
-          <QRCodeSVG value={publicUrl} size={120} level="M" className="rounded" />
-          <p className="text-[10px] text-muted-foreground mt-2">Escanea para compartir esta receta</p>
-        </div>
-      )}
     </>
   )
 }

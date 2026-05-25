@@ -133,3 +133,38 @@ export function searchMedications(query: string): MedicationEntry[] {
       m.category.toLowerCase().includes(q)
   ).slice(0, 15)
 }
+
+// ── Dispensing category derivation (leyenda por tipo de medicamento) ──────
+import type { DispensingCategory } from '../types/index'
+
+function normalizeMed(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+}
+
+// Resolve a free-text medication name to its catalog category (by name or brand)
+export function getMedicationCategory(medicationName: string): string | null {
+  const n = normalizeMed(medicationName)
+  if (!n) return null
+  for (const m of MEDICATIONS_MX) {
+    const mn = normalizeMed(m.name)
+    if (n.includes(mn) || mn.includes(n)) return m.category
+    if (m.brandName) {
+      const brands = m.brandName.split('/').map((b) => normalizeMed(b)).filter(Boolean)
+      if (brands.some((b) => n.includes(b))) return m.category
+    }
+  }
+  return null
+}
+
+// Controlled / psychotropic → physical retained prescription (Frac. II/III)
+const CAT_FISICA = new Set(['Opioide', 'Ansiolítico', 'Anticonvulsivo'])
+// Antibiotics → allied pharmacies (Frac. IV)
+const CAT_ALIADAS = new Set(['Antibiótico', 'Antibiótico tópico'])
+
+// Map a medication name to its dispensing category. Defaults to 'libre' when unknown.
+export function getDispensingCategory(medicationName: string): DispensingCategory {
+  const cat = getMedicationCategory(medicationName)
+  if (cat && CAT_FISICA.has(cat)) return 'fisica'
+  if (cat && CAT_ALIADAS.has(cat)) return 'aliadas'
+  return 'libre'
+}

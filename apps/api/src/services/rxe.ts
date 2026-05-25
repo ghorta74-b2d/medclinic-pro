@@ -95,10 +95,11 @@ export async function getPublicRxData(slug: string) {
       pdfUrl: rx.pdfUrl,
     },
     items: rx.items,
-    // LFPDPPP: apellido enmascarado (solo inicial) — Art. 8 aviso simplificado
+    // Nombre completo del paciente — requisito NOM-004 para recetas.
+    // El slug público es no-adivinable (10 chars aleatorios), mitigando exposición.
     patient: {
       firstName: rx.patient.firstName,
-      lastName: rx.patient.lastName.charAt(0) + '.',
+      lastName: rx.patient.lastName,
     },
     doctor: rx.doctor,
     clinic,
