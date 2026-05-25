@@ -59,34 +59,41 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
     }
   }
 
-  function renderMap(center: { lat: number; lng: number }, userLoc: { lat: number; lng: number } | null, zoom: number) {
+  async function renderMap(center: { lat: number; lng: number }, userLoc: { lat: number; lng: number } | null, zoom: number) {
     if (!mapRef.current || !window.google?.maps) return
-    const map = new window.google.maps.Map(mapRef.current, {
+
+    // Import the core Maps library (required in v=weekly / Maps JS API v3 2024+)
+    const { Map: GMap } = await (window.google.maps as any).importLibrary('maps') as { Map: any }
+    const map = new GMap(mapRef.current, {
       center,
       zoom,
       disableDefaultUI: true,
       zoomControl: true,
+      mapTypeControl: false,
       styles: DARK_MAP_STYLES,
+      mapId: 'DEMO_MAP_ID', // required for AdvancedMarkerElement
     })
 
-    // All allied pharmacy branches (always shown)
+    // Use AdvancedMarkerElement (replaces deprecated google.maps.Marker in v=weekly)
+    const { AdvancedMarkerElement } = await (window.google.maps as any).importLibrary('marker') as { AdvancedMarkerElement: any }
+
+    // Pharmacy branch markers
     allBranches.forEach(b => {
-      new window.google.maps.Marker({
+      const dot = document.createElement('div')
+      dot.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#22C55E;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)'
+      new AdvancedMarkerElement({
         position: { lat: b.lat!, lng: b.lng! },
         map,
         title: `${b.pharmacyName} — ${b.name}`,
-        icon: { path: window.google.maps.SymbolPath.BACKWARD_CLOSED_ARROW, scale: 6, fillColor: '#22C55E', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1 },
+        content: dot,
       })
     })
 
-    // User marker (only when geolocation granted)
+    // User location marker
     if (userLoc) {
-      new window.google.maps.Marker({
-        position: userLoc,
-        map,
-        title: 'Tu ubicación',
-        icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#3B82F6', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
-      })
+      const you = document.createElement('div')
+      you.style.cssText = 'width:16px;height:16px;border-radius:50%;background:#3B82F6;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.5)'
+      new AdvancedMarkerElement({ position: userLoc, map, title: 'Tu ubicación', content: you })
     }
   }
 
@@ -120,17 +127,17 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
     // Show all branches immediately (no distance yet)
     setDisplayBranches(allBranches.slice(0, 6))
 
-    function tryRenderMap(center: { lat: number; lng: number }, userLoc: { lat: number; lng: number } | null, zoom: number) {
+    async function tryRenderMap(center: { lat: number; lng: number }, userLoc: { lat: number; lng: number } | null, zoom: number) {
       try {
-        renderMap(center, userLoc, zoom)
+        await renderMap(center, userLoc, zoom)
         setMapsLoaded(true)
-      } catch {
-        /* Maps API unavailable — text list is already shown */
+      } catch (err) {
+        console.warn('[PharmacyMap] renderMap failed:', err)
         setMapsLoaded(false)
       }
     }
 
-    // Geolocation runs independently of map loading so the browser always shows the permission prompt
+    // Geolocation runs independently of map loading so the browser always prompts for permission
     function startGeolocation(mapsReady: boolean) {
       if (!navigator.geolocation) return
       navigator.geolocation.getCurrentPosition(
@@ -145,7 +152,7 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
           onGeoStateDetected?.('')
           if (mapsReady) tryRenderMap({ lat: latitude, lng: longitude }, { lat: latitude, lng: longitude }, 12)
         },
-        () => { /* denied — keep centroid view + full list */ },
+        () => { /* denied — keep centroid + full list */ },
         { timeout: 8000, maximumAge: 600000 }
       )
     }
@@ -154,7 +161,7 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
       const mapsReady = await ensureGoogle()
       if (cancelled) return
       setMapsAttempted(true)
-      if (mapsReady) tryRenderMap(centroid(allBranches), null, allBranches.length > 1 ? 11 : 13)
+      if (mapsReady) await tryRenderMap(centroid(allBranches), null, allBranches.length > 1 ? 11 : 13)
       startGeolocation(mapsReady)
     })()
 
