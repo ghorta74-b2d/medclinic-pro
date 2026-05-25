@@ -56,7 +56,7 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
   }
 
   function renderMap(center: { lat: number; lng: number }, userLoc: { lat: number; lng: number } | null, zoom: number) {
-    if (!mapRef.current || !window.google) return
+    if (!mapRef.current || !window.google?.maps) return
     const map = new window.google.maps.Map(mapRef.current, {
       center,
       zoom,
@@ -89,26 +89,27 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
   async function ensureGoogle(): Promise<boolean> {
     if (!apiKey) return false
     if (window.google?.maps) return true
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const existing = document.querySelector<HTMLScriptElement>('script[data-gmaps]')
-        if (existing) {
-          existing.addEventListener('load', () => resolve())
-          existing.addEventListener('error', () => reject(new Error('maps')))
-          return
-        }
-        const script = document.createElement('script')
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly`
-        script.async = true
-        script.dataset['gmaps'] = '1'
-        script.onload = () => resolve()
-        script.onerror = () => reject(new Error('maps'))
-        document.head.appendChild(script)
-      })
-      return true
-    } catch {
-      return false
-    }
+
+    return new Promise<boolean>((resolve) => {
+      const existing = document.querySelector<HTMLScriptElement>('script[data-gmaps]')
+      if (existing) {
+        // Script is already in the DOM. If it already fired 'load', the event
+        // won't fire again — we must check synchronously and time-out quickly.
+        if (window.google?.maps) { resolve(true); return }
+        const tid = setTimeout(() => resolve(false), 5000)
+        existing.addEventListener('load', () => { clearTimeout(tid); resolve(!!window.google?.maps) })
+        existing.addEventListener('error', () => { clearTimeout(tid); resolve(false) })
+        return
+      }
+      const script = document.createElement('script')
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly`
+      script.async = true
+      script.dataset['gmaps'] = '1'
+      const tid = setTimeout(() => resolve(false), 10000)
+      script.onload = () => { clearTimeout(tid); resolve(!!window.google?.maps) }
+      script.onerror = () => { clearTimeout(tid); resolve(false) }
+      document.head.appendChild(script)
+    })
   }
 
   useEffect(() => {
@@ -118,30 +119,36 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
     // Show all branches immediately (no distance yet)
     setDisplayBranches(allBranches.slice(0, 6))
 
-    ;(async () => {
-      const ok = await ensureGoogle()
-      if (cancelled || !ok) return
-      renderMap(centroid(allBranches), null, allBranches.length > 1 ? 11 : 13)
+    function tryRenderMap(center: { lat: number; lng: number }, userLoc: { lat: number; lng: number } | null, zoom: number) {
+      try { renderMap(center, userLoc, zoom) } catch { /* Maps API unavailable — text list already shown */ }
+    }
 
-      // Optional geolocation enhancement — recenters + sorts by distance
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            if (cancelled) return
-            const { latitude, longitude } = pos.coords
-            const sorted = allBranches
-              .map(b => ({ ...b, distanceKm: haversineKm(latitude, longitude, b.lat!, b.lng!) }))
-              .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
-            setDisplayBranches(sorted.slice(0, 5))
-            setLocated(true)
-            // Only the broad locality is conceptually relayed — never exact coords (LFPDPPP)
-            onGeoStateDetected?.('')
-            renderMap({ lat: latitude, lng: longitude }, { lat: latitude, lng: longitude }, 12)
-          },
-          () => { /* denied — keep centroid view + full list */ },
-          { timeout: 8000, maximumAge: 600000 }
-        )
-      }
+    // Geolocation runs independently of map loading so the browser always shows the permission prompt
+    function startGeolocation(mapsReady: boolean) {
+      if (!navigator.geolocation) return
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          if (cancelled) return
+          const { latitude, longitude } = pos.coords
+          const sorted = allBranches
+            .map(b => ({ ...b, distanceKm: haversineKm(latitude, longitude, b.lat!, b.lng!) }))
+            .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+          setDisplayBranches(sorted.slice(0, 5))
+          setLocated(true)
+          onGeoStateDetected?.('')
+          if (mapsReady) tryRenderMap({ lat: latitude, lng: longitude }, { lat: latitude, lng: longitude }, 12)
+        },
+        () => { /* denied — keep centroid view + full list */ },
+        { timeout: 8000, maximumAge: 600000 }
+      )
+    }
+
+    ;(async () => {
+      const mapsReady = await ensureGoogle()
+      if (cancelled) return
+
+      if (mapsReady) tryRenderMap(centroid(allBranches), null, allBranches.length > 1 ? 11 : 13)
+      startGeolocation(mapsReady)
     })()
 
     return () => { cancelled = true }

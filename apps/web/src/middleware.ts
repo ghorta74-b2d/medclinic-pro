@@ -12,6 +12,18 @@ const STAFF_BLOCKED_PREFIXES = [
   '/configuracion',
 ]
 
+// Clinic-level routes — SUPER_ADMIN must not access them (they have no clinic_id)
+const CLINIC_PREFIXES = [
+  '/dashboard',
+  '/pacientes',
+  '/agenda',
+  '/recetas',
+  '/cobros',
+  '/consulta-ia',
+  '/expediente',
+  '/configuracion',
+]
+
 /**
  * Decode the role from the Supabase access-token JWT without any network call.
  * We only need the role for routing decisions — actual auth is enforced by the API.
@@ -55,26 +67,39 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // ── STAFF restrictions ─────────────────────────────────────────────────────
-  const isRestricted = STAFF_BLOCKED_PREFIXES.some(prefix => pathname.startsWith(prefix))
-  if (!isRestricted) return NextResponse.next()
+  // ── Clinic routes guard: SUPER_ADMIN has no clinic_id — force to superadmin ─
+  const isClinicRoute = CLINIC_PREFIXES.some(prefix => pathname.startsWith(prefix))
+  if (isClinicRoute) {
+    const role = getRoleFromCookies(request)
+    if (role === 'SUPER_ADMIN') {
+      return NextResponse.redirect(new URL('/superadmin', request.url))
+    }
 
-  const role = getRoleFromCookies(request)
-  if (role === 'STAFF') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    // ── STAFF restrictions ───────────────────────────────────────────────────
+    const isRestricted = STAFF_BLOCKED_PREFIXES.some(prefix => pathname.startsWith(prefix))
+    if (isRestricted && role === 'STAFF') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
   }
+
   return NextResponse.next()
 }
 
 export const config = {
   matcher: [
     '/superadmin/:path*',
-    '/expediente/:path*',
+    '/dashboard/:path*',
+    '/dashboard',
+    '/pacientes/:path*',
+    '/agenda/:path*',
     '/recetas/:path*',
+    '/cobros/:path*',
+    '/consulta-ia/:path*',
+    '/expediente/:path*',
+    '/configuracion/:path*',
     '/resultados/:path*',
     '/laboratorio/:path*',
     '/telemedicina/:path*',
     '/asistente-ia/:path*',
-    '/configuracion/:path*',
   ],
 }
