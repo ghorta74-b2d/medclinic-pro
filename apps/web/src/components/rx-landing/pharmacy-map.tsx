@@ -62,8 +62,8 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
   async function renderMap(center: { lat: number; lng: number }, userLoc: { lat: number; lng: number } | null, zoom: number) {
     if (!mapRef.current || !window.google?.maps) return
 
-    // Import the core Maps library (required in v=weekly / Maps JS API v3 2024+)
-    const { Map: GMap } = await (window.google.maps as any).importLibrary('maps') as { Map: any }
+    // Import the core Maps library — Circle doesn't need mapId or AdvancedMarkerElement
+    const { Map: GMap, Circle } = await (window.google.maps as any).importLibrary('maps') as { Map: any; Circle: any }
     const map = new GMap(mapRef.current, {
       center,
       zoom,
@@ -71,29 +71,37 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
       zoomControl: true,
       mapTypeControl: false,
       styles: DARK_MAP_STYLES,
-      mapId: 'DEMO_MAP_ID', // required for AdvancedMarkerElement
+      // No mapId needed — Circle works without it
     })
 
-    // Use AdvancedMarkerElement (replaces deprecated google.maps.Marker in v=weekly)
-    const { AdvancedMarkerElement } = await (window.google.maps as any).importLibrary('marker') as { AdvancedMarkerElement: any }
-
-    // Pharmacy branch markers
+    // Pharmacy branch markers as green Circle overlays
     allBranches.forEach(b => {
-      const dot = document.createElement('div')
-      dot.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#22C55E;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)'
-      new AdvancedMarkerElement({
-        position: { lat: b.lat!, lng: b.lng! },
+      new Circle({
+        center: { lat: b.lat!, lng: b.lng! },
+        radius: 200,
         map,
-        title: `${b.pharmacyName} — ${b.name}`,
-        content: dot,
+        fillColor: '#22C55E',
+        fillOpacity: 0.9,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+        strokeOpacity: 0.8,
+        clickable: false,
       })
     })
 
-    // User location marker
+    // User location marker as blue Circle
     if (userLoc) {
-      const you = document.createElement('div')
-      you.style.cssText = 'width:16px;height:16px;border-radius:50%;background:#3B82F6;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.5)'
-      new AdvancedMarkerElement({ position: userLoc, map, title: 'Tu ubicación', content: you })
+      new Circle({
+        center: userLoc,
+        radius: 150,
+        map,
+        fillColor: '#3B82F6',
+        fillOpacity: 0.9,
+        strokeColor: '#ffffff',
+        strokeWeight: 2,
+        strokeOpacity: 0.8,
+        clickable: false,
+      })
     }
   }
 
