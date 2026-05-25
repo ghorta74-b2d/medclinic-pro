@@ -156,15 +156,35 @@ export function getMedicationCategory(medicationName: string): string | null {
   return null
 }
 
-// Controlled / psychotropic → physical retained prescription (Frac. II/III)
-const CAT_FISICA = new Set(['Opioide', 'Ansiolítico', 'Anticonvulsivo'])
-// Antibiotics → allied pharmacies (Frac. IV)
-const CAT_ALIADAS = new Set(['Antibiótico', 'Antibiótico tópico'])
+/**
+ * Medications that require a written prescription (receta médica) in Mexico
+ * per NOM-072-SSA1-2012 and Art. 226 LGS:
+ *   Frac. I   – Estupefacientes (opioids)
+ *   Frac. II  – Psicotrópicos (anxiolytics, antipsychotics)
+ *   Frac. III – Antibióticos (ALL require prescription)
+ *   Frac. IV  – Other Rx-only (anticonvulsants, antidepressants, corticosteroids,
+ *               anticoagulants, insulin, thyroid hormones, etc.)
+ */
+const CAT_FISICA = new Set([
+  'Opioide',                  // Frac. I — estupefacientes
+  'Ansiolítico',              // Frac. II — benzodiazepinas / psicotrópicos
+  'Antipsicótico',            // Frac. II/IV
+  'Anticonvulsivo',           // Frac. IV
+  'Antibiótico',              // Frac. III — TODOS requieren receta
+  'Antibiótico tópico',       // Frac. III — mupirocina etc.
+  'Antidepresivo ISRS',       // Frac. IV
+  'Antidepresivo tricíclico', // Frac. IV
+  'Corticoide',               // Frac. IV — prednisona, dexametasona (sistémicos)
+  'Insulina',                 // Frac. IV
+  'Anticoagulante',           // Frac. IV — warfarina, rivaroxabán
+  'Hormona tiroidea',         // Frac. IV — levotiroxina
+  'Hormonal',                 // Frac. IV — progesterona
+])
 
 // Map a medication name to its dispensing category. Defaults to 'libre' when unknown.
+// 'aliadas' is reserved for explicit use (e.g. specialty meds not in catalog) — never auto-assigned.
 export function getDispensingCategory(medicationName: string): DispensingCategory {
   const cat = getMedicationCategory(medicationName)
   if (cat && CAT_FISICA.has(cat)) return 'fisica'
-  if (cat && CAT_ALIADAS.has(cat)) return 'aliadas'
   return 'libre'
 }

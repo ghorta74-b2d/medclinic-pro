@@ -37,6 +37,7 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
   const mapRef = useRef<HTMLDivElement>(null)
   const [displayBranches, setDisplayBranches] = useState<NearbyBranch[]>([])
   const [located, setLocated] = useState(false)
+  const [mapsLoaded, setMapsLoaded] = useState(false)
 
   const apiKey = process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY']
 
@@ -120,7 +121,13 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
     setDisplayBranches(allBranches.slice(0, 6))
 
     function tryRenderMap(center: { lat: number; lng: number }, userLoc: { lat: number; lng: number } | null, zoom: number) {
-      try { renderMap(center, userLoc, zoom) } catch { /* Maps API unavailable — text list already shown */ }
+      try {
+        renderMap(center, userLoc, zoom)
+        setMapsLoaded(true)
+      } catch {
+        /* Maps API unavailable — text list is already shown */
+        setMapsLoaded(false)
+      }
     }
 
     // Geolocation runs independently of map loading so the browser always shows the permission prompt
@@ -177,7 +184,11 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
 
   return (
     <div className="space-y-3">
-      <div ref={mapRef} className="w-full h-56 rounded-xl overflow-hidden border border-border bg-muted" />
+      {/* Map div stays mounted so mapRef is always available; hidden until Maps renders */}
+      <div
+        ref={mapRef}
+        className={`w-full h-56 rounded-xl overflow-hidden border border-border bg-muted transition-opacity ${mapsLoaded ? 'opacity-100' : 'opacity-0 h-0 border-0 overflow-hidden'}`}
+      />
       {!located && (
         <p className="text-[11px] text-muted-foreground">
           Permite el acceso a tu ubicación para ver las farmacias más cercanas a ti.

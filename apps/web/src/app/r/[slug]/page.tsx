@@ -8,7 +8,7 @@ import { PharmacyMap } from '@/components/rx-landing/pharmacy-map'
 import { CampaignCta } from '@/components/rx-landing/campaign-cta'
 import { RxActions } from '@/components/rx-landing/rx-actions'
 import type { DrugFraction, PharmacyCampaign } from 'medclinic-shared'
-import { getDispensingCategory, DISPENSING_META } from 'medclinic-shared'
+import { getDispensingCategory, getMedicationCategory, DISPENSING_META } from 'medclinic-shared'
 import { Clock, CheckCircle, AlertCircle } from 'lucide-react'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -178,11 +178,14 @@ export default async function RxLandingPage({ params }: { params: Promise<{ slug
                 <p className="text-[10px] mt-1 font-medium" style={{ color: dispMeta.color }}>
                   {dispMeta.label} · {dispMeta.rule}
                 </p>
-                {dispCat === 'aliadas' && (
-                  <p className="text-[10px] text-muted-foreground/70 italic">
-                    El uso inadecuado de antibióticos genera resistencia. Úsalo solo bajo prescripción médica y completa el tratamiento.
-                  </p>
-                )}
+                {(() => {
+                  const medCat = getMedicationCategory(item.medicationName)
+                  return (medCat === 'Antibiótico' || medCat === 'Antibiótico tópico') && (
+                    <p className="text-[10px] text-muted-foreground/70 italic">
+                      El uso inadecuado de antibióticos genera resistencia. Úsalo solo bajo prescripción médica y completa el tratamiento.
+                    </p>
+                  )
+                })()}
               </div>
             </div>
           )})}
