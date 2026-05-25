@@ -94,17 +94,14 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
     if (!apiKey) return false
     if (window.google?.maps) return true
 
+    // If a previous script tag exists but Maps never initialized (e.g. domain was
+    // restricted when it first loaded), remove it so we can inject a fresh one.
+    // Without this, the 'load' event has already fired and will never fire again,
+    // causing the Promise to hang for the full timeout period.
+    const stale = document.querySelector<HTMLScriptElement>('script[data-gmaps]')
+    if (stale) stale.remove()
+
     return new Promise<boolean>((resolve) => {
-      const existing = document.querySelector<HTMLScriptElement>('script[data-gmaps]')
-      if (existing) {
-        // Script is already in the DOM. If it already fired 'load', the event
-        // won't fire again — we must check synchronously and time-out quickly.
-        if (window.google?.maps) { resolve(true); return }
-        const tid = setTimeout(() => resolve(false), 5000)
-        existing.addEventListener('load', () => { clearTimeout(tid); resolve(!!window.google?.maps) })
-        existing.addEventListener('error', () => { clearTimeout(tid); resolve(false) })
-        return
-      }
       const script = document.createElement('script')
       script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly`
       script.async = true
