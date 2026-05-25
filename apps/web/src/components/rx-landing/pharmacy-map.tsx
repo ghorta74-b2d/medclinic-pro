@@ -37,7 +37,10 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
   const mapRef = useRef<HTMLDivElement>(null)
   const [displayBranches, setDisplayBranches] = useState<NearbyBranch[]>([])
   const [located, setLocated] = useState(false)
+  // mapsLoaded: true  → map rendered successfully
+  // mapsAttempted: true → ensureGoogle() resolved (success or failure)
   const [mapsLoaded, setMapsLoaded] = useState(false)
+  const [mapsAttempted, setMapsAttempted] = useState(false)
 
   const apiKey = process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY']
 
@@ -153,7 +156,7 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
     ;(async () => {
       const mapsReady = await ensureGoogle()
       if (cancelled) return
-
+      setMapsAttempted(true)
       if (mapsReady) tryRenderMap(centroid(allBranches), null, allBranches.length > 1 ? 11 : 13)
       startGeolocation(mapsReady)
     })()
@@ -184,10 +187,21 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
 
   return (
     <div className="space-y-3">
-      {/* Map div stays mounted so mapRef is always available; hidden until Maps renders */}
+      {/*
+        Map container is always mounted so mapRef is available for Google Maps to render into.
+        - Before attempt: invisible (visibility:hidden) but full height → Maps can render
+        - After success:  fully visible
+        - After failure:  collapsed (height:0) so no blank rectangle appears
+        NOTE: avoid conflicting Tailwind h-* classes — use inline style for height instead.
+      */}
       <div
         ref={mapRef}
-        className={`w-full h-56 rounded-xl overflow-hidden border border-border bg-muted transition-opacity ${mapsLoaded ? 'opacity-100' : 'opacity-0 h-0 border-0 overflow-hidden'}`}
+        className="w-full rounded-xl overflow-hidden border border-border bg-muted transition-opacity duration-300"
+        style={{
+          height: mapsLoaded || !mapsAttempted ? '14rem' : 0,
+          visibility: mapsLoaded ? 'visible' : 'hidden',
+          border: (!mapsLoaded && mapsAttempted) ? 'none' : undefined,
+        }}
       />
       {!located && (
         <p className="text-[11px] text-muted-foreground">
