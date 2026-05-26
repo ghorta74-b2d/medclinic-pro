@@ -33,6 +33,7 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null | undefined>(null)
   const [displayBranches, setDisplayBranches] = useState<NearbyBranch[]>([])
   const [mapState, setMapState] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [visibleCount, setVisibleCount] = useState(5)
 
   const allBranches: NearbyBranch[] = campaigns.flatMap(c =>
     (c.branches ?? [])
@@ -152,7 +153,9 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
 
         // Filter to ≤15 km; if none found within radius show the 3 nearest regardless
         const nearby = withDist.filter(b => (b.distanceKm ?? 999) <= MAX_DISTANCE_KM)
-        setDisplayBranches(nearby.length > 0 ? nearby : withDist.slice(0, 3))
+        const resolved = nearby.length > 0 ? nearby : withDist.slice(0, 5)
+        setDisplayBranches(resolved)
+        setVisibleCount(5)
 
         const pos2d = { lat: latitude, lng: longitude }
         setUserPos(pos2d)
@@ -220,7 +223,7 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
 
       {displayBranches.length > 0 && (
         <div className="space-y-2">
-          {displayBranches.map(b => (
+          {displayBranches.slice(0, visibleCount).map(b => (
             <a
               key={b.id}
               href={buildGoogleMapsUrl(b, userPos ?? null)}
@@ -244,6 +247,15 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
               </div>
             </a>
           ))}
+
+          {visibleCount < displayBranches.length && (
+            <button
+              onClick={() => setVisibleCount(v => v + 5)}
+              className="w-full py-2 text-xs text-primary font-medium rounded-lg border border-primary/30 hover:bg-primary/5 active:bg-primary/10 transition-colors"
+            >
+              Mostrar más ({displayBranches.length - visibleCount} restantes)
+            </button>
+          )}
         </div>
       )}
     </div>
