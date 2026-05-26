@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
-import { MessageCircle, Loader2, Pencil, Printer, Calendar, User, QrCode, ExternalLink, RefreshCw } from 'lucide-react'
+import { MessageCircle, Loader2, Pencil, Printer, Calendar, User, ExternalLink, RefreshCw } from 'lucide-react'
 import type { Prescription } from 'medclinic-shared'
 
 const STATUS_STYLE: Record<string, string> = {
@@ -33,6 +33,18 @@ export function PrescriptionCard({ prescription: rx, onChanged, onEdit, readOnly
   const [waConfirm, setWaConfirm] = useState(false)
 
   const expired = !!(rx.expiresAt && new Date(rx.expiresAt) < new Date())
+
+  // Auto-generate RxE for existing prescriptions that don't have a public slug yet
+  useEffect(() => {
+    if (!rx.publicSlug && !readOnly && rx.status === 'ACTIVE') {
+      setRxeLoading(true)
+      api.prescriptions.generateRxe(rx.id)
+        .then(() => onChanged())
+        .catch(() => {})
+        .finally(() => setRxeLoading(false))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleGenerateRxe() {
     setRxeLoading(true)
@@ -160,17 +172,16 @@ export function PrescriptionCard({ prescription: rx, onChanged, onEdit, readOnly
           </button>
         )}
 
-        {/* RxE — Generar / Regenerar / Ver pública */}
+        {/* RxE — generación automática; botón visible solo cuando ya existe o está generando */}
         {!readOnly && (
           !rx.publicSlug ? (
-            <button
-              onClick={handleGenerateRxe}
-              disabled={rxeLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-primary/30 bg-primary/5 text-primary rounded-lg text-xs font-medium hover:bg-primary/10 disabled:opacity-50 transition-colors"
-            >
-              {rxeLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <QrCode className="w-3.5 h-3.5" />}
-              Generar RxE
-            </button>
+            // Generando automáticamente — mostrar spinner discreto
+            rxeLoading && (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Generando RxE…
+              </span>
+            )
           ) : expired ? (
             <button
               onClick={handleGenerateRxe}

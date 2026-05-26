@@ -144,7 +144,25 @@ export async function prescriptionsRoutes(server: FastifyInstance) {
       userAgent: request.headers['user-agent'],
     })
 
-    return reply.status(201).send({ data: prescription })
+    // Auto-generate RxE so every new prescription has a public QR immediately
+    await generateRxe(prescription.id, clinicId).catch(() => null)
+
+    // Re-fetch to include the newly set publicSlug
+    const withRxe = await prisma.prescription.findUnique({
+      where: { id: prescription.id },
+      include: {
+        patient: true,
+        doctor: {
+          select: {
+            id: true, firstName: true, lastName: true,
+            licenseNumber: true, specialty: true, institution: true, signatureUrl: true,
+          },
+        },
+        items: { include: { medication: true }, orderBy: { sortOrder: 'asc' } },
+      },
+    })
+
+    return reply.status(201).send({ data: withRxe ?? prescription })
   })
 
   // PATCH /api/prescriptions/:id
