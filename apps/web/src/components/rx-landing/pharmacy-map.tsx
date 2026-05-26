@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import 'leaflet/dist/leaflet.css'
 import type { Map as LeafletMap } from 'leaflet'
 import type { PharmacyCampaign, PharmacyBranch } from 'medclinic-shared'
-import { MapPin, Loader2 } from 'lucide-react'
+import { MapPin, Loader2, Navigation } from 'lucide-react'
 
 interface NearbyBranch extends PharmacyBranch {
   pharmacyName: string
@@ -29,8 +29,9 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const leafletMapRef = useRef<LeafletMap | null>(null)
+  // userPos: null = not yet determined; undefined = denied/unavailable
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null | undefined>(null)
   const [displayBranches, setDisplayBranches] = useState<NearbyBranch[]>([])
-  const [located, setLocated] = useState(false)
   const [mapState, setMapState] = useState<'loading' | 'ready' | 'error'>('loading')
 
   const allBranches: NearbyBranch[] = campaigns.flatMap(c =>
@@ -116,33 +117,56 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
     }
   }
 
+  const MAX_DISTANCE_KM = 15
+
+  function buildGoogleMapsUrl(branch: NearbyBranch, origin: { lat: number; lng: number } | null | undefined) {
+    const dest = `${branch.lat},${branch.lng}`
+    if (origin) {
+      return `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${dest}&travelmode=driving`
+    }
+    return `https://www.google.com/maps/search/?api=1&query=${dest}`
+  }
+
   useEffect(() => {
     if (allBranches.length === 0) return
     let cancelled = false
 
-    setDisplayBranches(allBranches.slice(0, 6))
-
-    // Draw initial map centred on all branches
+    // Draw initial map centred on all branches (before we know user location)
     drawMap(centroid(allBranches), null, allBranches.length > 1 ? 11 : 13)
 
-    // Geolocation — optional; re-centres map and sorts branches by distance
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          if (cancelled) return
-          const { latitude, longitude } = pos.coords
-          const sorted = allBranches
-            .map(b => ({ ...b, distanceKm: haversineKm(latitude, longitude, b.lat!, b.lng!) }))
-            .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
-          setDisplayBranches(sorted.slice(0, 5))
-          setLocated(true)
-          onGeoStateDetected?.('')
-          drawMap([latitude, longitude], [latitude, longitude], 12)
-        },
-        () => { /* denied — keep centroid view */ },
-        { timeout: 8_000, maximumAge: 600_000 }
-      )
+    // Geolocation
+    if (!navigator.geolocation) {
+      // No geolocation support — show all branches
+      setUserPos(undefined)
+      setDisplayBranches(allBranches)
+      return
     }
+
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        if (cancelled) return
+        const { latitude, longitude } = pos.coords
+        const withDist = allBranches
+          .map(b => ({ ...b, distanceKm: haversineKm(latitude, longitude, b.lat!, b.lng!) }))
+          .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+
+        // Filter to ≤15 km; if none found within radius show the 3 nearest regardless
+        const nearby = withDist.filter(b => (b.distanceKm ?? 999) <= MAX_DISTANCE_KM)
+        setDisplayBranches(nearby.length > 0 ? nearby : withDist.slice(0, 3))
+
+        const pos2d = { lat: latitude, lng: longitude }
+        setUserPos(pos2d)
+        onGeoStateDetected?.('')
+        drawMap([latitude, longitude], [latitude, longitude], 12)
+      },
+      () => {
+        if (cancelled) return
+        // Denied — show all branches, no distances
+        setUserPos(undefined)
+        setDisplayBranches(allBranches)
+      },
+      { timeout: 8_000, maximumAge: 600_000 }
+    )
 
     return () => {
       cancelled = true
@@ -177,29 +201,51 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
         )}
       </div>
 
-      {!located && (
+      {/* Location status hint */}
+      {userPos === null && (
         <p className="text-[11px] text-muted-foreground">
           Permite el acceso a tu ubicación para ver las farmacias más cercanas a ti.
         </p>
       )}
+      {userPos === undefined && displayBranches.length > 0 && (
+        <p className="text-[11px] text-muted-foreground">
+          Activa la ubicación para ver farmacias a menos de {MAX_DISTANCE_KM} km.
+        </p>
+      )}
+      {userPos && displayBranches.length === 0 && (
+        <p className="text-[11px] text-muted-foreground">
+          No hay farmacias aliadas en un radio de {MAX_DISTANCE_KM} km.
+        </p>
+      )}
 
-      <div className="space-y-2">
-        {displayBranches.map(b => (
-          <div key={b.id} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
-            <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-foreground truncate">{b.pharmacyName} — {b.name}</p>
-              {b.address && <p className="text-xs text-muted-foreground truncate">{b.address}</p>}
-              {b.phone && <p className="text-xs text-muted-foreground">{b.phone}</p>}
-            </div>
-            {b.distanceKm != null && (
-              <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
-                {b.distanceKm < 1 ? `${(b.distanceKm * 1000).toFixed(0)}m` : `${b.distanceKm.toFixed(1)}km`}
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
+      {displayBranches.length > 0 && (
+        <div className="space-y-2">
+          {displayBranches.map(b => (
+            <a
+              key={b.id}
+              href={buildGoogleMapsUrl(b, userPos ?? null)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-start gap-3 p-3 bg-muted rounded-lg hover:bg-muted/80 active:bg-muted/60 transition-colors cursor-pointer"
+            >
+              <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-foreground truncate">{b.pharmacyName} — {b.name}</p>
+                {b.address && <p className="text-xs text-muted-foreground truncate">{b.address}</p>}
+                {b.phone && <p className="text-xs text-muted-foreground">{b.phone}</p>}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {b.distanceKm != null && (
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    {b.distanceKm < 1 ? `${(b.distanceKm * 1000).toFixed(0)}m` : `${b.distanceKm.toFixed(1)}km`}
+                  </span>
+                )}
+                <Navigation className="w-3.5 h-3.5 text-primary/60 shrink-0" />
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
