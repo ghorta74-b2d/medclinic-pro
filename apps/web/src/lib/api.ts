@@ -179,6 +179,11 @@ async function request<T>(
     throw new Error(error?.error?.message ?? `HTTP ${response.status}`)
   }
 
+  // 204 No Content (DELETE responses) — no body to parse
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return undefined as T
+  }
+
   const data = await response.json() as T
 
   // Store in cache if applicable
