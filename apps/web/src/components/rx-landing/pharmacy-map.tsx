@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { PharmacyCampaign, PharmacyBranch } from 'medclinic-shared'
-import { MapPin } from 'lucide-react'
+import { MapPin, Loader2 } from 'lucide-react'
 
 interface NearbyBranch extends PharmacyBranch {
   pharmacyName: string
@@ -33,18 +33,18 @@ const DARK_MAP_STYLES = [
   { featureType: 'poi', stylers: [{ visibility: 'off' }] },
 ]
 
+// Stable callback name — avoids race conditions with stale scripts
+const GMAPS_CB = '__medclinic_gmaps_cb__'
+
 export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const [displayBranches, setDisplayBranches] = useState<NearbyBranch[]>([])
   const [located, setLocated] = useState(false)
-  // mapsLoaded: true  → map rendered successfully
-  // mapsAttempted: true → ensureGoogle() resolved (success or failure)
-  const [mapsLoaded, setMapsLoaded] = useState(false)
-  const [mapsAttempted, setMapsAttempted] = useState(false)
+  // 'loading' → spinner shown; 'ready' → map visible; 'error' → text fallback
+  const [mapState, setMapState] = useState<'loading' | 'ready' | 'error'>('loading')
 
   const apiKey = process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY']
 
-  // Flatten all branches with valid coordinates from all campaigns
   const allBranches: NearbyBranch[] = campaigns.flatMap(c =>
     (c.branches ?? [])
       .filter(b => b.lat != null && b.lng != null)
@@ -52,78 +52,103 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
   )
 
   function centroid(branches: NearbyBranch[]): { lat: number; lng: number } {
-    if (branches.length === 0) return { lat: 23.6345, lng: -102.5528 } // centro de México
+    if (branches.length === 0) return { lat: 23.6345, lng: -102.5528 }
     return {
       lat: branches.reduce((s, b) => s + b.lat!, 0) / branches.length,
       lng: branches.reduce((s, b) => s + b.lng!, 0) / branches.length,
     }
   }
 
-  async function renderMap(center: { lat: number; lng: number }, userLoc: { lat: number; lng: number } | null, zoom: number) {
-    if (!mapRef.current || !window.google?.maps) return
+  /**
+   * Draws (or redraws) the map using the classic google.maps.Map + Marker API.
+   * Works with v=3 (stable quarterly release) — no mapId required.
+   */
+  function drawMap(
+    center: { lat: number; lng: number },
+    userLoc: { lat: number; lng: number } | null,
+    zoom: number
+  ) {
+    if (!mapRef.current || !window.google?.maps?.Map) return
 
-    // Import the core Maps library — Circle doesn't need mapId or AdvancedMarkerElement
-    const { Map: GMap, Circle } = await (window.google.maps as any).importLibrary('maps') as { Map: any; Circle: any }
-    const map = new GMap(mapRef.current, {
+    const map = new window.google.maps.Map(mapRef.current, {
       center,
       zoom,
       disableDefaultUI: true,
       zoomControl: true,
-      mapTypeControl: false,
       styles: DARK_MAP_STYLES,
-      // No mapId needed — Circle works without it
     })
 
-    // Pharmacy branch markers as green Circle overlays
+    // Pharmacy branch markers — green circles via SymbolPath (no AdvancedMarker / mapId needed)
     allBranches.forEach(b => {
-      new Circle({
-        center: { lat: b.lat!, lng: b.lng! },
-        radius: 200,
+      new window.google.maps.Marker({
+        position: { lat: b.lat!, lng: b.lng! },
         map,
-        fillColor: '#22C55E',
-        fillOpacity: 0.9,
-        strokeColor: '#ffffff',
-        strokeWeight: 2,
-        strokeOpacity: 0.8,
-        clickable: false,
+        title: `${b.pharmacyName} — ${b.name}`,
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: '#22C55E',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        },
       })
     })
 
-    // User location marker as blue Circle
+    // User location — blue circle
     if (userLoc) {
-      new Circle({
-        center: userLoc,
-        radius: 150,
+      new window.google.maps.Marker({
+        position: userLoc,
         map,
-        fillColor: '#3B82F6',
-        fillOpacity: 0.9,
-        strokeColor: '#ffffff',
-        strokeWeight: 2,
-        strokeOpacity: 0.8,
-        clickable: false,
+        title: 'Tu ubicación',
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 9,
+          fillColor: '#3B82F6',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        },
       })
     }
+
+    setMapState('ready')
   }
 
-  async function ensureGoogle(): Promise<boolean> {
-    if (!apiKey) return false
-    if (window.google?.maps) return true
+  /**
+   * Loads the Google Maps JS API using the callback pattern (v=3, stable quarterly).
+   * The callback is the only reliable signal that Maps is fully initialised.
+   */
+  function loadGoogleMaps(): Promise<boolean> {
+    if (!apiKey) return Promise.resolve(false)
+    // Already loaded from a previous mount
+    if (window.google?.maps?.Map) return Promise.resolve(true)
 
-    // If a previous script tag exists but Maps never initialized (e.g. domain was
-    // restricted when it first loaded), remove it so we can inject a fresh one.
-    // Without this, the 'load' event has already fired and will never fire again,
-    // causing the Promise to hang for the full timeout period.
-    const stale = document.querySelector<HTMLScriptElement>('script[data-gmaps]')
-    if (stale) stale.remove()
+    // Remove any stale/failed script tag from a previous attempt
+    document.querySelector<HTMLScriptElement>('script[data-gmaps]')?.remove()
 
-    return new Promise<boolean>((resolve) => {
+    return new Promise<boolean>(resolve => {
+      let settled = false
+      function settle(ok: boolean) {
+        if (settled) return
+        settled = true
+        clearTimeout(tid)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (window as any)[GMAPS_CB]
+        resolve(ok)
+      }
+
+      const tid = setTimeout(() => settle(false), 12_000)
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(window as any)[GMAPS_CB] = () => settle(!!window.google?.maps?.Map)
+
       const script = document.createElement('script')
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly`
+      // v=3 = stable quarterly; loading=async + callback = recommended dynamic load pattern
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=3&loading=async&callback=${GMAPS_CB}`
       script.async = true
       script.dataset['gmaps'] = '1'
-      const tid = setTimeout(() => resolve(false), 10000)
-      script.onload = () => { clearTimeout(tid); resolve(!!window.google?.maps) }
-      script.onerror = () => { clearTimeout(tid); resolve(false) }
+      script.onerror = () => settle(false)
       document.head.appendChild(script)
     })
   }
@@ -132,20 +157,23 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
     if (allBranches.length === 0) return
     let cancelled = false
 
-    // Show all branches immediately (no distance yet)
     setDisplayBranches(allBranches.slice(0, 6))
 
-    async function tryRenderMap(center: { lat: number; lng: number }, userLoc: { lat: number; lng: number } | null, zoom: number) {
-      try {
-        await renderMap(center, userLoc, zoom)
-        setMapsLoaded(true)
-      } catch (err) {
-        console.warn('[PharmacyMap] renderMap failed:', err)
-        setMapsLoaded(false)
+    async function run() {
+      const mapsReady = await loadGoogleMaps()
+      if (cancelled) return
+
+      if (!mapsReady) {
+        setMapState('error')
+        startGeolocation(false)
+        return
       }
+
+      // Show all branches centred on their centroid first
+      drawMap(centroid(allBranches), null, allBranches.length > 1 ? 11 : 13)
+      startGeolocation(true)
     }
 
-    // Geolocation runs independently of map loading so the browser always prompts for permission
     function startGeolocation(mapsReady: boolean) {
       if (!navigator.geolocation) return
       navigator.geolocation.getCurrentPosition(
@@ -158,28 +186,22 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
           setDisplayBranches(sorted.slice(0, 5))
           setLocated(true)
           onGeoStateDetected?.('')
-          if (mapsReady) tryRenderMap({ lat: latitude, lng: longitude }, { lat: latitude, lng: longitude }, 12)
+          // Re-center map on user with nearest branch markers
+          if (mapsReady) drawMap({ lat: latitude, lng: longitude }, { lat: latitude, lng: longitude }, 12)
         },
-        () => { /* denied — keep centroid + full list */ },
-        { timeout: 8000, maximumAge: 600000 }
+        () => { /* denied — keep centroid view */ },
+        { timeout: 8_000, maximumAge: 600_000 }
       )
     }
 
-    ;(async () => {
-      const mapsReady = await ensureGoogle()
-      if (cancelled) return
-      setMapsAttempted(true)
-      if (mapsReady) await tryRenderMap(centroid(allBranches), null, allBranches.length > 1 ? 11 : 13)
-      startGeolocation(mapsReady)
-    })()
-
+    run()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaigns.length])
 
   if (allBranches.length === 0) return null
 
-  // No API key → text-only list fallback
+  // No API key configured → plain list
   if (!apiKey) {
     return (
       <div className="space-y-2">
@@ -200,26 +222,38 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
   return (
     <div className="space-y-3">
       {/*
-        Map container is always mounted so mapRef is available for Google Maps to render into.
-        - Before attempt: invisible (visibility:hidden) but full height → Maps can render
-        - After success:  fully visible
-        - After failure:  collapsed (height:0) so no blank rectangle appears
-        NOTE: avoid conflicting Tailwind h-* classes — use inline style for height instead.
+        Map container is always rendered at full height.
+        A spinner covers it while loading; an error message if Maps fails.
+        The mapRef div fills the container so Maps always has real dimensions to render into.
       */}
       <div
-        ref={mapRef}
-        className="w-full rounded-xl overflow-hidden border border-border bg-muted transition-opacity duration-300"
-        style={{
-          height: mapsLoaded || !mapsAttempted ? '14rem' : 0,
-          visibility: mapsLoaded ? 'visible' : 'hidden',
-          border: (!mapsLoaded && mapsAttempted) ? 'none' : undefined,
-        }}
-      />
+        className="relative w-full rounded-xl overflow-hidden border border-border"
+        style={{ height: '14rem' }}
+      >
+        {/* Maps renders into this div */}
+        <div ref={mapRef} className="absolute inset-0" />
+
+        {/* Loading overlay */}
+        {mapState === 'loading' && (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted">
+            <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
+          </div>
+        )}
+
+        {/* Error overlay */}
+        {mapState === 'error' && (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted">
+            <p className="text-xs text-muted-foreground">Mapa no disponible</p>
+          </div>
+        )}
+      </div>
+
       {!located && (
         <p className="text-[11px] text-muted-foreground">
           Permite el acceso a tu ubicación para ver las farmacias más cercanas a ti.
         </p>
       )}
+
       <div className="space-y-2">
         {displayBranches.map(b => (
           <div key={b.id} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
@@ -241,10 +275,11 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
   )
 }
 
-// Augment window type for Google Maps
+// Augment window type for Google Maps + callback
 declare global {
   interface Window {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     google: any
+    __medclinic_gmaps_cb__?: () => void
   }
 }
