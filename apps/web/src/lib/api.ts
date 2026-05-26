@@ -270,6 +270,8 @@ export const api = {
       request('/api/admin/pharmacies', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: unknown) =>
       request(`/api/admin/pharmacies/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request(`/api/admin/pharmacies/${id}`, { method: 'DELETE' }),
     addBranch: (pharmacyId: string, data: unknown) =>
       request(`/api/admin/pharmacies/${pharmacyId}/branches`, { method: 'POST', body: JSON.stringify(data) }),
     campaigns: {
@@ -278,6 +280,8 @@ export const api = {
         request('/api/admin/pharmacies/campaigns', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: unknown) =>
         request(`/api/admin/pharmacies/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request(`/api/admin/pharmacies/campaigns/${id}`, { method: 'DELETE' }),
       metrics: (id: string, days = 30) =>
         request(`/api/admin/pharmacies/campaigns/${id}/metrics?days=${days}`),
     },

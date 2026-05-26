@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
-import { Loader2, Plus, Building2, Megaphone, BarChart3, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Loader2, Plus, Building2, Megaphone, BarChart3, ToggleLeft, ToggleRight, Pencil, Trash2 } from 'lucide-react'
 import type { PharmacyCampaign } from 'medclinic-shared'
 
 type Tab = 'farmacias' | 'campanas' | 'metricas'
@@ -23,6 +23,28 @@ export default function FarmaciasAdminPage() {
   const [loading, setLoading] = useState(true)
   const [showNewPharmacy, setShowNewPharmacy] = useState(false)
   const [showNewCampaign, setShowNewCampaign] = useState(false)
+  const [editingPharmacy, setEditingPharmacy] = useState<Pharmacy | null>(null)
+  const [editingCampaign, setEditingCampaign] = useState<PharmacyCampaign | null>(null)
+
+  async function handleDeletePharmacy(ph: Pharmacy) {
+    if (!confirm(`¿Eliminar "${ph.name}"? Se borrarán también sus campañas. Esta acción no se puede deshacer.`)) return
+    try {
+      await api.pharmacies.delete(ph.id)
+      loadData()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al eliminar')
+    }
+  }
+
+  async function handleDeleteCampaign(c: PharmacyCampaign) {
+    if (!confirm(`¿Eliminar campaña "${c.displayName}"? Esta acción no se puede deshacer.`)) return
+    try {
+      await api.pharmacies.campaigns.delete(c.id)
+      loadData()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al eliminar')
+    }
+  }
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -120,11 +142,21 @@ export default function FarmaciasAdminPage() {
                           )}
                         </div>
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        ph.active ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {ph.active ? 'Activa' : 'Inactiva'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          ph.active ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {ph.active ? 'Activa' : 'Inactiva'}
+                        </span>
+                        <button onClick={() => setEditingPharmacy(ph)} title="Editar"
+                          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDeletePharmacy(ph)} title="Eliminar"
+                          className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Megaphone className="w-3.5 h-3.5" />
@@ -154,6 +186,14 @@ export default function FarmaciasAdminPage() {
                         <span className={`text-xs font-medium ${c.active ? 'text-success' : 'text-muted-foreground'}`}>
                           {c.active ? 'Activa' : 'Pausada'}
                         </span>
+                        <button onClick={() => setEditingCampaign(c)} title="Editar"
+                          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDeleteCampaign(c)} title="Eliminar"
+                          className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-3 text-center">
@@ -232,6 +272,25 @@ export default function FarmaciasAdminPage() {
           pharmacies={pharmacies}
           onClose={() => setShowNewCampaign(false)}
           onCreated={loadData}
+        />
+      )}
+
+      {/* Edit Pharmacy */}
+      {editingPharmacy && (
+        <EditPharmacyModal
+          pharmacy={editingPharmacy}
+          onClose={() => setEditingPharmacy(null)}
+          onSaved={loadData}
+        />
+      )}
+
+      {/* Edit Campaign */}
+      {editingCampaign && (
+        <EditCampaignModal
+          campaign={editingCampaign}
+          pharmacies={pharmacies}
+          onClose={() => setEditingCampaign(null)}
+          onSaved={loadData}
         />
       )}
     </div>
@@ -326,6 +385,229 @@ function NewPharmacyModal({ onClose, onCreated }: { onClose: () => void; onCreat
               className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition-colors">
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
               Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Edit Pharmacy Modal ─────────────────────────────────────
+function EditPharmacyModal({ pharmacy, onClose, onSaved }: {
+  pharmacy: Pharmacy
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [name, setName] = useState(pharmacy.name)
+  const [logoUrl, setLogoUrl] = useState(pharmacy.logoUrl ?? '')
+  const [websiteUrl, setWebsiteUrl] = useState(pharmacy.websiteUrl ?? '')
+  const [active, setActive] = useState(pharmacy.active)
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await api.pharmacies.update(pharmacy.id, {
+        name,
+        logoUrl: logoUrl || undefined,
+        websiteUrl: websiteUrl || undefined,
+        active,
+      })
+      onSaved()
+      onClose()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl">
+        <h3 className="text-sm font-semibold text-foreground mb-4">Editar farmacia</h3>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">Nombre *</label>
+            <input value={name} onChange={e => setName(e.target.value)} required
+              className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">URL del logo</label>
+            <input value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://..."
+              className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">Sitio web</label>
+            <input value={websiteUrl} onChange={e => setWebsiteUrl(e.target.value)} placeholder="https://..."
+              className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="ph-active" checked={active} onChange={e => setActive(e.target.checked)}
+              className="w-4 h-4 accent-primary" />
+            <label htmlFor="ph-active" className="text-xs text-muted-foreground">Activa</label>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="flex-1 px-4 py-2 border border-border rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted transition-colors">
+              Cancelar
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition-colors">
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+              Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Edit Campaign Modal ─────────────────────────────────────
+function EditCampaignModal({ campaign, pharmacies, onClose, onSaved }: {
+  campaign: PharmacyCampaign
+  pharmacies: Pharmacy[]
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [form, setForm] = useState({
+    pharmacyId: campaign.pharmacyId,
+    displayName: campaign.displayName,
+    description: campaign.description ?? '',
+    searchQuery: campaign.searchQuery ?? '',
+    ctaLink: campaign.ctaLink,
+    ctaLabel: campaign.ctaLabel,
+    displayPhone: campaign.displayPhone ?? '',
+    priority: campaign.priority,
+    geoStates: campaign.geoStates,
+    pricingModel: campaign.pricingModel as 'CPM' | 'CPC' | 'FLAT_MONTHLY',
+    rateCents: campaign.rateCents / 100,
+    active: campaign.active,
+    startsAt: campaign.startsAt ? campaign.startsAt.slice(0, 10) : '',
+    endsAt: campaign.endsAt ? campaign.endsAt.slice(0, 10) : '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  function toggleState(s: string) {
+    setForm(f => ({
+      ...f,
+      geoStates: f.geoStates.includes(s) ? f.geoStates.filter(x => x !== s) : [...f.geoStates, s],
+    }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await api.pharmacies.campaigns.update(campaign.id, {
+        ...form,
+        rateCents: Math.round(form.rateCents * 100),
+        startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : undefined,
+        endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : undefined,
+      })
+      onSaved()
+      onClose()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inp = 'w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+      <div className="bg-card border border-border rounded-2xl p-6 max-w-lg w-full shadow-xl my-4">
+        <h3 className="text-sm font-semibold text-foreground mb-4">Editar campaña</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="text-xs text-muted-foreground block mb-1">Farmacia *</label>
+              <select value={form.pharmacyId} onChange={e => setForm(f => ({ ...f, pharmacyId: e.target.value }))} required className={inp}>
+                {pharmacies.map(ph => <option key={ph.id} value={ph.id}>{ph.name}</option>)}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs text-muted-foreground block mb-1">Nombre del slot *</label>
+              <input value={form.displayName} onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))} required className={inp} />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs text-muted-foreground block mb-1">Descripción</label>
+              <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className={inp} />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs text-muted-foreground block mb-1">
+                Búsqueda Google Maps <span className="text-primary">(nombre de cadena)</span>
+              </label>
+              <input value={form.searchQuery} onChange={e => setForm(f => ({ ...f, searchQuery: e.target.value }))}
+                placeholder="Ej: Farmacias del Ahorro" className={inp} />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs text-muted-foreground block mb-1">URL de destino (CTA) *</label>
+              <input value={form.ctaLink} onChange={e => setForm(f => ({ ...f, ctaLink: e.target.value }))} required placeholder="https://..." className={inp} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Texto del botón</label>
+              <input value={form.ctaLabel} onChange={e => setForm(f => ({ ...f, ctaLabel: e.target.value }))} className={inp} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Prioridad</label>
+              <input type="number" min={0} value={form.priority} onChange={e => setForm(f => ({ ...f, priority: Number(e.target.value) }))} className={inp} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Modelo de cobro</label>
+              <select value={form.pricingModel} onChange={e => setForm(f => ({ ...f, pricingModel: e.target.value as 'CPM'|'CPC'|'FLAT_MONTHLY' }))} className={inp}>
+                <option value="FLAT_MONTHLY">Mensual fijo</option>
+                <option value="CPM">CPM</option>
+                <option value="CPC">CPC</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Tarifa (MXN)</label>
+              <input type="number" min={0} step="0.01" value={form.rateCents} onChange={e => setForm(f => ({ ...f, rateCents: Number(e.target.value) }))} className={inp} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Inicio</label>
+              <input type="date" value={form.startsAt} onChange={e => setForm(f => ({ ...f, startsAt: e.target.value }))} className={inp} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">Fin</label>
+              <input type="date" value={form.endsAt} onChange={e => setForm(f => ({ ...f, endsAt: e.target.value }))} className={inp} />
+            </div>
+            <div className="col-span-2 flex items-center gap-2">
+              <input type="checkbox" id="cp-active" checked={form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))}
+                className="w-4 h-4 accent-primary" />
+              <label htmlFor="cp-active" className="text-xs text-muted-foreground">Campaña activa</label>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-2">Estados (vacío = nacional)</label>
+            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+              {MX_STATES.map(s => (
+                <button key={s} type="button" onClick={() => toggleState(s)}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border font-mono transition-colors ${
+                    form.geoStates.includes(s)
+                      ? 'bg-primary text-white border-primary'
+                      : 'border-border text-muted-foreground hover:border-primary/50'
+                  }`}>
+                  {s.replace('MX-', '')}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button type="button" onClick={onClose}
+              className="flex-1 px-4 py-2 border border-border rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted transition-colors">
+              Cancelar
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition-colors">
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+              Guardar cambios
             </button>
           </div>
         </form>

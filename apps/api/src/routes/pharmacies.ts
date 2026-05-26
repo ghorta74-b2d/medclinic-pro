@@ -67,6 +67,12 @@ export async function pharmaciesRoutes(server: FastifyInstance) {
     return reply.send({ data: pharmacy })
   })
 
+  server.delete('/:id', { preHandler: requireRoles('SUPER_ADMIN') }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    await prisma.pharmacy.delete({ where: { id } })
+    return reply.status(204).send()
+  })
+
   // ── Branches ────────────────────────────────────────────────
 
   server.get('/:id/branches', { preHandler: requireAdmin }, async (request, reply) => {
@@ -124,6 +130,12 @@ export async function pharmaciesRoutes(server: FastifyInstance) {
       },
     })
     return reply.send({ data: campaign })
+  })
+
+  server.delete('/campaigns/:id', { preHandler: requireRoles('SUPER_ADMIN') }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    await prisma.pharmacyCampaign.delete({ where: { id } })
+    return reply.status(204).send()
   })
 
   // ── Campaign Metrics ────────────────────────────────────────
