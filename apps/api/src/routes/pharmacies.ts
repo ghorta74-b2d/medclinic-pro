@@ -28,6 +28,7 @@ const CampaignSchema = z.object({
   ctaLink: z.string().url(),
   ctaLabel: z.string().default('Comprar'),
   displayPhone: z.string().optional(),
+  searchQuery: z.string().optional(),
   priority: z.number().int().min(0).default(0),
   geoStates: z.array(z.string()).default([]),
   startsAt: z.string().datetime().optional(),

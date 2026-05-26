@@ -267,6 +267,7 @@ export interface PharmacyCampaign {
   ctaLink: string
   ctaLabel: string
   displayPhone?: string
+  searchQuery?: string
   priority: number
   geoStates: string[]
   startsAt?: string

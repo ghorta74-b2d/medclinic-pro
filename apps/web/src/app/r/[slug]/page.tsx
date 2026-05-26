@@ -254,8 +254,8 @@ export default async function RxLandingPage({ params }: { params: Promise<{ slug
               ))}
             </div>
 
-            {/* Map with nearby branches */}
-            {campaigns.some(c => (c.branches?.length ?? 0) > 0) && (
+            {/* Map — searches Google Places live based on patient geolocation */}
+            {campaigns.some(c => c.searchQuery) && (
               <div className="bg-card border border-border rounded-xl p-4 space-y-3">
                 <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">Sucursales cercanas</h3>
                 <PharmacyMap campaigns={campaigns} />

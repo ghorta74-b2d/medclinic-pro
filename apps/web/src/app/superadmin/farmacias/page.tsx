@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
-import { Loader2, Plus, Building2, Megaphone, BarChart3, MapPin, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Loader2, Plus, Building2, Megaphone, BarChart3, ToggleLeft, ToggleRight } from 'lucide-react'
 import type { PharmacyCampaign } from 'medclinic-shared'
 
 type Tab = 'farmacias' | 'campanas' | 'metricas'
@@ -14,7 +14,6 @@ interface Pharmacy {
   websiteUrl?: string
   active: boolean
   campaigns: Pick<PharmacyCampaign, 'id' | 'displayName' | 'active' | 'impressions' | 'clicks'>[]
-  branches: { id: string; name: string; address?: string; lat?: number; lng?: number }[]
 }
 
 export default function FarmaciasAdminPage() {
@@ -127,15 +126,9 @@ export default function FarmaciasAdminPage() {
                         {ph.active ? 'Activa' : 'Inactiva'}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1.5">
-                        <Megaphone className="w-3.5 h-3.5" />
-                        {ph.campaigns.length} campaña{ph.campaigns.length !== 1 ? 's' : ''}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5" />
-                        {ph.branches.length} sucursal{ph.branches.length !== 1 ? 'es' : ''}
-                      </div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Megaphone className="w-3.5 h-3.5" />
+                      {ph.campaigns.length} campaña{ph.campaigns.length !== 1 ? 's' : ''}
                     </div>
                   </div>
                 ))}
@@ -357,6 +350,7 @@ function NewCampaignModal({ pharmacies, onClose, onCreated }: {
     pharmacyId: pharmacies[0]?.id ?? '',
     displayName: '',
     description: '',
+    searchQuery: '',
     ctaLink: '',
     ctaLabel: 'Comprar',
     displayPhone: '',
@@ -421,6 +415,20 @@ function NewCampaignModal({ pharmacies, onClose, onCreated }: {
               <label className="text-xs text-muted-foreground block mb-1">Descripción</label>
               <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs text-muted-foreground block mb-1">
+                Búsqueda Google Maps <span className="text-primary">(nombre de cadena para localizar sucursales)</span>
+              </label>
+              <input
+                value={form.searchQuery}
+                onChange={e => setForm(f => ({ ...f, searchQuery: e.target.value }))}
+                placeholder="Ej: Farmacias del Ahorro"
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                El paciente verá automáticamente las sucursales de esta cadena más cercanas a su ubicación.
+              </p>
             </div>
             <div className="col-span-2">
               <label className="text-xs text-muted-foreground block mb-1">URL de destino (CTA) *</label>

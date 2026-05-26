@@ -788,6 +788,7 @@ model PharmacyCampaign {
   ctaLink      String
   ctaLabel     String       @default("Comprar")
   displayPhone String?
+  searchQuery  String?      // término para Google Places API, e.g. "Farmacias del Ahorro"
   priority     Int          @default(0)   // mayor = aparece primero
   geoStates    String[]     @default([])  // ISO 3166-2 MX, e.g. ["MX-YUC","MX-CMX"]; vacío = nacional
   startsAt     DateTime?

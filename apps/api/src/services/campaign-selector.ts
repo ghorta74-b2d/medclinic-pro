@@ -10,11 +10,7 @@ export async function selectCampaigns(geoState: string | null, limit = 4) {
       AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
     },
     include: {
-      pharmacy: {
-        include: {
-          branches: { select: { id: true, name: true, address: true, lat: true, lng: true, phone: true } },
-        },
-      },
+      pharmacy: { select: { name: true, logoUrl: true } },
     },
     orderBy: { priority: 'desc' },
   })
@@ -24,6 +20,5 @@ export async function selectCampaigns(geoState: string | null, limit = 4) {
     ? campaigns.filter(c => c.geoStates.length === 0 || c.geoStates.includes(geoState))
     : campaigns.filter(c => c.geoStates.length === 0)
 
-  // Flatten pharmacy.branches onto campaign (matches PharmacyCampaign shared type)
-  return filtered.slice(0, limit).map(c => ({ ...c, branches: c.pharmacy.branches }))
+  return filtered.slice(0, limit).map(c => ({ ...c, pharmacy: c.pharmacy }))
 }
