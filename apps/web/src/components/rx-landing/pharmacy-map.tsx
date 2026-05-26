@@ -69,11 +69,9 @@ export function PharmacyMap({ campaigns }: PharmacyMapProps) {
     }
   }
 
-  function buildMapsUrl(b: PlaceBranch, origin: { lat: number; lng: number } | null | undefined) {
-    if (origin) {
-      return `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=place_id:${b.placeId}&travelmode=driving`
-    }
-    return `https://www.google.com/maps/place/?q=place_id:${b.placeId}`
+  function buildMapsUrl(b: PlaceBranch) {
+    // Abre la ubicación de la sucursal sin ruta — compatible iOS/Android
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name)}&query_place_id=${b.placeId}`
   }
 
   useEffect(() => {
@@ -189,7 +187,7 @@ export function PharmacyMap({ campaigns }: PharmacyMapProps) {
           {branches.slice(0, visibleCount).map(b => (
             <a
               key={b.placeId}
-              href={buildMapsUrl(b, userPos ?? null)}
+              href={buildMapsUrl(b)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-start gap-3 p-3 bg-muted rounded-lg hover:bg-muted/80 active:bg-muted/60 transition-colors cursor-pointer"
