@@ -117,7 +117,7 @@ export function PharmacyMap({ campaigns, onGeoStateDetected }: PharmacyMapProps)
     }
   }
 
-  const MAX_DISTANCE_KM = 15
+  const MAX_DISTANCE_KM = 20
 
   function buildGoogleMapsUrl(branch: NearbyBranch, origin: { lat: number; lng: number } | null | undefined) {
     const dest = `${branch.lat},${branch.lng}`
