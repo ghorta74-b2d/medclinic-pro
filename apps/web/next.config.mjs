@@ -11,7 +11,8 @@ const securityHeaders = [
   // Force HTTPS for 2 years, including subdomains
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
   // Restrict browser feature access (microphone allowed for AI voice capture)
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=(), interest-cohort=()' },
+  // geolocation=(self) — requerido para el mapa de farmacias en /r/[slug]
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=(self), interest-cohort=()' },
   // Content Security Policy
   {
     key: 'Content-Security-Policy',
