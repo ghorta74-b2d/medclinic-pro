@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import 'leaflet/dist/leaflet.css'
 import type { Map as LeafletMap } from 'leaflet'
 import type { PharmacyCampaign } from 'medclinic-shared'
-import { MapPin, Loader2, Navigation } from 'lucide-react'
+import { MapPin, Loader2, Navigation, LocateFixed } from 'lucide-react'
 
 interface PlaceBranch {
   placeId: string
@@ -21,17 +21,22 @@ interface PharmacyMapProps {
 
 const PAGE_SIZE = 5
 
+type GeoState = 'idle' | 'requesting' | 'loading' | 'done' | 'denied' | 'unavailable' | 'error'
+
 export function PharmacyMap({ campaigns }: PharmacyMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const leafletMapRef = useRef<LeafletMap | null>(null)
   const [branches, setBranches] = useState<PlaceBranch[]>([])
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const [mapState, setMapState] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [fetchState, setFetchState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
-  // null = pending; undefined = denied/unavailable
-  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null | undefined>(null)
+  const [mapReady, setMapReady] = useState(false)
+  const [geoState, setGeoState] = useState<GeoState>('idle')
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null)
 
   const searchQueries = campaigns.map(c => c.searchQuery).filter((q): q is string => Boolean(q))
+
+  function buildMapsUrl(b: PlaceBranch) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name)}&query_place_id=${b.placeId}`
+  }
 
   async function drawMap(
     center: [number, number],
@@ -63,36 +68,38 @@ export function PharmacyMap({ campaigns }: PharmacyMapProps) {
           radius: 9, fillColor: '#3B82F6', color: '#ffffff', weight: 2, opacity: 1, fillOpacity: 1,
         }).bindPopup('Tu ubicación').addTo(map)
       }
-      setMapState('ready')
+      setMapReady(true)
     } catch {
-      setMapState('error')
+      // Map failed silently — list still shows
     }
   }
 
-  function buildMapsUrl(b: PlaceBranch) {
-    // Abre la ubicación de la sucursal sin ruta — compatible iOS/Android
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name)}&query_place_id=${b.placeId}`
-  }
-
+  // Initialize map centered on Mexico (no geolocation yet)
   useEffect(() => {
     if (searchQueries.length === 0) return
-    let cancelled = false
-
-    // Initial map: center of Mexico while we wait for geolocation
     drawMap([23.6345, -102.5528], null, 5, [])
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove()
+        leafletMapRef.current = null
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQueries.length])
 
+  // Triggered by user tapping the locate button — user gesture ensures Android dialog appears
+  const requestLocation = useCallback(async () => {
     if (!navigator.geolocation) {
-      setUserPos(undefined)
-      setFetchState('done')
+      setGeoState('unavailable')
       return
     }
+    setGeoState('requesting')
 
     navigator.geolocation.getCurrentPosition(
       async pos => {
-        if (cancelled) return
         const { latitude, longitude } = pos.coords
         setUserPos({ lat: latitude, lng: longitude })
-        setFetchState('loading')
+        setGeoState('loading')
 
         try {
           const params = new URLSearchParams()
@@ -101,88 +108,86 @@ export function PharmacyMap({ campaigns }: PharmacyMapProps) {
           searchQueries.forEach(q => params.append('q', q))
 
           const res = await fetch(`/api/pharmacy-nearby?${params}`)
-          if (cancelled) return
           const json = await res.json()
           const data: PlaceBranch[] = json.data ?? []
           setBranches(data)
           setVisibleCount(PAGE_SIZE)
-          setFetchState('done')
+          setGeoState('done')
 
-          // Redraw map with real user position + branch markers
           drawMap(
             [latitude, longitude],
             [latitude, longitude],
             13,
-            data.slice(0, 10)  // show first 10 on map
+            data.slice(0, 10)
           )
         } catch {
-          if (!cancelled) setFetchState('error')
+          setGeoState('error')
         }
       },
-      () => {
-        if (!cancelled) {
-          setUserPos(undefined)
-          setFetchState('done')
-        }
+      err => {
+        if (err.code === 1) setGeoState('denied')        // PERMISSION_DENIED
+        else if (err.code === 2) setGeoState('unavailable') // POSITION_UNAVAILABLE
+        else setGeoState('denied')                        // TIMEOUT — treat as denied
       },
-      { timeout: 8_000, maximumAge: 600_000 }
+      { timeout: 15_000, maximumAge: 300_000, enableHighAccuracy: false }
     )
-
-    return () => {
-      cancelled = true
-      if (leafletMapRef.current) {
-        leafletMapRef.current.remove()
-        leafletMapRef.current = null
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaigns.length])
+  }, [searchQueries]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (searchQueries.length === 0) return null
 
   return (
     <div className="space-y-3">
-      {/* Map */}
+      {/* Map container — always visible */}
       <div className="relative w-full rounded-xl overflow-hidden border border-border" style={{ height: '14rem' }}>
         <div ref={mapContainerRef} className="absolute inset-0" />
-        {mapState === 'loading' && (
+        {!mapReady && (
           <div className="absolute inset-0 flex items-center justify-center bg-muted pointer-events-none">
             <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
           </div>
         )}
-        {mapState === 'error' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted">
-            <p className="text-xs text-muted-foreground">Mapa no disponible</p>
-          </div>
-        )}
       </div>
 
-      {/* Status hints */}
-      {userPos === null && (
-        <p className="text-[11px] text-muted-foreground">
-          Permite el acceso a tu ubicación para ver las farmacias más cercanas.
+      {/* CTA: idle or after denial/error → show locate button */}
+      {(geoState === 'idle' || geoState === 'denied' || geoState === 'unavailable' || geoState === 'error') && (
+        <button
+          onClick={requestLocation}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-primary/40 bg-primary/5 text-primary text-xs font-semibold hover:bg-primary/10 active:bg-primary/15 transition-colors"
+        >
+          <LocateFixed className="w-4 h-4" />
+          {geoState === 'idle' ? 'Buscar farmacias cerca de mí' : 'Reintentar ubicación'}
+        </button>
+      )}
+
+      {/* Denied message */}
+      {geoState === 'denied' && (
+        <p className="text-[11px] text-muted-foreground text-center">
+          Ubicación bloqueada. Ve a Ajustes → Chrome → Permisos → Ubicación y actívala para este sitio.
         </p>
       )}
-      {userPos === undefined && (
-        <p className="text-[11px] text-muted-foreground">
-          Activa la ubicación para buscar farmacias en tu área.
+      {geoState === 'unavailable' && (
+        <p className="text-[11px] text-muted-foreground text-center">
+          GPS no disponible en este momento. Intenta en un lugar con mejor señal.
         </p>
       )}
 
-      {/* Fetching */}
-      {fetchState === 'loading' && (
-        <div className="flex items-center gap-2 py-2">
+      {/* Requesting / loading */}
+      {(geoState === 'requesting' || geoState === 'loading') && (
+        <div className="flex items-center justify-center gap-2 py-1">
           <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-          <p className="text-xs text-muted-foreground">Buscando farmacias cercanas…</p>
+          <p className="text-xs text-muted-foreground">
+            {geoState === 'requesting' ? 'Obteniendo ubicación…' : 'Buscando farmacias cercanas…'}
+          </p>
         </div>
       )}
 
-      {/* Results */}
-      {fetchState === 'done' && userPos && branches.length === 0 && (
-        <p className="text-[11px] text-muted-foreground">No se encontraron sucursales en un radio de 20 km.</p>
+      {/* Results list */}
+      {geoState === 'done' && userPos && branches.length === 0 && (
+        <p className="text-[11px] text-muted-foreground text-center">
+          No se encontraron sucursales en un radio de 20 km.
+        </p>
       )}
 
-      {fetchState === 'done' && branches.length > 0 && (
+      {geoState === 'done' && branches.length > 0 && (
         <div className="space-y-2">
           {branches.slice(0, visibleCount).map(b => (
             <a
@@ -217,10 +222,6 @@ export function PharmacyMap({ campaigns }: PharmacyMapProps) {
             </button>
           )}
         </div>
-      )}
-
-      {fetchState === 'error' && (
-        <p className="text-[11px] text-muted-foreground">No se pudo cargar la información de farmacias.</p>
       )}
     </div>
   )

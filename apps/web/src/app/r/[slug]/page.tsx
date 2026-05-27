@@ -93,6 +93,9 @@ export default async function RxLandingPage({ params }: { params: Promise<{ slug
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* Suppress PWA install prompt on patient-facing prescription page */}
+      <meta name="mobile-web-app-capable" content="no" />
+
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
