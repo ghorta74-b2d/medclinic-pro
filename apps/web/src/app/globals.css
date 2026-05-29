@@ -161,3 +161,17 @@
 .animate-float {
   animation: float 5s ease-in-out infinite;
 }
+
+/* ECG loader — the brand heartbeat wave drawing itself, then flowing out */
+@keyframes ecg-wave {
+  0%   { stroke-dashoffset: 100; }
+  50%  { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -100; }
+}
+.ecg-wave-path {
+  stroke-dasharray: 100 100;
+  animation: ecg-wave 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ecg-wave-path { animation: none; stroke-dashoffset: 0; }
+}

@@ -12,6 +12,7 @@ import { NewInvoiceDialog } from '@/components/billing/new-invoice-dialog'
 import { RecordPaymentDialog } from '@/components/billing/record-payment-dialog'
 import { InvoiceDetailDialog } from '@/components/billing/invoice-detail-dialog'
 import { PeriodNavigator, computePeriod, stepAnchor, type Granularity, type Period } from '@/components/ui/period-navigator'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 import { KpiCard, pctChange } from '@/components/ui/kpi-card'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
@@ -436,7 +437,7 @@ export default function CobrosPage() {
 
         {/* Invoice table */}
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+          <div className="py-12"><EcgLoader label="Cargando facturas…" /></div>
         ) : invoices.length === 0 ? (
           <div className="text-center py-16 bg-card rounded-xl border border-border">
             <CreditCard className="w-10 h-10 mx-auto mb-3 text-muted-foreground/60" />

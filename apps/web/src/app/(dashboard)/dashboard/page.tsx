@@ -7,7 +7,7 @@ import { api, getUserRole, getOwnDoctorId, sessionCache, readCache, writeCache }
 import { formatTime, formatCurrency, formatDate } from '@/lib/utils'
 import {
   Users, TrendingUp, DollarSign, Plus, UserPlus,
-  FileText, Link2, Video, MessageSquare, Bot, Loader2,
+  FileText, Link2, Video, MessageSquare, Bot,
   ChevronRight, ChevronDown, CreditCard, Building2, UserX
 } from 'lucide-react'
 import { NewAppointmentDialog } from '@/components/agenda/new-appointment-dialog'
@@ -16,6 +16,7 @@ import type { Appointment } from 'medclinic-shared'
 import { STATUS_LABELS } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
 import { PeriodNavigator, computePeriod, stepAnchor, type Granularity, type Period } from '@/components/ui/period-navigator'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 import { KpiCard, pctChange } from '@/components/ui/kpi-card'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
@@ -382,9 +383,7 @@ export default function DashboardPage() {
                 </button>
               </div>
               {loading && appointments.length === 0 ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                </div>
+                <div className="py-8"><EcgLoader size={56} label="Cargando…" /></div>
               ) : upcomingApts.length === 0 ? (
                 <p className="text-center text-sm text-muted-foreground py-10">No hay citas pendientes hoy</p>
               ) : (
