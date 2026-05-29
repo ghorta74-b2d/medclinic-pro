@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { Loader2, Plus, Building2, Megaphone, BarChart3, ToggleLeft, ToggleRight, Pencil, Trash2 } from 'lucide-react'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 import type { PharmacyCampaign } from 'medclinic-shared'
 
 type Tab = 'farmacias' | 'campanas' | 'metricas'
@@ -116,9 +117,7 @@ export default function FarmaciasAdminPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          </div>
+          <div className="py-12"><EcgLoader /></div>
         ) : (
           <>
             {tab === 'farmacias' && (

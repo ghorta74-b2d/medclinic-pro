@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { formatTime } from '@/lib/utils'
 import { STATUS_LABELS } from 'medclinic-shared'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 import type { Appointment, AppointmentStatus } from 'medclinic-shared'
 
 interface WeekViewProps {
@@ -56,8 +57,8 @@ export function WeekView({ appointments, loading, referenceDate, onDayClick }: W
 
   if (loading) {
     return (
-      <div className="bg-card rounded-xl border border-border p-8 flex justify-center">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="bg-card rounded-xl border border-border p-8">
+        <EcgLoader />
       </div>
     )
   }

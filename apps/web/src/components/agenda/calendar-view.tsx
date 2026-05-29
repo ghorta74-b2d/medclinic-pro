@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { STATUS_LABELS, STATUS_COLORS } from 'medclinic-shared'
 import type { Appointment, AppointmentStatus } from 'medclinic-shared'
 import { useRouter } from 'next/navigation'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 
 const STATUS_BG: Record<AppointmentStatus, string> = {
   SCHEDULED: 'bg-primary/10 border-primary/30 text-primary',
@@ -39,8 +40,8 @@ export function AppointmentCalendar({
 
   if (loading) {
     return (
-      <div className="bg-card rounded-xl border border-border p-8 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="bg-card rounded-xl border border-border p-8">
+        <EcgLoader />
       </div>
     )
   }

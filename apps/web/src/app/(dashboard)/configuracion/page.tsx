@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
 import { Save, Plus, Loader2, Mail, UserCheck, UserX, RefreshCw, Shield, Stethoscope, Pencil, Trash2, Check, X, MoreHorizontal, TrendingUp, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 
 type TabId = 'clinica' | 'usuarios' | 'horarios' | 'tipos-cita' | 'catalogo' | 'plantillas' | 'whatsapp' | 'pagos' | 'privacidad'
 
@@ -249,7 +250,7 @@ function UsuariosTab() {
     }
   }
 
-  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+  if (loading) return <div className="py-8"><EcgLoader size={48} /></div>
 
   const plan = data?.plan ?? 'BASIC'
   const canonicalPlan = PLAN_CANONICAL[plan] ?? plan
@@ -814,7 +815,7 @@ function HorariosTab() {
     }
   }
 
-  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+  if (loading) return <div className="py-8"><EcgLoader size={48} /></div>
 
   return (
     <div className="max-w-lg space-y-6">
@@ -891,7 +892,7 @@ function AppointmentTypesTab() {
       .then((res: any) => { setTypes(res?.data ?? []); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
-  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+  if (loading) return <div className="py-8"><EcgLoader size={48} /></div>
   return (
     <div className="max-w-2xl space-y-3">
       {types.map((t, i) => (
@@ -987,7 +988,7 @@ function CatalogoTab() {
 
   const inputCls = 'w-full border border-border rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary'
 
-  if (loading) return <div className="flex py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+  if (loading) return <div className="py-8"><EcgLoader size={48} /></div>
 
   return (
     <div className="max-w-2xl space-y-4">

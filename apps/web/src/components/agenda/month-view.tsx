@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 import type { Appointment } from 'medclinic-shared'
 
 interface MonthViewProps {
@@ -52,8 +53,8 @@ export function MonthView({ appointments, loading, referenceDate, onDayClick }: 
 
   if (loading) {
     return (
-      <div className="bg-card rounded-xl border border-border p-8 flex justify-center">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="bg-card rounded-xl border border-border p-8">
+        <EcgLoader />
       </div>
     )
   }

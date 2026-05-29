@@ -7,11 +7,12 @@ import { api } from '@/lib/api'
 import { calculateAge, getInitials } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import {
-  Search, Brain, Mic, MicOff, Square, CheckCircle2,
-  User, Clock, ChevronRight, AlertCircle, Loader2,
-  FileText, RotateCcw, ArrowRight, CheckSquare, Radio,
+  Search, Brain, Mic, Square, CheckCircle2,
+  User, ChevronRight, AlertCircle, Loader2,
+  FileText, RotateCcw, ArrowRight, CheckSquare,
 } from 'lucide-react'
 import type { Patient } from 'medclinic-shared'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,58 @@ function fmtDuration(s: number): string {
 function patientFullName(p: SelectedPatient): string {
   return [p.lastName, p.secondLastName, p.firstName].filter(Boolean).join(' ')
 }
+
+// ── Microphone helpers ─────────────────────────────────────────────────────────
+
+/** True when getUserMedia is actually usable (needs a secure context: https/localhost). */
+function micApiAvailable(): boolean {
+  return (
+    typeof navigator !== 'undefined' &&
+    !!navigator.mediaDevices &&
+    typeof navigator.mediaDevices.getUserMedia === 'function'
+  )
+}
+
+/** Map a getUserMedia/DOMException to a clear, actionable Spanish message. */
+function micErrorMessage(err: unknown): string {
+  if (typeof window !== 'undefined' && !window.isSecureContext) {
+    return 'El navegador bloquea el micrófono en conexiones no seguras. Abre la app con https:// (o en localhost) e inténtalo de nuevo.'
+  }
+  if (!micApiAvailable()) {
+    return 'Tu navegador no permite el acceso al micrófono. Usa una versión reciente de Chrome, Edge o Safari.'
+  }
+  const name = err instanceof DOMException ? err.name : (err instanceof Error ? err.name : '')
+  switch (name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Permiso de micrófono denegado. Haz clic en el ícono de candado/cámara de la barra de direcciones, permite el micrófono y vuelve a intentarlo.'
+    case 'NotFoundError':
+    case 'DevicesNotFoundError':
+      return 'No se encontró ningún micrófono. Conecta o activa un micrófono y vuelve a intentarlo.'
+    case 'NotReadableError':
+    case 'TrackStartError':
+      return 'El micrófono está siendo usado por otra aplicación (Zoom, Meet, etc.). Ciérrala y vuelve a intentarlo.'
+    case 'OverconstrainedError':
+      return 'El micrófono seleccionado ya no está disponible. Elige otro y vuelve a intentarlo.'
+    default:
+      return 'No se pudo acceder al micrófono. Verifica los permisos en tu navegador y vuelve a intentarlo.'
+  }
+}
+
+/** Audio constraints — bind to the chosen device and clean up the signal. */
+function audioConstraints(deviceId?: string): MediaStreamConstraints {
+  return {
+    audio: {
+      ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+  }
+}
+
+/** Speech-recognition error codes that are fatal (no point retrying). */
+const FATAL_SR_ERRORS = new Set(['not-allowed', 'service-not-allowed', 'audio-capture'])
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -293,6 +346,7 @@ function MicrophoneStep({
   const [selected, setSelected] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [attempt, setAttempt] = useState(0)
   const [srSupported, setSrSupported] = useState(true)
 
   useEffect(() => {
@@ -303,20 +357,54 @@ function MicrophoneStep({
         (window as Window & typeof globalThis & { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).webkitSpeechRecognition
       )
     )
-
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(() => navigator.mediaDevices.enumerateDevices())
-      .then(all => {
-        const inputs = all.filter(d => d.kind === 'audioinput')
-        setDevices(inputs)
-        if (inputs.length > 0) setSelected(inputs[0]!.deviceId)
-        setLoading(false)
-      })
-      .catch(() => {
-        setError('No se pudo acceder al micrófono. Verifica los permisos en tu navegador y vuelve a intentarlo.')
-        setLoading(false)
-      })
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function detect() {
+      setLoading(true)
+      setError('')
+
+      if (!micApiAvailable()) {
+        if (!cancelled) { setError(micErrorMessage(null)); setLoading(false) }
+        return
+      }
+
+      let stream: MediaStream | null = null
+      try {
+        // Request permission first so enumerateDevices can return labels.
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        const all = await navigator.mediaDevices.enumerateDevices()
+        if (cancelled) return
+        const inputs = all.filter(d => d.kind === 'audioinput')
+        if (inputs.length === 0) {
+          setError('No se encontró ningún micrófono. Conecta o activa un micrófono y vuelve a intentarlo.')
+        } else {
+          setDevices(inputs)
+          setSelected(prev => (prev && inputs.some(d => d.deviceId === prev)) ? prev : inputs[0]!.deviceId)
+        }
+      } catch (err) {
+        if (!cancelled) setError(micErrorMessage(err))
+      } finally {
+        // Release the permission-test stream so the mic isn't held open.
+        stream?.getTracks().forEach(t => t.stop())
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    detect()
+
+    // Re-detect when the user plugs/unplugs a mic.
+    const md = micApiAvailable() ? navigator.mediaDevices : null
+    const onChange = () => setAttempt(a => a + 1)
+    md?.addEventListener?.('devicechange', onChange)
+
+    return () => {
+      cancelled = true
+      md?.removeEventListener?.('devicechange', onChange)
+    }
+  }, [attempt])
 
   return (
     <div className="max-w-xl">
@@ -332,17 +420,21 @@ function MicrophoneStep({
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-3 text-sm text-muted-foreground py-8">
-          <Loader2 className="w-4 h-4 animate-spin text-primary" />
-          Detectando micrófonos disponibles...
-        </div>
+        <div className="py-6"><EcgLoader size={48} label="Detectando micrófonos disponibles…" /></div>
       ) : error ? (
         <div className="bg-destructive/10 border border-destructive/15 rounded-xl p-4 mb-5">
           <div className="flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-semibold text-destructive mb-1">Sin acceso al micrófono</p>
               <p className="text-sm text-destructive">{error}</p>
+              <button
+                onClick={() => setAttempt(a => a + 1)}
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-destructive border border-destructive/30 rounded-lg px-3 py-1.5 hover:bg-destructive/10 transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reintentar
+              </button>
             </div>
           </div>
         </div>
@@ -422,11 +514,20 @@ function RecordingStep({
   const [elapsed, setElapsed] = useState(0)
   const [transcriptDisplay, setTranscriptDisplay] = useState('')
   const [micError, setMicError] = useState('')
+  const [fatalMicError, setFatalMicError] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [micLevel, setMicLevel] = useState(0)
+  const [silent, setSilent] = useState(false)
+  const [streamReady, setStreamReady] = useState(false)
 
   const transcriptRef = useRef('')
   const isRecordingRef = useRef(true)
   const recognitionRef = useRef<unknown>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const heardAudioRef = useRef(false)
+  const lastSoundAtRef = useRef(Date.now())
 
   // Timer
   useEffect(() => {
@@ -434,7 +535,89 @@ function RecordingStep({
     return () => clearInterval(t)
   }, [])
 
-  // Speech recognition
+  // Hold a real mic stream on the chosen device + measure live audio level.
+  // This guarantees the selected microphone is actually engaged (the Web Speech
+  // API alone cannot target a device) and gives the user real-time feedback.
+  useEffect(() => {
+    let cancelled = false
+
+    async function openMic() {
+      if (!micApiAvailable()) {
+        setMicError(micErrorMessage(null)); setFatalMicError(true)
+        return
+      }
+      try {
+        let stream: MediaStream
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(audioConstraints(deviceId))
+        } catch (err) {
+          // The exact device may have vanished — fall back to any microphone.
+          if (err instanceof DOMException && err.name === 'OverconstrainedError') {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          } else {
+            throw err
+          }
+        }
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+        streamRef.current = stream
+        setStreamReady(true)
+
+        // If the OS/user revokes the mic mid-session, the track ends.
+        stream.getAudioTracks().forEach(track => {
+          track.onended = () => {
+            if (isRecordingRef.current) {
+              setMicError('Se perdió la conexión con el micrófono. Verifica el dispositivo y finaliza la sesión.')
+            }
+          }
+        })
+
+        const Ctx: typeof AudioContext | undefined =
+          window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+        if (Ctx) {
+          const ctx = new Ctx()
+          audioCtxRef.current = ctx
+          const source = ctx.createMediaStreamSource(stream)
+          const analyser = ctx.createAnalyser()
+          analyser.fftSize = 512
+          source.connect(analyser)
+          const data = new Uint8Array(analyser.frequencyBinCount)
+
+          const tick = () => {
+            analyser.getByteTimeDomainData(data)
+            let sum = 0
+            for (let i = 0; i < data.length; i++) {
+              const v = (data[i]! - 128) / 128
+              sum += v * v
+            }
+            const rms = Math.sqrt(sum / data.length)
+            const level = Math.min(1, rms * 3)
+            setMicLevel(level)
+            const now = Date.now()
+            if (level > 0.05) { heardAudioRef.current = true; lastSoundAtRef.current = now; setSilent(false) }
+            // After a 4s grace period, warn if no audio for 7s straight.
+            else if (heardAudioRef.current && now - lastSoundAtRef.current > 7000) { setSilent(true) }
+            else if (!heardAudioRef.current && now - lastSoundAtRef.current > 4000) { setSilent(true) }
+            rafRef.current = requestAnimationFrame(tick)
+          }
+          rafRef.current = requestAnimationFrame(tick)
+        }
+      } catch (err) {
+        if (!cancelled) { setMicError(micErrorMessage(err)); setFatalMicError(true) }
+      }
+    }
+
+    openMic()
+
+    return () => {
+      cancelled = true
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
+      audioCtxRef.current?.close().catch(() => {})
+      streamRef.current?.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+  }, [deviceId])
+
+  // Speech recognition for the live transcript preview.
   useEffect(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SR) return
@@ -458,20 +641,32 @@ function RecordingStep({
       setTranscriptDisplay(transcriptRef.current + (interim ? `[${interim}]` : ''))
     }
 
-    recog.onerror = () => {
-      setMicError('Error de micrófono durante la grabación.')
+    recog.onerror = (event: any) => {
+      const code = event?.error as string | undefined
+      if (code && FATAL_SR_ERRORS.has(code)) {
+        // Permission revoked or no capture device — stop retrying.
+        isRecordingRef.current = false
+        setMicError(
+          code === 'audio-capture'
+            ? 'Se perdió el micrófono durante la grabación. Verifica el dispositivo y finaliza la sesión.'
+            : 'El navegador bloqueó el micrófono durante la grabación. Revisa los permisos y finaliza la sesión.'
+        )
+      } else if (code === 'network') {
+        setMicError('La transcripción en vivo perdió conexión. La grabación continúa; el texto se recuperará al reanudar.')
+      }
+      // 'no-speech' / 'aborted' are transient — onend will restart.
     }
 
     recog.onend = () => {
       if (isRecordingRef.current) {
-        try { recog.start() } catch { /* ignore */ }
+        try { recog.start() } catch { /* already started / will retry */ }
       }
     }
 
     try {
       recog.start()
     } catch {
-      setMicError('No se pudo iniciar el reconocimiento de voz.')
+      // A start() while already running throws — safe to ignore.
     }
 
     return () => {
@@ -491,17 +686,34 @@ function RecordingStep({
     }
   }
 
+  const srSupported = typeof window !== 'undefined' &&
+    !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+
   return (
     <div className="max-w-xl">
       {/* Recording header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
-          <span className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
-          <span className="text-sm font-bold text-destructive uppercase tracking-wide">Grabando</span>
+          <span className={cn('w-3 h-3 rounded-full', streamReady && !fatalMicError ? 'bg-destructive animate-pulse' : 'bg-muted-foreground')} />
+          <span className="text-sm font-bold text-destructive uppercase tracking-wide">
+            {fatalMicError ? 'Micrófono detenido' : streamReady ? 'Grabando' : 'Conectando…'}
+          </span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Mic className="w-3.5 h-3.5" />
-          <span className="truncate max-w-[180px]">Micrófono activo</span>
+        {/* Live mic level meter */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Mic className={cn('w-3.5 h-3.5', silent ? 'text-warning' : streamReady ? 'text-success' : 'text-muted-foreground')} />
+          <div className="flex items-end gap-0.5 h-4" aria-hidden="true">
+            {[0, 1, 2, 3, 4].map(i => {
+              const on = micLevel * 5 > i
+              return (
+                <span
+                  key={i}
+                  className={cn('w-1 rounded-sm transition-all', on ? 'bg-success' : 'bg-muted')}
+                  style={{ height: `${4 + i * 3}px` }}
+                />
+              )
+            })}
+          </div>
         </div>
       </div>
 
@@ -521,6 +733,26 @@ function RecordingStep({
         <p className="text-xs text-muted-foreground mt-2">Duración de la sesión</p>
       </div>
 
+      {/* No-audio warning */}
+      {silent && !fatalMicError && (
+        <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-4 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+          <p className="text-xs text-warning/80">
+            No se detecta audio del micrófono. Acerca el micrófono, sube el volumen de entrada o verifica que no esté silenciado.
+          </p>
+        </div>
+      )}
+
+      {/* Transcription not supported */}
+      {!srSupported && !fatalMicError && (
+        <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-4 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+          <p className="text-xs text-warning/80">
+            Este navegador no transcribe en vivo. El cronómetro corre, pero para capturar el texto usa Chrome o Edge.
+          </p>
+        </div>
+      )}
+
       {/* Live transcript */}
       <div className="bg-muted/50 border border-border rounded-xl p-4 mb-6 min-h-[130px] max-h-[220px] overflow-y-auto">
         <div className="flex items-center gap-1.5 mb-2">
@@ -531,7 +763,7 @@ function RecordingStep({
           <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{transcriptDisplay}</p>
         ) : (
           <p className="text-sm text-muted-foreground italic">
-            {micError || 'Comienza a hablar — la transcripción aparecerá aquí...'}
+            Comienza a hablar — la transcripción aparecerá aquí...
           </p>
         )}
       </div>
@@ -792,9 +1024,7 @@ function ConsultaIaContent() {
 
           {step === 'patient' && (
             initialPatientId ? (
-              <div className="flex items-center justify-center py-16">
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              </div>
+              <div className="py-16"><EcgLoader /></div>
             ) : (
               <PatientStep
                 onSelect={p => { setPatient(p); setStep('consent') }}
@@ -845,7 +1075,7 @@ export default function ConsultaIaPage() {
   return (
     <Suspense fallback={
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+        <EcgLoader />
       </div>
     }>
       <ConsultaIaContent />

@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
 import { formatDate, formatCurrency, formatRelative } from '@/lib/utils'
 import { CreditCard, Plus, Link2, DollarSign, TrendingUp, Clock, Loader2 } from 'lucide-react'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 import type { Invoice } from 'medclinic-shared'
 import { INVOICE_STATUS_LABELS } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
@@ -132,9 +133,7 @@ export default function BillingPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          </div>
+          <div className="py-12"><EcgLoader label="Cargando facturas…" /></div>
         ) : invoices.length === 0 ? (
           <div className="text-center py-16 bg-card rounded-xl border border-border">
             <CreditCard className="w-10 h-10 mx-auto mb-3 text-muted-foreground/60" />

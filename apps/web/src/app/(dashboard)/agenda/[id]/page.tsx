@@ -11,6 +11,7 @@ import {
   Loader2, AlertTriangle, ClipboardList, UserCheck, RefreshCw,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 
 // ── Tipos ────────────────────────────────────────────────────────
 type AppointmentStatus =
@@ -532,7 +533,7 @@ export default function AppointmentDetailPage() {
       <>
         <Header title="Detalle de cita" />
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <EcgLoader />
         </div>
       </>
     )

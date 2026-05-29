@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { api } from '@/lib/api'
 import { formatDate, formatCurrency } from '@/lib/utils'
-import { Building2, Users, User, Calendar, Plus, ChevronRight, TrendingUp, Loader2 } from 'lucide-react'
+import { Building2, Users, User, Calendar, Plus, ChevronRight, TrendingUp } from 'lucide-react'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 
 interface PlatformStats {
   clinicCount: number
@@ -69,7 +70,7 @@ export default function SuperAdminDashboard() {
 
       {/* KPI cards */}
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-purple-500" /></div>
+        <div className="py-12"><EcgLoader /></div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {kpis.map(({ label, value, icon: Icon, color, bg, border }) => (

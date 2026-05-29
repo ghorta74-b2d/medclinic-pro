@@ -12,6 +12,8 @@ interface EcgLoaderProps {
   className?: string
   /** Center the loader in the full available area (e.g. a page/section). */
   fullPage?: boolean
+  /** Fill (and center within) the browser viewport height. */
+  viewport?: boolean
   /** Optional label under the wave. */
   label?: string
 }
@@ -19,15 +21,19 @@ interface EcgLoaderProps {
 /**
  * Animated loading indicator: the MediaClinic ECG wave draws itself and flows
  * out in a seamless loop, evoking a heart monitor. Centered by default.
+ *
+ * - `viewport`: centers in the full browser window height (page-level loads).
+ * - `fullPage`: centers within the available content area (section loads).
  */
-export function EcgLoader({ size = 72, className, fullPage, label }: EcgLoaderProps) {
+export function EcgLoader({ size = 72, className, fullPage, viewport, label }: EcgLoaderProps) {
   return (
     <div
       role="status"
       aria-label={label ?? 'Cargando'}
       className={cn(
         'flex flex-col items-center justify-center gap-3',
-        fullPage && 'w-full min-h-[40vh]',
+        viewport && 'w-full min-h-[70vh]',
+        fullPage && !viewport && 'w-full min-h-[40vh]',
         className,
       )}
     >

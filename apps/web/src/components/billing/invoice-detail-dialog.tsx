@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { X, Loader2, CreditCard, Banknote, ArrowLeftRight, Building2, UserCheck } from 'lucide-react'
+import { X, CreditCard, Banknote, ArrowLeftRight, Building2, UserCheck } from 'lucide-react'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 import { formatDate, formatCurrency, cn } from '@/lib/utils'
 import { INVOICE_STATUS_LABELS } from 'medclinic-shared'
 
@@ -81,9 +82,7 @@ export function InvoiceDetailDialog({ invoiceId, onClose }: InvoiceDetailDialogP
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          </div>
+          <div className="py-12"><EcgLoader size={56} /></div>
         ) : !invoice ? (
           <div className="text-center py-12 text-sm text-muted-foreground">No se pudo cargar la factura</div>
         ) : (

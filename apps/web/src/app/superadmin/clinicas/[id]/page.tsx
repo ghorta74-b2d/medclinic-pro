@@ -9,6 +9,7 @@ import {
   CheckCircle, XCircle, RefreshCw, Save, Users, KeyRound
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 
 interface Doctor {
   id: string
@@ -128,7 +129,7 @@ export default function ClinicDetailPage() {
   }
 
   if (loading) return (
-    <div className="flex justify-center py-24"><Loader2 className="w-6 h-6 animate-spin text-purple-500" /></div>
+    <div className="py-24"><EcgLoader /></div>
   )
   if (!clinic) return (
     <div className="p-6 text-center text-gray-400">

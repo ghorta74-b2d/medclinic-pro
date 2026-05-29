@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/header'
 import { api } from '@/lib/api'
 import { formatDate, formatRelative } from '@/lib/utils'
 import { FlaskConical, Upload, Bell, Eye, CheckCircle, Plus, Loader2, ExternalLink } from 'lucide-react'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 import type { LabResult } from 'medclinic-shared'
 import { LAB_CATEGORY_LABELS } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
@@ -101,9 +102,7 @@ export default function LaboratorioPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          </div>
+          <div className="py-12"><EcgLoader label="Cargando resultados…" /></div>
         ) : results.length === 0 ? (
           <div className="text-center py-16 bg-card rounded-xl border border-border">
             <FlaskConical className="w-10 h-10 mx-auto mb-3 text-muted-foreground/60" />

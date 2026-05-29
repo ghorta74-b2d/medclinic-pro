@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { searchCie10 } from 'medclinic-shared'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 import type { Patient, ClinicalNote } from 'medclinic-shared'
 
 const NOTE_STATUS_COLORS: Record<string, string> = {
@@ -207,7 +208,7 @@ function ExpedientePageInner() {
             </button>
           </div>
           {loading ? (
-            <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-primary" /></div>
+            <div className="py-6"><EcgLoader size={44} /></div>
           ) : (
             <div className="flex-1 overflow-y-auto divide-y divide-border/50">
               {notes.map((note) => (

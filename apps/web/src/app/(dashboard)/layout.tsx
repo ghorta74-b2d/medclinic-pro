@@ -6,7 +6,8 @@ import { SidebarNav } from '@/components/layout/sidebar-nav'
 import { AppShell } from '@/components/layout/app-shell'
 import { warmupApi, getUserRole } from '@/lib/api'
 import { createBrowserClient } from '@supabase/ssr'
-import { ShieldAlert, X, Loader2 } from 'lucide-react'
+import { ShieldAlert, X } from 'lucide-react'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 
 // Singleton Supabase client para el check MFA
 const supabase = createBrowserClient(
@@ -70,7 +71,7 @@ export default function DashboardLayout({
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-primary animate-spin" />
+        <EcgLoader />
       </div>
     )
   }

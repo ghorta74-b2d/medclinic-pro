@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 import { PrescriptionBuilder } from '@/components/prescriptions/prescription-builder'
 import { PrescriptionCard } from '@/components/prescriptions/prescription-card'
 import { ClinicalNoteEditor } from '@/components/clinical-notes/note-editor'
+import { EcgLoader } from '@/components/ui/ecg-loader'
 
 // ── Phone helpers ──────────────────────────────────────────────────────────────
 function extractPhone(phone: string): { prefix: string; digits: string } {
@@ -1673,7 +1674,7 @@ export default function PatientDetailPage() {
   if (loading || !patient) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <EcgLoader />
       </div>
     )
   }
