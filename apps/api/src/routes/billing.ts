@@ -438,8 +438,10 @@ export async function billingRoutes(server: FastifyInstance) {
     const { clinicId, role, doctorId: authDoctorId } = request.authUser
     const query = request.query as {
       from?: string; to?: string
+      prevFrom?: string; prevTo?: string // previous period for delta comparison
       todayUtc?: string     // client local midnight expressed as UTC ISO (timezone-correct)
-      chartFromUtc?: string // client local (today - 6 days) midnight as UTC ISO
+      chartFromUtc?: string // client local period-start midnight as UTC ISO
+      chartToUtc?: string   // client local period-end as UTC ISO (bounds the chart)
       doctorId?: string     // ADMIN/STAFF can filter by doctor; DOCTOR always auto-filtered
     }
 
@@ -452,9 +454,12 @@ export async function billingRoutes(server: FastifyInstance) {
     const todayStart = query.todayUtc ? new Date(query.todayUtc) : (() => {
       const d = new Date(); d.setHours(0, 0, 0, 0); return d
     })()
-    const chart7Start = query.chartFromUtc ? new Date(query.chartFromUtc) : (() => {
+    const chartStart = query.chartFromUtc ? new Date(query.chartFromUtc) : (() => {
       const d = new Date(); d.setDate(d.getDate() - 6); d.setHours(0, 0, 0, 0); return d
     })()
+    // Upper bound for the chart query. Without it, a past month would pull in
+    // payments from later months. Defaults to the period end.
+    const chartEnd = query.chartToUtc ? new Date(query.chartToUtc) : to
 
     // Determine effective doctorId filter:
     // - DOCTOR → always their own
@@ -468,25 +473,51 @@ export async function billingRoutes(server: FastifyInstance) {
 
     const invoiceBase = { clinicId, ...doctorFilter }
     const paymentBase = { invoice: invoiceBase }
+    const apptBase = { clinicId, ...doctorFilter }
 
-    const [invoices, payments, payments7d, paymentsToday] = await Promise.all([
+    const hasPrev = !!(query.prevFrom && query.prevTo)
+    const prevFrom = query.prevFrom ? new Date(query.prevFrom) : null
+    const prevTo = query.prevTo ? new Date(query.prevTo) : null
+    // Show per-doctor breakdown only for the global (clinic-wide) view
+    const wantByDoctor = !effectiveDoctorId
+
+    const [
+      invoices, payments, payments7d, paymentsToday, apptCounts, prevPayments, prevInvoices,
+    ] = await Promise.all([
       prisma.invoice.findMany({
         where: { ...invoiceBase, issuedAt: { gte: from, lte: to } },
         select: { total: true, paidAmount: true, status: true },
       }),
       prisma.paymentRecord.findMany({
         where: { ...paymentBase, paidAt: { gte: from, lte: to } },
-        select: { amount: true, method: true },
+        select: { amount: true, method: true, invoice: { select: { doctorId: true } } },
       }),
-      // Raw payments for last 7 days — frontend groups by local date
+      // Raw payments for the chart window — frontend groups by local date
       prisma.paymentRecord.findMany({
-        where: { ...paymentBase, paidAt: { gte: chart7Start } },
+        where: { ...paymentBase, paidAt: { gte: chartStart, lte: chartEnd } },
         select: { amount: true, paidAt: true },
       }),
       prisma.paymentRecord.findMany({
         where: { ...paymentBase, paidAt: { gte: todayStart } },
         select: { amount: true },
       }),
+      prisma.appointment.groupBy({
+        by: ['status'],
+        where: { ...apptBase, startsAt: { gte: from, lte: to } },
+        _count: { _all: true },
+      }),
+      hasPrev
+        ? prisma.paymentRecord.findMany({
+            where: { ...paymentBase, paidAt: { gte: prevFrom!, lte: prevTo! } },
+            select: { amount: true },
+          })
+        : Promise.resolve([] as { amount: unknown }[]),
+      hasPrev
+        ? prisma.invoice.findMany({
+            where: { ...invoiceBase, issuedAt: { gte: prevFrom!, lte: prevTo! } },
+            select: { total: true },
+          })
+        : Promise.resolve([] as { total: unknown }[]),
     ])
 
     const totalBilled    = invoices.reduce((s, i) => s + Number(i.total), 0)
@@ -510,6 +541,44 @@ export async function billingRoutes(server: FastifyInstance) {
     const pendingInvoiceCount = invoices.filter(i => ['SENT', 'PARTIALLY_PAID'].includes(i.status)).length
     const overdueInvoiceCount = invoices.filter(i => i.status === 'OVERDUE').length
 
+    // Appointment counts for the period
+    const apptCountBy = apptCounts.reduce<Record<string, number>>((acc, a) => {
+      acc[a.status] = a._count._all
+      return acc
+    }, {})
+    const completedCount = apptCountBy['COMPLETED'] ?? 0
+    const noShowCount    = apptCountBy['NO_SHOW'] ?? 0
+    const apptTotal      = apptCounts.reduce((s, a) => s + a._count._all, 0)
+
+    // Previous-period totals for deltas
+    const totalCollectedPrev = prevPayments.reduce((s, p) => s + Number(p.amount), 0)
+    const totalBilledPrev    = prevInvoices.reduce((s, i) => s + Number(i.total), 0)
+
+    // Per-doctor collected breakdown (global view only)
+    let byDoctor: { doctorId: string | null; name: string; amount: number }[] = []
+    if (wantByDoctor) {
+      const docMap = payments.reduce<Record<string, number>>((acc, p) => {
+        const id = p.invoice?.doctorId ?? '__none__'
+        acc[id] = (acc[id] ?? 0) + Number(p.amount)
+        return acc
+      }, {})
+      const ids = Object.keys(docMap).filter(id => id !== '__none__')
+      const docs = ids.length
+        ? await prisma.doctor.findMany({
+            where: { id: { in: ids }, clinicId },
+            select: { id: true, firstName: true, lastName: true },
+          })
+        : []
+      const nameById = new Map(docs.map(d => [d.id, `${d.firstName} ${d.lastName}`]))
+      byDoctor = Object.entries(docMap)
+        .map(([id, amount]) => ({
+          doctorId: id === '__none__' ? null : id,
+          name: id === '__none__' ? 'Sin asignar' : (nameById.get(id) ?? 'Doctor'),
+          amount,
+        }))
+        .sort((a, b) => b.amount - a.amount)
+    }
+
     return reply.send({
       data: {
         totalBilled,
@@ -522,10 +591,62 @@ export async function billingRoutes(server: FastifyInstance) {
         pendingInvoiceCount,
         overdueInvoiceCount,
         byPaymentMethod,
+        byDoctor,
+        completedCount,
+        noShowCount,
+        apptTotal,
+        totalCollectedPrev,
+        totalBilledPrev,
+        hasPrev,
         // Raw payments for chart — frontend groups by local date to avoid UTC vs local mismatch
         payments7d: payments7d.map(p => ({ paidAt: p.paidAt.toISOString(), amount: Number(p.amount) })),
         period: { from, to },
       },
     })
+  })
+
+  // GET /api/billing/trend?months=6 — monthly collected/billed for the trend chart
+  server.get('/trend', { preHandler: requireStaff }, async (request, reply) => {
+    const { clinicId, role, doctorId: authDoctorId } = request.authUser
+    const query = request.query as { months?: string; doctorId?: string }
+    const months = Math.min(Math.max(parseInt(query.months ?? '6', 10) || 6, 1), 24)
+
+    const effectiveDoctorId =
+      role === 'DOCTOR' ? authDoctorId :
+      query.doctorId ? query.doctorId : undefined
+    const doctorFilter = effectiveDoctorId ? { doctorId: effectiveDoctorId } : {}
+    const invoiceBase = { clinicId, ...doctorFilter }
+
+    const now = new Date()
+    const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1, 0, 0, 0, 0)
+
+    const [payments, invoices] = await Promise.all([
+      prisma.paymentRecord.findMany({
+        where: { invoice: invoiceBase, paidAt: { gte: start } },
+        select: { amount: true, paidAt: true },
+      }),
+      prisma.invoice.findMany({
+        where: { ...invoiceBase, issuedAt: { gte: start } },
+        select: { total: true, issuedAt: true },
+      }),
+    ])
+
+    const keyOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const buckets: Record<string, { collected: number; billed: number }> = {}
+    for (let i = 0; i < months; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - (months - 1) + i, 1)
+      buckets[keyOf(d)] = { collected: 0, billed: 0 }
+    }
+    for (const p of payments) {
+      const k = keyOf(new Date(p.paidAt))
+      if (buckets[k]) buckets[k]!.collected += Number(p.amount)
+    }
+    for (const inv of invoices) {
+      const k = keyOf(new Date(inv.issuedAt))
+      if (buckets[k]) buckets[k]!.billed += Number(inv.total)
+    }
+
+    const data = Object.entries(buckets).map(([month, v]) => ({ month, ...v }))
+    return reply.send({ data })
   })
 }

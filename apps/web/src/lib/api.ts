@@ -366,6 +366,10 @@ export const api = {
       const qs = params ? '?' + new URLSearchParams(params).toString() : ''
       return request(`/api/billing/dashboard${qs}`)
     },
+    trend: (params?: Record<string, string>) => {
+      const qs = params ? '?' + new URLSearchParams(params).toString() : ''
+      return request(`/api/billing/trend${qs}`)
+    },
   },
 
   dashboard: {

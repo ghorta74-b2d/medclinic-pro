@@ -1,34 +1,40 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { api, getUserRole, getOwnDoctorId, sessionCache, readCache, writeCache } from '@/lib/api'
 import { formatTime, formatCurrency, formatDate } from '@/lib/utils'
 import {
-  Users, TrendingUp, Clock, Plus, UserPlus,
+  Users, TrendingUp, DollarSign, Plus, UserPlus,
   FileText, Link2, Video, MessageSquare, Bot, Loader2,
-  ChevronRight, ChevronDown, CreditCard, Building2
+  ChevronRight, ChevronDown, CreditCard, Building2, UserX
 } from 'lucide-react'
 import { NewAppointmentDialog } from '@/components/agenda/new-appointment-dialog'
 import { NewPatientDialog } from '@/components/patients/new-patient-dialog'
-import type { Appointment, Invoice } from 'medclinic-shared'
+import type { Appointment } from 'medclinic-shared'
 import { STATUS_LABELS } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
+import { PeriodNavigator, computePeriod, type Granularity } from '@/components/ui/period-navigator'
+import { KpiCard, pctChange } from '@/components/ui/kpi-card'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 interface DashboardStats {
-  patientsToday: number
-  patientsTodayDelta: number
-  revenueToday: number
-  revenueTodayDelta: number
-  unconfirmedCount: number
+  totalBilled: number
   totalCollected: number
-  payments7d?: { paidAt: string; amount: number }[]
+  pendingAmount: number
+  revenueToday: number
+  completedCount: number
+  noShowCount: number
+  apptTotal: number
+  totalBilledPrev?: number
+  totalCollectedPrev?: number
+  hasPrev?: boolean
 }
 
-interface DashboardResponse {
-  data: DashboardStats
-}
+interface DashboardResponse { data: DashboardStats }
+interface TrendPoint { month: string; collected: number; billed: number }
+interface TrendResponse { data: TrendPoint[] }
 
 const STATUS_DOT: Record<string, string> = {
   SCHEDULED: 'bg-primary',
@@ -40,48 +46,50 @@ const STATUS_DOT: Record<string, string> = {
   NO_SHOW: 'bg-destructive',
 }
 
-function RevenueChart({ data }: { data: { date: string; amount: number }[] }) {
-  if (!data || data.length === 0) return null
-  const max = Math.max(...data.map(d => d.amount), 1)
-  const BAR_W = 32
-  const GAP = 8
-  const H = 80
-  const total_w = data.length * (BAR_W + GAP) - GAP
+function monthLabel(key: string): string {
+  const [y, m] = key.split('-').map(Number)
+  const d = new Date(y ?? 2000, (m ?? 1) - 1, 1)
+  return d.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '')
+}
 
+function TrendChart({ data }: { data: TrendPoint[] }) {
+  if (!data || data.length === 0) {
+    return <div className="flex items-center justify-center h-56 text-xs text-muted-foreground/60">Sin datos de tendencia</div>
+  }
+  const rows = data.map(d => ({ ...d, label: monthLabel(d.month) }))
   return (
-    <div className="overflow-x-auto">
-      <svg width={total_w} height={H + 28} className="block mx-auto">
-        {data.map((d, i) => {
-          const barH = Math.max((d.amount / max) * H, 4)
-          const x = i * (BAR_W + GAP)
-          const y = H - barH
-          const label = new Date(`${d.date}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }).replace('.', '')
-          return (
-            <g key={d.date}>
-              <rect x={x} y={y} width={BAR_W} height={barH}
-                rx={4} className="fill-primary" fillOpacity={0.85} />
-              <text x={x + BAR_W / 2} y={H + 16}
-                textAnchor="middle" fontSize={10} className="fill-muted-foreground">
-                {label}
-              </text>
-              {d.amount > 0 && (
-                <text x={x + BAR_W / 2} y={y - 4}
-                  textAnchor="middle" fontSize={9} className="fill-muted-foreground">
-                  {d.amount >= 1000 ? `$${(d.amount / 1000).toFixed(0)}k` : `$${d.amount}`}
-                </text>
-              )}
-            </g>
-          )
-        })}
-      </svg>
+    <div className="w-full h-56">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={rows} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+          <defs>
+            <linearGradient id="collectedFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
+              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
+          <YAxis
+            tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} width={48}
+            tickFormatter={(v: number) => (v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`)}
+          />
+          <Tooltip
+            cursor={{ stroke: 'hsl(var(--border))' }}
+            contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+            labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
+            formatter={(v) => [formatCurrency(Number(v)), 'Cobrado']}
+          />
+          <Area type="monotone" dataKey="collected" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#collectedFill)" />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   )
 }
 
-
 export default function DashboardPage() {
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [trend, setTrend] = useState<TrendPoint[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [showNewApt, setShowNewApt] = useState(false)
@@ -93,54 +101,67 @@ export default function DashboardPage() {
     () => sessionCache.getDoctorId()
   )
   const [roleReady, setRoleReady] = useState(() => !!sessionCache.getRole())
+  const [granularity, setGranularity] = useState<Granularity>('mes')
+  const [anchor, setAnchor] = useState<Date>(() => new Date())
 
   const today = new Date()
+  const period = useMemo(() => computePeriod(granularity, anchor), [granularity, anchor])
 
   const load = useCallback(async () => {
     if (!roleReady) return
 
     const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
+    const todayEnd = new Date(todayLocal); todayEnd.setHours(23, 59, 59, 999)
     const todayStr = todayLocal.toLocaleDateString('sv-SE')
-    const chart7Local = new Date(todayLocal); chart7Local.setDate(todayLocal.getDate() - 6)
     const effectiveDoctor = userRole === 'ADMIN' ? selectedFilterDoctorId : ownDoctorId
-    const cacheKey = `_dash_${effectiveDoctor ?? 'all'}_${todayStr}`
+    const cacheKey = `_dash_${effectiveDoctor ?? 'all'}_${granularity}_${period.from.toLocaleDateString('sv-SE')}_${todayStr}`
 
-    const cached = readCache<{ appointments: Appointment[]; stats: DashboardStats }>(cacheKey)
+    const cached = readCache<{ appointments: Appointment[]; stats: DashboardStats; trend: TrendPoint[] }>(cacheKey)
     if (cached) {
       setAppointments(cached.appointments)
       setStats(cached.stats)
+      setTrend(cached.trend ?? [])
       setLoading(false)
     }
 
     try {
-      const from = new Date(todayLocal)
-      const to = new Date(todayLocal); to.setHours(23, 59, 59, 999)
-
-      const aptParams: Record<string, string> = { from: from.toISOString(), to: to.toISOString() }
+      // Operational "today" panel — always today, independent of the selected period
+      const aptParams: Record<string, string> = { from: todayLocal.toISOString(), to: todayEnd.toISOString() }
       if (effectiveDoctor) aptParams['doctorId'] = effectiveDoctor
 
-      const statsParams: Record<string, string> = {
+      const dashParams: Record<string, string> = {
+        from: period.from.toISOString(),
+        to: period.to.toISOString(),
+        prevFrom: period.prevFrom.toISOString(),
+        prevTo: period.prevTo.toISOString(),
         todayUtc: todayLocal.toISOString(),
-        chartFromUtc: chart7Local.toISOString(),
+        chartFromUtc: period.from.toISOString(),
+        chartToUtc: period.to.toISOString(),
       }
-      if (effectiveDoctor) statsParams['doctorId'] = effectiveDoctor
+      if (effectiveDoctor) dashParams['doctorId'] = effectiveDoctor
 
-      const [aptsRes, dashRes] = await Promise.allSettled([
+      const trendParams: Record<string, string> = { months: '6' }
+      if (effectiveDoctor) trendParams['doctorId'] = effectiveDoctor
+
+      const [aptsRes, dashRes, trendRes] = await Promise.allSettled([
         api.appointments.list(aptParams) as Promise<{ data: Appointment[] }>,
-        api.dashboard.stats(statsParams) as Promise<DashboardResponse>,
+        api.dashboard.stats(dashParams) as Promise<DashboardResponse>,
+        api.billing.trend(trendParams) as Promise<TrendResponse>,
       ])
 
-      const newApts  = aptsRes.status === 'fulfilled' ? aptsRes.value.data  : null
+      const newApts  = aptsRes.status === 'fulfilled' ? aptsRes.value.data : null
       const newStats = dashRes.status === 'fulfilled' ? dashRes.value.data : null
+      const newTrend = trendRes.status === 'fulfilled' ? trendRes.value.data : null
       if (newApts)  setAppointments(newApts)
       if (newStats) setStats(newStats)
-      if (newApts && newStats) writeCache(cacheKey, { appointments: newApts, stats: newStats })
+      if (newTrend) setTrend(newTrend)
+      if (newApts && newStats) writeCache(cacheKey, { appointments: newApts, stats: newStats, trend: newTrend ?? [] })
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [ownDoctorId, roleReady, userRole, selectedFilterDoctorId])
+  }, [ownDoctorId, roleReady, userRole, selectedFilterDoctorId, granularity, period])
 
   useEffect(() => {
     if (sessionCache.getRole() === 'ADMIN' && doctors.length === 0) {
@@ -191,41 +212,37 @@ export default function DashboardPage() {
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
     .slice(0, 6)
 
-  const patientsToday = stats?.patientsToday ?? upcomingApts.length
-  const unconfirmed = stats?.unconfirmedCount ?? appointments.filter(a => a.status === 'SCHEDULED').length
+  const unconfirmed = appointments.filter(a => a.status === 'SCHEDULED').length
+  const noShowRate = stats?.apptTotal ? Math.round((stats.noShowCount / stats.apptTotal) * 100) : 0
 
   const kpis = [
     {
-      label: 'Pacientes hoy',
-      value: loading ? '—' : String(patientsToday),
-      sub: stats?.patientsTodayDelta != null ? `+${stats.patientsTodayDelta} vs ayer` : `${appointments.length} citas`,
-      icon: Users,
-      color: 'text-primary',
-      bg: 'bg-primary/10',
+      label: 'Cobrado',
+      value: loading && !stats ? '—' : formatCurrency(stats?.totalCollected ?? 0),
+      sub: 'En el período',
+      icon: DollarSign, color: 'text-success', bg: 'bg-success/10',
+      delta: stats?.hasPrev ? pctChange(stats?.totalCollected ?? 0, stats?.totalCollectedPrev ?? 0) : null,
     },
     {
-      label: 'Ingresos del día',
-      value: loading ? '—' : formatCurrency(stats?.revenueToday ?? 0),
-      sub: stats?.revenueTodayDelta != null ? `+${stats.revenueTodayDelta}% vs promedio` : 'En tiempo real',
-      icon: TrendingUp,
-      color: 'text-success',
-      bg: 'bg-success/10',
+      label: 'Facturado',
+      value: loading && !stats ? '—' : formatCurrency(stats?.totalBilled ?? 0),
+      sub: `Pendiente: ${formatCurrency(stats?.pendingAmount ?? 0)}`,
+      icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10',
+      delta: stats?.hasPrev ? pctChange(stats?.totalBilled ?? 0, stats?.totalBilledPrev ?? 0) : null,
     },
     {
-      label: 'Citas por confirmar',
-      value: loading ? '—' : String(unconfirmed),
-      sub: 'Requieren confirmación',
-      icon: Clock,
-      color: 'text-warning',
-      bg: 'bg-warning/10',
+      label: 'Pacientes atendidos',
+      value: loading && !stats ? '—' : String(stats?.completedCount ?? 0),
+      sub: `${stats?.apptTotal ?? 0} citas en total`,
+      icon: Users, color: 'text-primary', bg: 'bg-primary/10',
+      delta: null,
     },
     {
-      label: 'Ingresos del mes',
-      value: loading ? '—' : formatCurrency(stats?.totalCollected ?? 0),
-      sub: 'Acumulado del mes',
-      icon: TrendingUp,
-      color: 'text-primary',
-      bg: 'bg-primary/10',
+      label: 'Tasa de no-show',
+      value: loading && !stats ? '—' : `${noShowRate}%`,
+      sub: `${stats?.noShowCount ?? 0} no asistieron`,
+      icon: UserX, color: 'text-warning', bg: 'bg-warning/10',
+      delta: null,
     },
   ]
 
@@ -248,20 +265,6 @@ export default function DashboardPage() {
         { label: 'Enviar WhatsApp', icon: MessageSquare, color: 'bg-success/15 hover:bg-success/25 text-success',            onClick: () => {} },
       ]
 
-  const chartData = (() => {
-    const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
-    const dayMap: Record<string, number> = {}
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(todayLocal); d.setDate(d.getDate() - 6 + i)
-      dayMap[d.toLocaleDateString('sv-SE')] = 0
-    }
-    for (const p of (stats?.payments7d ?? [])) {
-      const key = new Date(p.paidAt).toLocaleDateString('sv-SE')
-      if (key in dayMap) dayMap[key] = (dayMap[key] ?? 0) + p.amount
-    }
-    return Object.entries(dayMap).map(([date, amount]) => ({ date, amount }))
-  })()
-
   return (
     <>
       <Header
@@ -271,10 +274,14 @@ export default function DashboardPage() {
 
       <div className="flex-1 p-3 sm:p-6 overflow-auto space-y-4 sm:space-y-6">
 
-        {/* Doctor filter — ADMIN only */}
-        {userRole === 'ADMIN' && doctors.length > 0 && (
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-medium text-muted-foreground shrink-0">Viendo datos de:</span>
+        {/* Period navigator + doctor filter */}
+        <div className="flex items-center gap-3 flex-wrap justify-between">
+          <PeriodNavigator
+            granularity={granularity}
+            anchor={anchor}
+            onChange={(g, a) => { setGranularity(g); setAnchor(a) }}
+          />
+          {userRole === 'ADMIN' && doctors.length > 0 && (
             <div className="relative">
               <select
                 value={selectedFilterDoctorId ?? ''}
@@ -291,43 +298,47 @@ export default function DashboardPage() {
               <Building2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {kpis.map((kpi) => {
-            const Icon = kpi.icon
-            return (
-              <div key={kpi.label} className="bg-card rounded-xl border border-border p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
-                    <p className="text-sm font-medium text-foreground/80 mt-0.5">{kpi.label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{kpi.sub}</p>
-                  </div>
-                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', kpi.bg)}>
-                    <Icon className={cn('w-5 h-5', kpi.color)} />
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+          {kpis.map((kpi) => (
+            <KpiCard key={kpi.label} {...kpi} />
+          ))}
+        </div>
+
+        {/* Revenue trend — last 6 months */}
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-foreground">Tendencia de ingresos — últimos 6 meses</h2>
+            <button onClick={() => router.push('/cobros')}
+              className="text-xs text-primary hover:text-primary/80 font-medium">
+              Ver cobros
+            </button>
+          </div>
+          <TrendChart data={trend} />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Left column */}
+          {/* Left column — today's operational panel */}
           <div className="xl:col-span-2 space-y-6">
-            {/* Upcoming appointments */}
             <div className="bg-card rounded-xl border border-border overflow-hidden">
               <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-foreground">Próximas consultas de hoy</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-foreground">Próximas consultas de hoy</h2>
+                  {unconfirmed > 0 && (
+                    <span className="text-xs font-medium text-warning bg-warning/15 px-2 py-0.5 rounded-full">
+                      {unconfirmed} por confirmar
+                    </span>
+                  )}
+                </div>
                 <button onClick={() => router.push('/agenda')}
                   className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1">
                   Ver agenda <ChevronRight className="w-3 h-3" />
                 </button>
               </div>
-              {loading ? (
+              {loading && appointments.length === 0 ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="w-5 h-5 animate-spin text-primary" />
                 </div>
@@ -379,18 +390,6 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )}
-            </div>
-
-            {/* Revenue chart */}
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-foreground">Ingresos últimos 7 días</h2>
-                <button onClick={() => router.push('/cobros')}
-                  className="text-xs text-primary hover:text-primary/80 font-medium">
-                  Ver cobros
-                </button>
-              </div>
-              <RevenueChart data={chartData} />
             </div>
           </div>
 

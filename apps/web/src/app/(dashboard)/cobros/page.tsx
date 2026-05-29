@@ -11,6 +11,9 @@ import { cn } from '@/lib/utils'
 import { NewInvoiceDialog } from '@/components/billing/new-invoice-dialog'
 import { RecordPaymentDialog } from '@/components/billing/record-payment-dialog'
 import { InvoiceDetailDialog } from '@/components/billing/invoice-detail-dialog'
+import { PeriodNavigator, computePeriod, type Granularity } from '@/components/ui/period-navigator'
+import { KpiCard, pctChange } from '@/components/ui/kpi-card'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 interface InvoicesResponse { data: Invoice[]; pagination: { total: number } }
 interface DashboardData {
@@ -25,12 +28,14 @@ interface DashboardData {
     pendingInvoiceCount: number
     overdueInvoiceCount: number
     byPaymentMethod?: { method: string; amount: number }[]
+    byDoctor?: { doctorId: string | null; name: string; amount: number }[]
+    totalBilledPrev?: number
+    totalCollectedPrev?: number
+    hasPrev?: boolean
     payments7d?: { paidAt: string; amount: number }[]
     currency?: string
   }
 }
-
-type ViewMode = 'dia' | 'semana' | 'mes'
 
 const STATUS_CLASSES: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
@@ -42,45 +47,49 @@ const STATUS_CLASSES: Record<string, string> = {
   REFUNDED: 'bg-primary/15 text-primary',
 }
 
-// Responsive bar chart — uses flexbox so it always fills the container
 interface ChartBar { key: string; amount: number; label: string }
 
 function RevenueChart({ bars }: { bars: ChartBar[] }) {
   if (!bars || bars.length === 0) {
-    return <div className="flex items-center justify-center h-24 text-xs text-muted-foreground/60">Sin datos en este período</div>
+    return <div className="flex items-center justify-center h-40 text-xs text-muted-foreground/60">Sin datos en este período</div>
   }
-  const max = Math.max(...bars.map(b => b.amount), 1)
-  // Show labels every N bars so they don't overlap when many bars
-  const labelEvery = bars.length > 20 ? 5 : bars.length > 10 ? 3 : 1
-
   return (
-    <div className="w-full select-none">
-      {/* Bars */}
-      <div className="flex items-end gap-[3px] h-20 w-full">
-        {bars.map((b) => {
-          const pct = b.amount > 0 ? Math.max((b.amount / max) * 100, 6) : 2
-          return (
-            <div
-              key={b.key}
-              className="flex-1 rounded-t transition-all cursor-default"
-              style={{
-                height: `${pct}%`,
-                backgroundColor: b.amount > 0 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.2)',
-                opacity: b.amount > 0 ? 0.85 : 1,
-              }}
-              title={b.amount > 0 ? formatCurrency(b.amount) : undefined}
-            />
-          )
-        })}
-      </div>
-      {/* X-axis labels */}
-      <div className="flex gap-[3px] mt-1.5">
-        {bars.map((b, i) => (
-          <div key={b.key} className="flex-1 text-center overflow-hidden" style={{ fontSize: '8px', color: '#9CA3AF' }}>
-            {i % labelEvery === 0 ? b.label : ''}
-          </div>
-        ))}
-      </div>
+    <div className="w-full h-40">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={bars} margin={{ top: 8, right: 4, left: -8, bottom: 0 }}>
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 10, fill: '#9CA3AF' }}
+            tickLine={false}
+            axisLine={false}
+            interval="preserveStartEnd"
+            minTickGap={8}
+          />
+          <YAxis
+            tick={{ fontSize: 10, fill: '#9CA3AF' }}
+            tickLine={false}
+            axisLine={false}
+            width={48}
+            tickFormatter={(v: number) => (v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`)}
+          />
+          <Tooltip
+            cursor={{ fill: 'hsl(var(--muted) / 0.4)' }}
+            contentStyle={{
+              background: 'hsl(var(--card))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: 8,
+              fontSize: 12,
+            }}
+            labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
+            formatter={(v) => [formatCurrency(Number(v)), 'Ingresos']}
+          />
+          <Bar dataKey="amount" radius={[4, 4, 0, 0]} maxBarSize={48}>
+            {bars.map((b) => (
+              <Cell key={b.key} fill="hsl(var(--primary))" fillOpacity={b.amount > 0 ? 0.85 : 0.2} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   )
 }
@@ -88,14 +97,14 @@ function RevenueChart({ bars }: { bars: ChartBar[] }) {
 // Payment method breakdown pill
 function PaymentMethodBar({ methods }: { methods: { method: string; amount: number }[] }) {
   const total = methods.reduce((s, m) => s + m.amount, 0)
-  if (total === 0) return null
+  if (total === 0) return <div className="flex items-center justify-center h-20 text-xs text-muted-foreground/60">Sin pagos en este período</div>
   const COLORS: Record<string, string> = {
     CARD: 'bg-primary', TRANSFER: 'bg-success', CASH: 'bg-warning',
     STRIPE_LINK: 'bg-primary', INSURANCE: 'bg-success',
   }
   const LABELS: Record<string, string> = {
     CARD: 'Tarjeta', TRANSFER: 'Transferencia', CASH: 'Efectivo',
-    STRIPE_LINK: 'Liga de pago', INSURANCE: 'Seguro',
+    STRIPE_LINK: 'Liga de pago', INSURANCE: 'Seguro', STRIPE_ONLINE: 'Liga de pago',
   }
   return (
     <div>
@@ -134,7 +143,8 @@ export default function CobrosPage() {
   const [stats, setStats] = useState<DashboardData['data'] | null>(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('ALL')
-  const [viewMode, setViewMode] = useState<ViewMode>('mes')
+  const [granularity, setGranularity] = useState<Granularity>('mes')
+  const [anchor, setAnchor] = useState<Date>(() => new Date())
   const [showNew, setShowNew] = useState(false)
   const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null)
   const [detailInvoiceId, setDetailInvoiceId] = useState<string | null>(null)
@@ -148,6 +158,8 @@ export default function CobrosPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>('ALL')
   const [roleReady, setRoleReady] = useState(false)
+
+  const period = useMemo(() => computePeriod(granularity, anchor), [granularity, anchor])
 
   useEffect(() => {
     async function init() {
@@ -186,16 +198,8 @@ export default function CobrosPage() {
       userRole === 'DOCTOR' ? ownDoctorId :
       selectedDoctorId !== 'ALL' ? selectedDoctorId : undefined
 
-    let fromLocal: Date
-    if (viewMode === 'dia') {
-      fromLocal = new Date(todayLocal)
-    } else if (viewMode === 'semana') {
-      fromLocal = new Date(todayLocal); fromLocal.setDate(todayLocal.getDate() - 6)
-    } else {
-      fromLocal = new Date(todayLocal); fromLocal.setDate(1)
-    }
-
-    const cacheKey = `_cobros_${effectiveDoctor ?? 'all'}_${viewMode}_${filter}`
+    const anchorKey = period.from.toLocaleDateString('sv-SE')
+    const cacheKey = `_cobros_${effectiveDoctor ?? 'all'}_${granularity}_${anchorKey}_${filter}`
 
     // Stale-while-revalidate: show cached invoices + stats instantly
     const cached = readCache<{ invoices: Invoice[]; stats: DashboardData['data'] }>(cacheKey)
@@ -203,16 +207,28 @@ export default function CobrosPage() {
       setInvoices(cached.invoices)
       setStats(cached.stats)
       setLoading(false)
+    } else {
+      setLoading(true)
     }
 
     // Always fetch fresh data in background
     try {
-      const ivParams: Record<string, string> = { limit: '200' }
+      const ivParams: Record<string, string> = {
+        limit: '200',
+        from: period.from.toISOString(),
+        to: period.to.toISOString(),
+      }
       if (filter !== 'ALL') ivParams['status'] = filter
       if (effectiveDoctor) ivParams['doctorId'] = effectiveDoctor
 
       const dashParams: Record<string, string> = {
-        from: fromLocal.toISOString(), todayUtc, chartFromUtc: fromLocal.toISOString(),
+        from: period.from.toISOString(),
+        to: period.to.toISOString(),
+        prevFrom: period.prevFrom.toISOString(),
+        prevTo: period.prevTo.toISOString(),
+        todayUtc,
+        chartFromUtc: period.from.toISOString(),
+        chartToUtc: period.to.toISOString(),
       }
       if (effectiveDoctor) dashParams['doctorId'] = effectiveDoctor
 
@@ -225,56 +241,35 @@ export default function CobrosPage() {
       writeCache(cacheKey, { invoices: ivRes.data, stats: dashRes.data })
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
-  }, [filter, viewMode, roleReady, userRole, ownDoctorId, selectedDoctorId])
+  }, [filter, granularity, period, roleReady, userRole, ownDoctorId, selectedDoctorId])
 
-  // Build chart bars in local timezone — granularity depends on viewMode
+  // Build chart bars in local timezone — granularity decides the buckets
   const chartBars = useMemo((): ChartBar[] => {
-    const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
     const payments = stats?.payments7d ?? []
-    const todayStr = todayLocal.toLocaleDateString('sv-SE')
+    const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999)
 
-    if (viewMode === 'dia') {
-      // Hourly slots 6am–9pm
+    if (granularity === 'dia') {
+      const dayStr = period.from.toLocaleDateString('sv-SE')
       const SLOTS = [6, 8, 10, 12, 14, 16, 18, 20] as const
       const slotMap: Record<number, number> = {}
       for (const h of SLOTS) slotMap[h] = 0
       for (const p of payments) {
-        if (new Date(p.paidAt).toLocaleDateString('sv-SE') !== todayStr) continue
-        const hour = new Date(p.paidAt).getHours()
+        const d = new Date(p.paidAt)
+        if (d.toLocaleDateString('sv-SE') !== dayStr) continue
+        const hour = d.getHours()
         const slot = [...SLOTS].reverse().find(s => hour >= s) ?? SLOTS[0]
         slotMap[slot] = (slotMap[slot] ?? 0) + p.amount
       }
-      return SLOTS.map(h => ({
-        key: String(h),
-        amount: slotMap[h] ?? 0,
-        label: `${h}h`,
-      }))
+      return SLOTS.map(h => ({ key: String(h), amount: slotMap[h] ?? 0, label: `${h}h` }))
     }
 
-    if (viewMode === 'semana') {
-      const dayMap: Record<string, number> = {}
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(todayLocal); d.setDate(d.getDate() - 6 + i)
-        dayMap[d.toLocaleDateString('sv-SE')] = 0
-      }
-      for (const p of payments) {
-        const key = new Date(p.paidAt).toLocaleDateString('sv-SE')
-        if (key in dayMap) dayMap[key] = (dayMap[key] ?? 0) + p.amount
-      }
-      return Object.entries(dayMap).map(([date, amount]) => ({
-        key: date,
-        amount,
-        label: `${date.split('-')[2]} ${new Date(`${date}T12:00:00`).toLocaleDateString('es-MX', { month: 'short' })}`,
-      }))
-    }
-
-    // mes: all days of current month up to today
-    const daysElapsed = todayLocal.getDate()
-    const monthStart = new Date(todayLocal); monthStart.setDate(1)
+    // semana / mes: one bar per day from period.from to min(period.to, today)
     const dayMap: Record<string, number> = {}
-    for (let i = 0; i < daysElapsed; i++) {
-      const d = new Date(monthStart); d.setDate(i + 1)
-      dayMap[d.toLocaleDateString('sv-SE')] = 0
+    const last = period.to.getTime() < todayEnd.getTime() ? period.to : todayEnd
+    const cursor = new Date(period.from)
+    while (cursor.getTime() <= last.getTime()) {
+      dayMap[cursor.toLocaleDateString('sv-SE')] = 0
+      cursor.setDate(cursor.getDate() + 1)
     }
     for (const p of payments) {
       const key = new Date(p.paidAt).toLocaleDateString('sv-SE')
@@ -283,9 +278,11 @@ export default function CobrosPage() {
     return Object.entries(dayMap).map(([date, amount]) => ({
       key: date,
       amount,
-      label: date.split('-')[2] ?? '',
+      label: granularity === 'semana'
+        ? `${date.split('-')[2]} ${new Date(`${date}T12:00:00`).toLocaleDateString('es-MX', { month: 'short' })}`
+        : date.split('-')[2] ?? '',
     }))
-  }, [stats, viewMode])
+  }, [stats, granularity, period])
 
   useEffect(() => { load() }, [load])
 
@@ -300,6 +297,8 @@ export default function CobrosPage() {
   }
 
   const paymentMethods = stats?.byPaymentMethod ?? []
+  const ingresosLabel = granularity === 'dia' ? 'Ingresos del día' : granularity === 'semana' ? 'Ingresos de la semana' : 'Ingresos del mes'
+  const chartTitle = granularity === 'dia' ? 'Ingresos por hora' : granularity === 'semana' ? 'Ingresos por día — semana' : 'Ingresos por día — mes'
 
   return (
     <>
@@ -315,18 +314,13 @@ export default function CobrosPage() {
       />
 
       <div className="flex-1 p-3 sm:p-6 overflow-auto space-y-4 sm:space-y-6">
-        {/* Controls row: view mode + doctor filter */}
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* View mode */}
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-            {(['dia', 'semana', 'mes'] as ViewMode[]).map((m) => (
-              <button key={m} onClick={() => setViewMode(m)}
-                className={cn('px-3 py-1.5 rounded-md text-sm font-medium transition-colors capitalize',
-                  viewMode === m ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground/80')}>
-                {m === 'dia' ? 'Día' : m === 'semana' ? 'Semana' : 'Mes'}
-              </button>
-            ))}
-          </div>
+        {/* Controls row: period navigator + doctor filter */}
+        <div className="flex items-center gap-3 flex-wrap justify-between">
+          <PeriodNavigator
+            granularity={granularity}
+            anchor={anchor}
+            onChange={(g, a) => { setGranularity(g); setAnchor(a) }}
+          />
 
           {/* Doctor filter — only visible for ADMIN and STAFF */}
           {userRole && userRole !== 'DOCTOR' && doctors.length > 0 && (
@@ -354,33 +348,37 @@ export default function CobrosPage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: viewMode === 'dia' ? 'Ingresos hoy' : viewMode === 'semana' ? 'Ingresos semana' : 'Ingresos del mes', value: formatCurrency(stats?.totalBilled ?? 0), icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10' },
-            { label: 'Cobrado', value: formatCurrency(stats?.totalCollected ?? 0), sub: `${stats?.paidInvoiceCount ?? 0} facturas`, icon: DollarSign, color: 'text-success', bg: 'bg-success/10' },
-            { label: 'Pendiente', value: formatCurrency(stats?.pendingAmount ?? 0), sub: `${stats?.pendingInvoiceCount ?? 0} facturas`, icon: Clock, color: 'text-warning', bg: 'bg-warning/10' },
-            { label: 'Vencido', value: formatCurrency(stats?.overdueAmount ?? 0), sub: `${stats?.overdueInvoiceCount ?? 0} facturas`, icon: CreditCard, color: 'text-destructive', bg: 'bg-destructive/10' },
-          ].map(({ label, value, sub, icon: Icon, color, bg }) => (
-            <div key={label} className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xl font-bold text-foreground">{value}</p>
-                  <p className="text-sm font-medium text-muted-foreground mt-0.5">{label}</p>
-                  {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
-                </div>
-                <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center shrink-0`}>
-                  <Icon className={`w-5 h-5 ${color}`} />
-                </div>
-              </div>
-            </div>
-          ))}
+          <KpiCard
+            label={ingresosLabel}
+            value={formatCurrency(stats?.totalBilled ?? 0)}
+            icon={TrendingUp} color="text-primary" bg="bg-primary/10"
+            delta={stats?.hasPrev ? pctChange(stats?.totalBilled ?? 0, stats?.totalBilledPrev ?? 0) : null}
+          />
+          <KpiCard
+            label="Cobrado"
+            value={formatCurrency(stats?.totalCollected ?? 0)}
+            sub={`${stats?.paidInvoiceCount ?? 0} facturas`}
+            icon={DollarSign} color="text-success" bg="bg-success/10"
+            delta={stats?.hasPrev ? pctChange(stats?.totalCollected ?? 0, stats?.totalCollectedPrev ?? 0) : null}
+          />
+          <KpiCard
+            label="Pendiente"
+            value={formatCurrency(stats?.pendingAmount ?? 0)}
+            sub={`${stats?.pendingInvoiceCount ?? 0} facturas`}
+            icon={Clock} color="text-warning" bg="bg-warning/10"
+          />
+          <KpiCard
+            label="Vencido"
+            value={formatCurrency(stats?.overdueAmount ?? 0)}
+            sub={`${stats?.overdueInvoiceCount ?? 0} facturas`}
+            icon={CreditCard} color="text-destructive" bg="bg-destructive/10"
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Revenue chart */}
           <div className="lg:col-span-2 bg-card rounded-xl border border-border p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-4">
-              {viewMode === 'dia' ? 'Ingresos por hora — hoy' : viewMode === 'semana' ? 'Ingresos últimos 7 días' : 'Ingresos por día — este mes'}
-            </h3>
+            <h3 className="text-sm font-semibold text-foreground mb-4">{chartTitle}</h3>
             <RevenueChart bars={chartBars} />
           </div>
 
@@ -408,7 +406,7 @@ export default function CobrosPage() {
         ) : invoices.length === 0 ? (
           <div className="text-center py-16 bg-card rounded-xl border border-border">
             <CreditCard className="w-10 h-10 mx-auto mb-3 text-muted-foreground/60" />
-            <p className="text-sm text-muted-foreground">No hay facturas</p>
+            <p className="text-sm text-muted-foreground">No hay facturas en este período</p>
           </div>
         ) : (
           <div className="bg-card rounded-xl border border-border overflow-x-auto">
