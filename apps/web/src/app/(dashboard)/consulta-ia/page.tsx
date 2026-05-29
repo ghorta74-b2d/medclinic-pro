@@ -105,6 +105,17 @@ function audioConstraints(deviceId?: string): MediaStreamConstraints {
 /** Speech-recognition error codes that are fatal (no point retrying). */
 const FATAL_SR_ERRORS = new Set(['not-allowed', 'service-not-allowed', 'audio-capture'])
 
+/**
+ * Whether the browser supports the Web Speech API (transcription happens fully
+ * in-browser). Only Chrome/Edge implement it reliably — Safari and Firefox do
+ * not, so the feature is gated to Chrome.
+ */
+function speechRecognitionSupported(): boolean {
+  if (typeof window === 'undefined') return false
+  const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }
+  return !!(w.SpeechRecognition || w.webkitSpeechRecognition)
+}
+
 // ── Step indicator ────────────────────────────────────────────────────────────
 
 const STEPS: { id: Step; label: string }[] = [
@@ -347,17 +358,6 @@ function MicrophoneStep({
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [attempt, setAttempt] = useState(0)
-  const [srSupported, setSrSupported] = useState(true)
-
-  useEffect(() => {
-    setSrSupported(
-      typeof window !== 'undefined' &&
-      !!(
-        (window as Window & typeof globalThis & { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition ||
-        (window as Window & typeof globalThis & { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).webkitSpeechRecognition
-      )
-    )
-  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -468,15 +468,6 @@ function MicrophoneStep({
               />
             </label>
           ))}
-        </div>
-      )}
-
-      {!srSupported && !error && (
-        <div className="bg-warning/10 border border-warning/30 rounded-xl p-3 mb-4 flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-          <p className="text-xs text-warning/80">
-            Tu navegador no soporta transcripción en tiempo real. Se grabará el audio pero no habrá preview del texto durante la consulta. Usa Chrome o Edge para la mejor experiencia.
-          </p>
         </div>
       )}
 
@@ -686,9 +677,6 @@ function RecordingStep({
     }
   }
 
-  const srSupported = typeof window !== 'undefined' &&
-    !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
-
   return (
     <div className="max-w-xl">
       {/* Recording header */}
@@ -739,16 +727,6 @@ function RecordingStep({
           <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
           <p className="text-xs text-warning/80">
             No se detecta audio del micrófono. Acerca el micrófono, sube el volumen de entrada o verifica que no esté silenciado.
-          </p>
-        </div>
-      )}
-
-      {/* Transcription not supported */}
-      {!srSupported && !fatalMicError && (
-        <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-4 flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-          <p className="text-xs text-warning/80">
-            Este navegador no transcribe en vivo. El cronómetro corre, pero para capturar el texto usa Chrome o Edge.
           </p>
         </div>
       )}
@@ -954,6 +932,12 @@ function ConsultaIaContent() {
   const [deviceId, setDeviceId] = useState('')
   const [result, setResult] = useState<ProcessResult | null>(null)
   const [error, setError] = useState('')
+  // null = checking (avoids SSR/hydration flash), true/false once mounted
+  const [browserSupported, setBrowserSupported] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    setBrowserSupported(speechRecognitionSupported())
+  }, [])
 
   // When launched from a patient page, pre-load the patient and skip to consent
   useEffect(() => {
@@ -1015,6 +999,26 @@ function ConsultaIaContent() {
 
       <div className="flex-1 p-3 sm:p-6 overflow-auto">
         <div className="max-w-3xl">
+          {browserSupported === false ? (
+            <div className="bg-card border border-border rounded-2xl p-8 text-center max-w-lg mx-auto mt-8">
+              <div className="w-14 h-14 rounded-2xl bg-warning/10 flex items-center justify-center mx-auto mb-5">
+                <AlertCircle className="w-7 h-7 text-warning" />
+              </div>
+              <h2 className="text-lg font-semibold text-foreground mb-2">
+                Disponible solo en Google Chrome
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-5">
+                La Consulta con IA usa la transcripción de voz del navegador, que por ahora
+                solo funciona de forma confiable en Google Chrome (también en Microsoft Edge).
+                Tu navegador actual no es compatible.
+              </p>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Abre <span className="font-medium text-foreground">mediaclinic.mx</span> en
+                Google Chrome para usar esta función.
+              </p>
+            </div>
+          ) : (
+          <>
           {error && (
             <div className="bg-destructive/10 border border-destructive/15 rounded-xl px-4 py-3 mb-6 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
@@ -1064,6 +1068,8 @@ function ConsultaIaContent() {
               patient={patient}
               onReset={reset}
             />
+          )}
+          </>
           )}
         </div>
       </div>
