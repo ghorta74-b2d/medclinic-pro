@@ -518,7 +518,8 @@ function RecordingStep({
   const audioCtxRef = useRef<AudioContext | null>(null)
   const rafRef = useRef<number | null>(null)
   const heardAudioRef = useRef(false)
-  const lastSoundAtRef = useRef(Date.now())
+  // Baseline timestamp set when the mic actually opens (not during render).
+  const lastSoundAtRef = useRef(0)
 
   // Timer
   useEffect(() => {
@@ -572,6 +573,7 @@ function RecordingStep({
           analyser.fftSize = 512
           source.connect(analyser)
           const data = new Uint8Array(analyser.frequencyBinCount)
+          lastSoundAtRef.current = Date.now()
 
           const tick = () => {
             analyser.getByteTimeDomainData(data)
