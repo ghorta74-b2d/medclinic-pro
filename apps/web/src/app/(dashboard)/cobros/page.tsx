@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { NewInvoiceDialog } from '@/components/billing/new-invoice-dialog'
 import { RecordPaymentDialog } from '@/components/billing/record-payment-dialog'
 import { InvoiceDetailDialog } from '@/components/billing/invoice-detail-dialog'
-import { PeriodNavigator, computePeriod, type Granularity } from '@/components/ui/period-navigator'
+import { PeriodNavigator, computePeriod, stepAnchor, type Granularity, type Period } from '@/components/ui/period-navigator'
 import { KpiCard, pctChange } from '@/components/ui/kpi-card'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
@@ -47,7 +47,25 @@ const STATUS_CLASSES: Record<string, string> = {
   REFUNDED: 'bg-primary/15 text-primary',
 }
 
-interface ChartBar { key: string; amount: number; label: string }
+interface ChartBar { key: string; amount: number; label: string; full: string }
+
+interface ChartTooltipProps {
+  active?: boolean
+  payload?: { value?: number; payload?: ChartBar }[]
+}
+
+// Tooltip: monto cobrado en grande + fecha/hora completa debajo
+function RevenueTooltip({ active, payload }: ChartTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null
+  const bar = payload[0]?.payload
+  const amount = Number(payload[0]?.value ?? 0)
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-lg">
+      <p className="text-sm font-bold text-foreground">{formatCurrency(amount)}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">{bar?.full ?? ''}</p>
+    </div>
+  )
+}
 
 function RevenueChart({ bars }: { bars: ChartBar[] }) {
   if (!bars || bars.length === 0) {
@@ -72,17 +90,7 @@ function RevenueChart({ bars }: { bars: ChartBar[] }) {
             width={48}
             tickFormatter={(v: number) => (v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`)}
           />
-          <Tooltip
-            cursor={{ fill: 'hsl(var(--muted) / 0.4)' }}
-            contentStyle={{
-              background: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-            labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
-            formatter={(v) => [formatCurrency(Number(v)), 'Ingresos']}
-          />
+          <Tooltip cursor={{ fill: 'hsl(var(--muted) / 0.4)' }} content={<RevenueTooltip />} />
           <Bar dataKey="amount" radius={[4, 4, 0, 0]} maxBarSize={48}>
             {bars.map((b) => (
               <Cell key={b.key} fill="hsl(var(--primary))" fillOpacity={b.amount > 0 ? 0.85 : 0.2} />
@@ -189,46 +197,52 @@ export default function CobrosPage() {
     init()
   }, [])
 
-  const load = useCallback(async () => {
-    if (!roleReady) return
-
+  // Fetch (and cache) invoices + stats for a given period.
+  // `silent` mode only warms the cache without touching component state —
+  // used to prefetch the previous period so navigating back feels instant.
+  const fetchPeriod = useCallback(async (p: Period, opts: { silent?: boolean } = {}) => {
+    const { silent } = opts
     const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
     const todayUtc = todayLocal.toISOString()
     const effectiveDoctor =
       userRole === 'DOCTOR' ? ownDoctorId :
       selectedDoctorId !== 'ALL' ? selectedDoctorId : undefined
 
-    const anchorKey = period.from.toLocaleDateString('sv-SE')
+    const anchorKey = p.from.toLocaleDateString('sv-SE')
     const cacheKey = `_cobros_${effectiveDoctor ?? 'all'}_${granularity}_${anchorKey}_${filter}`
 
-    // Stale-while-revalidate: show cached invoices + stats instantly
-    const cached = readCache<{ invoices: Invoice[]; stats: DashboardData['data'] }>(cacheKey)
-    if (cached) {
-      setInvoices(cached.invoices)
-      setStats(cached.stats)
-      setLoading(false)
+    if (silent) {
+      // Don't re-fetch if the period is already warm in cache
+      if (readCache(cacheKey)) return
     } else {
-      setLoading(true)
+      // Stale-while-revalidate: show cached invoices + stats instantly
+      const cached = readCache<{ invoices: Invoice[]; stats: DashboardData['data'] }>(cacheKey)
+      if (cached) {
+        setInvoices(cached.invoices)
+        setStats(cached.stats)
+        setLoading(false)
+      } else {
+        setLoading(true)
+      }
     }
 
-    // Always fetch fresh data in background
     try {
       const ivParams: Record<string, string> = {
         limit: '200',
-        from: period.from.toISOString(),
-        to: period.to.toISOString(),
+        from: p.from.toISOString(),
+        to: p.to.toISOString(),
       }
       if (filter !== 'ALL') ivParams['status'] = filter
       if (effectiveDoctor) ivParams['doctorId'] = effectiveDoctor
 
       const dashParams: Record<string, string> = {
-        from: period.from.toISOString(),
-        to: period.to.toISOString(),
-        prevFrom: period.prevFrom.toISOString(),
-        prevTo: period.prevTo.toISOString(),
+        from: p.from.toISOString(),
+        to: p.to.toISOString(),
+        prevFrom: p.prevFrom.toISOString(),
+        prevTo: p.prevTo.toISOString(),
         todayUtc,
-        chartFromUtc: period.from.toISOString(),
-        chartToUtc: period.to.toISOString(),
+        chartFromUtc: p.from.toISOString(),
+        chartToUtc: p.to.toISOString(),
       }
       if (effectiveDoctor) dashParams['doctorId'] = effectiveDoctor
 
@@ -236,12 +250,19 @@ export default function CobrosPage() {
         api.billing.invoices(ivParams) as Promise<InvoicesResponse>,
         api.billing.dashboard(dashParams) as Promise<DashboardData>,
       ])
-      setInvoices(ivRes.data)
-      setStats(dashRes.data)
+      if (!silent) {
+        setInvoices(ivRes.data)
+        setStats(dashRes.data)
+      }
       writeCache(cacheKey, { invoices: ivRes.data, stats: dashRes.data })
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
-  }, [filter, granularity, period, roleReady, userRole, ownDoctorId, selectedDoctorId])
+    } catch (err) { if (!silent) console.error(err) }
+    finally { if (!silent) setLoading(false) }
+  }, [filter, granularity, userRole, ownDoctorId, selectedDoctorId])
+
+  const load = useCallback(() => {
+    if (!roleReady) return
+    fetchPeriod(period)
+  }, [fetchPeriod, period, roleReady])
 
   // Build chart bars in local timezone — granularity decides the buckets
   const chartBars = useMemo((): ChartBar[] => {
@@ -260,7 +281,7 @@ export default function CobrosPage() {
         const slot = [...SLOTS].reverse().find(s => hour >= s) ?? SLOTS[0]
         slotMap[slot] = (slotMap[slot] ?? 0) + p.amount
       }
-      return SLOTS.map(h => ({ key: String(h), amount: slotMap[h] ?? 0, label: `${h}h` }))
+      return SLOTS.map(h => ({ key: String(h), amount: slotMap[h] ?? 0, label: `${h}h`, full: `${h}:00 h` }))
     }
 
     // semana / mes: one bar per day from period.from to min(period.to, today)
@@ -275,16 +296,29 @@ export default function CobrosPage() {
       const key = new Date(p.paidAt).toLocaleDateString('sv-SE')
       if (key in dayMap) dayMap[key] = (dayMap[key] ?? 0) + p.amount
     }
-    return Object.entries(dayMap).map(([date, amount]) => ({
-      key: date,
-      amount,
-      label: granularity === 'semana'
-        ? `${date.split('-')[2]} ${new Date(`${date}T12:00:00`).toLocaleDateString('es-MX', { month: 'short' })}`
-        : date.split('-')[2] ?? '',
-    }))
+    return Object.entries(dayMap).map(([date, amount]) => {
+      const d = new Date(`${date}T12:00:00`)
+      return {
+        key: date,
+        amount,
+        label: granularity === 'semana'
+          ? `${date.split('-')[2]} ${d.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '')}`
+          : date.split('-')[2] ?? '',
+        full: d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', ''),
+      }
+    })
   }, [stats, granularity, period])
 
   useEffect(() => { load() }, [load])
+
+  // Prefetch the previous period in the background so clicking ‹ is instant
+  useEffect(() => {
+    if (!roleReady) return
+    const t = setTimeout(() => {
+      fetchPeriod(computePeriod(granularity, stepAnchor(granularity, anchor, -1)), { silent: true })
+    }, 500)
+    return () => clearTimeout(t)
+  }, [fetchPeriod, granularity, anchor, roleReady])
 
   async function handleSendPaymentLink(invoice: Invoice) {
     setActionLoading((a) => ({ ...a, [invoice.id]: 'link' }))

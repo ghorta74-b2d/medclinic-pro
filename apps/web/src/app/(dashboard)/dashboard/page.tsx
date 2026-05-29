@@ -15,7 +15,7 @@ import { NewPatientDialog } from '@/components/patients/new-patient-dialog'
 import type { Appointment } from 'medclinic-shared'
 import { STATUS_LABELS } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
-import { PeriodNavigator, computePeriod, type Granularity } from '@/components/ui/period-navigator'
+import { PeriodNavigator, computePeriod, stepAnchor, type Granularity, type Period } from '@/components/ui/period-navigator'
 import { KpiCard, pctChange } from '@/components/ui/kpi-card'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
@@ -52,11 +52,37 @@ function monthLabel(key: string): string {
   return d.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '')
 }
 
+function monthLabelFull(key: string): string {
+  const [y, m] = key.split('-').map(Number)
+  const d = new Date(y ?? 2000, (m ?? 1) - 1, 1)
+  const name = d.toLocaleDateString('es-MX', { month: 'long' })
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${y ?? ''}`
+}
+
+interface TrendRow extends TrendPoint { label: string; full: string }
+interface TrendTooltipProps {
+  active?: boolean
+  payload?: { value?: number; payload?: TrendRow }[]
+}
+
+// Tooltip: monto cobrado en grande + mes completo debajo
+function TrendTooltip({ active, payload }: TrendTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null
+  const row = payload[0]?.payload
+  const amount = Number(payload[0]?.value ?? 0)
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-lg">
+      <p className="text-sm font-bold text-foreground">{formatCurrency(amount)}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">{row?.full ?? ''}</p>
+    </div>
+  )
+}
+
 function TrendChart({ data }: { data: TrendPoint[] }) {
   if (!data || data.length === 0) {
     return <div className="flex items-center justify-center h-56 text-xs text-muted-foreground/60">Sin datos de tendencia</div>
   }
-  const rows = data.map(d => ({ ...d, label: monthLabel(d.month) }))
+  const rows: TrendRow[] = data.map(d => ({ ...d, label: monthLabel(d.month), full: monthLabelFull(d.month) }))
   return (
     <div className="w-full h-56">
       <ResponsiveContainer width="100%" height="100%">
@@ -73,12 +99,7 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
             tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} width={48}
             tickFormatter={(v: number) => (v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`)}
           />
-          <Tooltip
-            cursor={{ stroke: 'hsl(var(--border))' }}
-            contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
-            labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
-            formatter={(v) => [formatCurrency(Number(v)), 'Cobrado']}
-          />
+          <Tooltip cursor={{ stroke: 'hsl(var(--border))' }} content={<TrendTooltip />} />
           <Area type="monotone" dataKey="collected" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#collectedFill)" />
         </AreaChart>
       </ResponsiveContainer>
@@ -107,21 +128,27 @@ export default function DashboardPage() {
   const today = new Date()
   const period = useMemo(() => computePeriod(granularity, anchor), [granularity, anchor])
 
-  const load = useCallback(async () => {
-    if (!roleReady) return
-
+  // Fetch (and cache) appointments + stats + trend for a given period.
+  // `silent` mode only warms the cache (no state updates) — used to prefetch
+  // the previous period so navigating back feels instant.
+  const fetchPeriod = useCallback(async (p: Period, opts: { silent?: boolean } = {}) => {
+    const { silent } = opts
     const todayLocal = new Date(); todayLocal.setHours(0, 0, 0, 0)
     const todayEnd = new Date(todayLocal); todayEnd.setHours(23, 59, 59, 999)
     const todayStr = todayLocal.toLocaleDateString('sv-SE')
     const effectiveDoctor = userRole === 'ADMIN' ? selectedFilterDoctorId : ownDoctorId
-    const cacheKey = `_dash_${effectiveDoctor ?? 'all'}_${granularity}_${period.from.toLocaleDateString('sv-SE')}_${todayStr}`
+    const cacheKey = `_dash_${effectiveDoctor ?? 'all'}_${granularity}_${p.from.toLocaleDateString('sv-SE')}_${todayStr}`
 
-    const cached = readCache<{ appointments: Appointment[]; stats: DashboardStats; trend: TrendPoint[] }>(cacheKey)
-    if (cached) {
-      setAppointments(cached.appointments)
-      setStats(cached.stats)
-      setTrend(cached.trend ?? [])
-      setLoading(false)
+    if (silent) {
+      if (readCache(cacheKey)) return
+    } else {
+      const cached = readCache<{ appointments: Appointment[]; stats: DashboardStats; trend: TrendPoint[] }>(cacheKey)
+      if (cached) {
+        setAppointments(cached.appointments)
+        setStats(cached.stats)
+        setTrend(cached.trend ?? [])
+        setLoading(false)
+      }
     }
 
     try {
@@ -130,13 +157,13 @@ export default function DashboardPage() {
       if (effectiveDoctor) aptParams['doctorId'] = effectiveDoctor
 
       const dashParams: Record<string, string> = {
-        from: period.from.toISOString(),
-        to: period.to.toISOString(),
-        prevFrom: period.prevFrom.toISOString(),
-        prevTo: period.prevTo.toISOString(),
+        from: p.from.toISOString(),
+        to: p.to.toISOString(),
+        prevFrom: p.prevFrom.toISOString(),
+        prevTo: p.prevTo.toISOString(),
         todayUtc: todayLocal.toISOString(),
-        chartFromUtc: period.from.toISOString(),
-        chartToUtc: period.to.toISOString(),
+        chartFromUtc: p.from.toISOString(),
+        chartToUtc: p.to.toISOString(),
       }
       if (effectiveDoctor) dashParams['doctorId'] = effectiveDoctor
 
@@ -152,16 +179,23 @@ export default function DashboardPage() {
       const newApts  = aptsRes.status === 'fulfilled' ? aptsRes.value.data : null
       const newStats = dashRes.status === 'fulfilled' ? dashRes.value.data : null
       const newTrend = trendRes.status === 'fulfilled' ? trendRes.value.data : null
-      if (newApts)  setAppointments(newApts)
-      if (newStats) setStats(newStats)
-      if (newTrend) setTrend(newTrend)
+      if (!silent) {
+        if (newApts)  setAppointments(newApts)
+        if (newStats) setStats(newStats)
+        if (newTrend) setTrend(newTrend)
+      }
       if (newApts && newStats) writeCache(cacheKey, { appointments: newApts, stats: newStats, trend: newTrend ?? [] })
     } catch (err) {
-      console.error(err)
+      if (!silent) console.error(err)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }, [ownDoctorId, roleReady, userRole, selectedFilterDoctorId, granularity, period])
+  }, [ownDoctorId, userRole, selectedFilterDoctorId, granularity])
+
+  const load = useCallback(() => {
+    if (!roleReady) return
+    fetchPeriod(period)
+  }, [fetchPeriod, period, roleReady])
 
   useEffect(() => {
     if (sessionCache.getRole() === 'ADMIN' && doctors.length === 0) {
@@ -200,6 +234,15 @@ export default function DashboardPage() {
   }, [doctors.length])
 
   useEffect(() => { load() }, [load])
+
+  // Prefetch the previous period in the background so clicking ‹ is instant
+  useEffect(() => {
+    if (!roleReady) return
+    const t = setTimeout(() => {
+      fetchPeriod(computePeriod(granularity, stepAnchor(granularity, anchor, -1)), { silent: true })
+    }, 500)
+    return () => clearTimeout(t)
+  }, [fetchPeriod, granularity, anchor, roleReady])
 
   const todayStr = formatDate(today, "EEEE, d 'de' MMMM yyyy")
   const now = new Date()

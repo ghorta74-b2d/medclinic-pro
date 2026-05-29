@@ -61,7 +61,8 @@ export function computePeriod(granularity: Granularity, anchor: Date): Period {
     to = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999)
     prevFrom = new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1, 0, 0, 0, 0)
     prevTo = new Date(anchor.getFullYear(), anchor.getMonth(), 0, 23, 59, 59, 999)
-    label = capitalize(anchor.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }))
+    // "Mayo 2026" — sin la preposición "de" que añade el locale es-MX
+    label = `${capitalize(anchor.toLocaleDateString('es-MX', { month: 'long' }))} ${anchor.getFullYear()}`
     isCurrent = anchor.getFullYear() === today.getFullYear() && anchor.getMonth() === today.getMonth()
   }
 
@@ -69,7 +70,7 @@ export function computePeriod(granularity: Granularity, anchor: Date): Period {
 }
 
 /** Step the anchor one period back (dir=-1) or forward (dir=+1). */
-function stepAnchor(granularity: Granularity, anchor: Date, dir: 1 | -1): Date {
+export function stepAnchor(granularity: Granularity, anchor: Date, dir: 1 | -1): Date {
   if (granularity === 'dia') return new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + dir)
   if (granularity === 'semana') return new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + 7 * dir)
   return new Date(anchor.getFullYear(), anchor.getMonth() + dir, 1)
@@ -113,7 +114,7 @@ export function PeriodNavigator({ granularity, anchor, onChange }: Props) {
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
-        <span className="min-w-[150px] text-center text-sm font-semibold text-foreground capitalize">
+        <span className="min-w-[150px] text-center text-sm font-semibold text-foreground">
           {period.label}
         </span>
         <button
