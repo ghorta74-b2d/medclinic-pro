@@ -6,6 +6,7 @@ import rateLimit from '@fastify/rate-limit'
 
 // Routes
 import { appointmentsRoutes } from './routes/appointments.js'
+import { blocksRoutes } from './routes/blocks.js'
 import { patientsRoutes } from './routes/patients.js'
 import { clinicalNotesRoutes } from './routes/clinical-notes.js'
 import { prescriptionsRoutes } from './routes/prescriptions.js'
@@ -84,6 +85,7 @@ export async function buildServer() {
 
   // ── API Routes ───────────────────────────────────────────
   await server.register(appointmentsRoutes, { prefix: '/api/appointments' })
+  await server.register(blocksRoutes, { prefix: '/api/blocks' })
   await server.register(patientsRoutes, { prefix: '/api/patients' })
   await server.register(clinicalNotesRoutes, { prefix: '/api/clinical-notes' })
   await server.register(prescriptionsRoutes, { prefix: '/api/prescriptions' })

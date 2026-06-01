@@ -40,6 +40,7 @@ vi.mock('../lib/prisma.js', () => ({
       findFirst: vi.fn().mockResolvedValue(null), // no conflict
       create: vi.fn().mockResolvedValue(mockAppointment),
     },
+    scheduleBlock: { findFirst: vi.fn().mockResolvedValue(null) }, // no block conflict
     auditLog: { create: vi.fn().mockResolvedValue({}) },
   },
 }))

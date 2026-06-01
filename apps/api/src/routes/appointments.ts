@@ -277,6 +277,18 @@ export async function appointmentsRoutes(server: FastifyInstance) {
       return reply.status(409).send({ error: { message: 'Ese horario ya está ocupado. Elige otro.' } })
     }
 
+    // Check against schedule blocks (vacaciones, comida, etc.) for the same doctor
+    const blocked = await prisma.scheduleBlock.findFirst({
+      where: {
+        doctorId: resolvedDoctorId,
+        startsAt: { lt: new Date(data.endsAt) },
+        endsAt: { gt: new Date(data.startsAt) },
+      },
+    })
+    if (blocked) {
+      return reply.status(409).send({ error: { message: 'El médico tiene un bloqueo en ese horario.' } })
+    }
+
     const appointment = await prisma.appointment.create({
       data: {
         clinicId,

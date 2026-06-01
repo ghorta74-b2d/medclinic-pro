@@ -8,6 +8,8 @@ export type AppointmentStatus =
 
 export type AppointmentMode = 'IN_PERSON' | 'TELEMEDICINE' | 'HOME_VISIT'
 
+export type BlockReason = 'VACATION' | 'MEAL' | 'PERSONAL' | 'OTHER'
+
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY'
 
 export type BloodType = 'A_POS' | 'A_NEG' | 'B_POS' | 'B_NEG' | 'AB_POS' | 'AB_NEG' | 'O_POS' | 'O_NEG' | 'UNKNOWN'
@@ -124,6 +126,21 @@ export interface Appointment {
   patient?: Pick<Patient, 'id' | 'firstName' | 'lastName' | 'phone'>
   doctor?: Pick<Doctor, 'id' | 'firstName' | 'lastName' | 'specialty'>
   appointmentType?: AppointmentType
+  createdAt: string
+}
+
+// Bloqueo de horario — el médico no está disponible en este rango.
+// No es una cita: no lleva paciente ni cuenta en los contadores.
+export interface ScheduleBlock {
+  id: string
+  clinicId: string
+  doctorId: string
+  startsAt: string
+  endsAt: string
+  reason: BlockReason
+  note?: string
+  createdBy?: string
+  doctor?: Pick<Doctor, 'id' | 'firstName' | 'lastName' | 'specialty'>
   createdAt: string
 }
 
@@ -372,6 +389,42 @@ export const STATUS_COLORS: Record<AppointmentStatus, string> = {
   COMPLETED: 'gray',
   CANCELLED: 'red',
   NO_SHOW: 'red',
+}
+
+export const BLOCK_REASON_LABELS: Record<BlockReason, string> = {
+  VACATION: 'Vacaciones',
+  MEAL: 'Comida',
+  PERSONAL: 'Personal',
+  OTHER: 'Otro',
+}
+
+// Paleta determinística por médico — colores accesibles y distintos entre sí.
+// Se evita el rojo puro (reservado a "cancelada" y a la línea de ahora).
+const DOCTOR_HUES = [205, 160, 275, 32, 330, 130, 250, 190, 95, 18] as const
+
+export interface DoctorColor {
+  hue: number
+  /** Franja/borde sólido del bloque */
+  bar: string
+  /** Fondo translúcido del bloque (funciona en dark y light) */
+  bg: string
+  /** Borde/anillo translúcido */
+  ring: string
+}
+
+/** Devuelve un color estable para un médico a partir de su id. */
+export function doctorColor(doctorId: string): DoctorColor {
+  let hash = 0
+  for (let i = 0; i < doctorId.length; i++) {
+    hash = (hash * 31 + doctorId.charCodeAt(i)) >>> 0
+  }
+  const hue = DOCTOR_HUES[hash % DOCTOR_HUES.length]!
+  return {
+    hue,
+    bar: `hsl(${hue} 70% 52%)`,
+    bg: `hsl(${hue} 70% 52% / 0.16)`,
+    ring: `hsl(${hue} 70% 52% / 0.45)`,
+  }
 }
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {

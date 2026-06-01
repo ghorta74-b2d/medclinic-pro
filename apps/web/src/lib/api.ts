@@ -146,6 +146,18 @@ export function writeCache(key: string, data: unknown): void {
   } catch {}
 }
 
+// Clear all cached agenda payloads (citas + bloqueos) — call after a mutation
+// so the next render fetches fresh data instead of a stale snapshot.
+export function invalidateAgendaCache(): void {
+  try {
+    if (typeof window === 'undefined') return
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const key = sessionStorage.key(i)
+      if (key && (key.startsWith('_apt_') || key.startsWith('_blk_'))) sessionStorage.removeItem(key)
+    }
+  } catch {}
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
@@ -219,6 +231,20 @@ export const api = {
     checkin: (id: string) =>
       request(`/api/appointments/${id}/checkin`, { method: 'POST' }),
     types: () => request('/api/appointments/types'),
+  },
+
+  // Bloqueos de horario (vacaciones, comida, ausencias)
+  blocks: {
+    list: (params?: Record<string, string>) => {
+      const qs = params ? '?' + new URLSearchParams(params).toString() : ''
+      return request(`/api/blocks${qs}`)
+    },
+    create: (data: unknown) =>
+      request('/api/blocks', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: unknown) =>
+      request(`/api/blocks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    remove: (id: string) =>
+      request(`/api/blocks/${id}`, { method: 'DELETE' }),
   },
 
   patients: {

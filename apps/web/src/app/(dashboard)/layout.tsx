@@ -8,6 +8,7 @@ import { warmupApi, getUserRole } from '@/lib/api'
 import { createBrowserClient } from '@supabase/ssr'
 import { ShieldAlert, X } from 'lucide-react'
 import { EcgLoader } from '@/components/ui/ecg-loader'
+import { Toaster } from '@/components/ui/toaster'
 
 // Singleton Supabase client para el check MFA
 const supabase = createBrowserClient(
@@ -101,6 +102,7 @@ export default function DashboardLayout({
   return (
     <AppShell sidebar={<SidebarNav />} banner={banner}>
       {children}
+      <Toaster />
     </AppShell>
   )
 }

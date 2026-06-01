@@ -1,137 +1,119 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils'
-import { EcgLoader } from '@/components/ui/ecg-loader'
-import type { Appointment } from 'medclinic-shared'
+import { cn, getInitials } from '@/lib/utils'
+import { doctorColor, BLOCK_REASON_LABELS } from 'medclinic-shared'
+import { isSameLocalDay, monthMatrix, formatShortTime, type AgendaItem } from './lib'
+
+const WEEKDAY_HEAD = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+const MAX_CHIPS = 3
 
 interface MonthViewProps {
-  appointments: Appointment[]
-  loading: boolean
   referenceDate: Date
+  items: AgendaItem[]
+  hour12: boolean
+  showDoctor: boolean
   onDayClick: (date: Date) => void
+  onActivate: (item: AgendaItem) => void
 }
 
-const DAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-
-function getMonthGrid(ref: Date): (Date | null)[] {
-  const year = ref.getFullYear()
-  const month = ref.getMonth()
-  const firstDay = new Date(year, month, 1)
-  const lastDay = new Date(year, month + 1, 0)
-  const startDow = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1
-  const grid: (Date | null)[] = []
-
-  for (let i = 0; i < startDow; i++) grid.push(null)
-  for (let d = 1; d <= lastDay.getDate(); d++) grid.push(new Date(year, month, d))
-
-  while (grid.length % 7 !== 0) grid.push(null)
-  return grid
-}
-
-const STATUS_COLOR: Record<string, string> = {
-  SCHEDULED: 'bg-primary',
-  CONFIRMED: 'bg-success',
-  CHECKED_IN: 'bg-warning',
-  IN_PROGRESS: 'bg-warning',
-  COMPLETED: 'bg-muted-foreground/60',
-  CANCELLED: 'bg-destructive/70',
-  NO_SHOW: 'bg-destructive/70',
-}
-
-export function MonthView({ appointments, loading, referenceDate, onDayClick }: MonthViewProps) {
-  const router = useRouter()
-  const grid = getMonthGrid(referenceDate)
-  const todayStr = new Date().toLocaleDateString('sv-SE')
-
-  const apptsByDay: Record<string, Appointment[]> = {}
-  for (const apt of appointments) {
-    const key = new Date(apt.startsAt).toLocaleDateString('sv-SE')
-    if (!apptsByDay[key]) apptsByDay[key] = []
-    apptsByDay[key]!.push(apt)
-  }
-
-  if (loading) {
-    return (
-      <div className="bg-card rounded-xl border border-border p-8">
-        <EcgLoader />
-      </div>
-    )
-  }
-
-  const weeks: (Date | null)[][] = []
-  for (let i = 0; i < grid.length; i += 7) {
-    weeks.push(grid.slice(i, i + 7))
-  }
+export function MonthView({ referenceDate, items, hour12, showDoctor, onDayClick, onActivate }: MonthViewProps) {
+  const weeks = monthMatrix(referenceDate, 1)
+  const month = referenceDate.getMonth()
 
   return (
-    <div className="bg-card rounded-xl border border-border overflow-hidden">
-      {/* Header */}
-      <div className="grid grid-cols-7 border-b border-border">
-        {DAY_LABELS.map((label) => (
-          <div key={label} className="px-2 py-3 text-center">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      {/* Cabecera de días */}
+      <div className="grid grid-cols-7 border-b border-border bg-muted/30">
+        {WEEKDAY_HEAD.map((d) => (
+          <div key={d} className="px-2 py-1.5 text-center text-[11px] font-medium uppercase text-muted-foreground">
+            {d}
           </div>
         ))}
       </div>
 
-      {/* Grid */}
-      <div className="divide-y divide-border/50">
-        {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 divide-x divide-border/50">
-            {week.map((day, di) => {
-              if (!day) {
-                return <div key={di} className="min-h-[100px] bg-muted/50" />
-              }
-              const key = day.toISOString().split('T')[0]!
-              const isToday = key === todayStr
-              const dayApts = (apptsByDay[key] ?? []).filter(a => a.status !== 'CANCELLED' && a.status !== 'NO_SHOW')
-              const isCurrentMonth = day.getMonth() === referenceDate.getMonth()
+      <div className="grid grid-cols-7">
+        {weeks.flat().map((day, idx) => {
+          const inMonth = day.getMonth() === month
+          const today = isSameLocalDay(day, new Date())
+          const dayItems = items
+            .filter((it) => isSameLocalDay(it.start, day))
+            .sort((a, b) => a.start.getTime() - b.start.getTime())
+          const visible = dayItems.slice(0, MAX_CHIPS)
+          const extra = dayItems.length - visible.length
 
-              return (
-                <button
-                  key={di}
-                  onClick={() => onDayClick(day)}
+          return (
+            <div
+              key={idx}
+              role="button"
+              tabIndex={0}
+              onClick={() => onDayClick(day)}
+              onKeyDown={(e) => { if (e.key === 'Enter') onDayClick(day) }}
+              className={cn(
+                'min-h-[104px] cursor-pointer border-b border-l border-border p-1.5 transition-colors first:border-l-0 hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/40',
+                idx % 7 === 0 && 'border-l-0',
+                !inMonth && 'bg-muted/20'
+              )}
+            >
+              <div className="mb-1 flex justify-end">
+                <span
                   className={cn(
-                    'min-h-[100px] p-2 text-left hover:bg-primary/10/50 transition-colors flex flex-col',
-                    !isCurrentMonth && 'opacity-40',
-                    isToday && 'bg-primary/10'
+                    'flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium',
+                    today && 'bg-primary text-white',
+                    !today && (inMonth ? 'text-foreground' : 'text-muted-foreground/50')
                   )}
                 >
-                  <span className={cn(
-                    'text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mb-1',
-                    isToday ? 'bg-primary text-white' : 'text-foreground/80'
-                  )}>
-                    {day.getDate()}
-                  </span>
-                  <div className="flex flex-wrap gap-1 flex-1">
-                    {dayApts.slice(0, 3).map((apt) => (
-                      <button
-                        key={apt.id}
-                        onClick={(e) => { e.stopPropagation(); router.push(`/agenda/${apt.id}`) }}
-                        className={cn(
-                          'w-2 h-2 rounded-full hover:scale-125 transition-transform',
-                          STATUS_COLOR[apt.status] ?? 'bg-muted-foreground/60'
-                        )}
-                        title={apt.patient
-                          ? `${apt.patient.firstName} ${apt.patient.lastName}`
-                          : 'Cita'}
-                      />
-                    ))}
-                    {dayApts.length > 3 && (
-                      <span className="text-xs text-muted-foreground leading-none">+{dayApts.length - 3}</span>
-                    )}
-                  </div>
-                  {dayApts.length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-auto">
-                      {dayApts.length} cita{dayApts.length !== 1 ? 's' : ''}
-                    </p>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        ))}
+                  {day.getDate()}
+                </span>
+              </div>
+
+              <div className="space-y-0.5">
+                {visible.map((it) => {
+                  const isBlock = it.kind === 'block'
+                  const color = doctorColor(it.doctorId)
+                  const label = isBlock
+                    ? it.block ? BLOCK_REASON_LABELS[it.block.reason] : 'Bloqueo'
+                    : it.appointment?.patient
+                      ? `${it.appointment.patient.firstName} ${it.appointment.patient.lastName}`
+                      : 'Cita'
+                  return (
+                    <button
+                      key={it.id}
+                      onClick={(e) => { e.stopPropagation(); onActivate(it) }}
+                      title={label}
+                      className={cn(
+                        'flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[11px] transition-colors',
+                        isBlock
+                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                          : 'hover:bg-muted'
+                      )}
+                    >
+                      {!isBlock && (
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color.bar }} />
+                      )}
+                      <span className="shrink-0 tabular-nums text-muted-foreground">
+                        {formatShortTime(it.start, hour12)}
+                      </span>
+                      <span className="truncate text-foreground">{label}</span>
+                      {showDoctor && !isBlock && it.appointment?.doctor && (
+                        <span className="ml-auto shrink-0 text-[9px] font-bold" style={{ color: color.bar }}>
+                          {getInitials(it.appointment.doctor.firstName, it.appointment.doctor.lastName)}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+                {extra > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDayClick(day) }}
+                    className="w-full px-1 text-left text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    +{extra} más
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
