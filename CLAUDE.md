@@ -6,7 +6,7 @@ SaaS de gestión clínica para LATAM. Monorepo pnpm + Turborepo.
 **WD:** `/Users/gerardohorta/Library/Mobile Documents/com~apple~CloudDocs/B2D Automation/CLAUDE/CLINIC/medclinic-pro`  
 **Repo:** `https://github.com/ghorta74-b2d/medclinic-pro`  
 **Prod:** `https://mediaclinic.mx`  
-**Último commit:** `aa34715` — 2026-05-26
+**Último commit:** `1abdff1` — 2026-06-01 (⚠️ sin pushear; `origin/main`=`e45633e`)
 
 ## Stack
 
@@ -63,6 +63,26 @@ SaaS de gestión clínica para LATAM. Monorepo pnpm + Turborepo.
 - Admin en `/superadmin/farmacias`
 - Datos en DB: tabla `PharmacyCampaign` + `PharmacyBranch`
 - ⚠️ Hay datos placeholder/seed con teléfonos `+52555555...` — deben borrarse desde el panel
+
+### Consulta IA (`/consulta-ia`)
+- Transcripción **en el navegador** con Web Speech API (`webkitSpeechRecognition`) — **solo Chrome/Edge**.
+  En Safari/Firefox se muestra una tarjeta bloqueante "Disponible solo en Google Chrome"
+  (`speechRecognitionSupported()` en `consulta-ia/page.tsx`). NO hay STT server-side ni se guarda audio.
+- Backend `POST /api/consulta-ia/process` recibe solo `{ patientId, transcriptText, durationSeconds, consentAt }`;
+  Claude extrae datos clínicos estructurados. No existe endpoint de subida de audio.
+- `RecordingStep` mantiene un `getUserMedia` real con el `deviceId` elegido (Web Speech API sola ignora el device),
+  medidor de nivel RMS y detección de pérdida de mic (`track.onended`). Helpers: `micErrorMessage`, `audioConstraints`.
+
+### Loader de marca
+- `components/ui/ecg-loader.tsx` — `<EcgLoader />` es el loader **universal** del sitio (animación ECG).
+  Prop `viewport` (centra en ventana, `min-h-[70vh]`) vs `fullPage` (sección). `app/(dashboard)/loading.tsx` lo usa.
+- Spinners inline de **botones** siguen siendo `Loader2` (intencional). No usar spinners circulares para página/sección.
+
+### Cobros + Dashboard
+- Navegación por meses con `components/ui/period-navigator.tsx` (Día/Semana/Mes + flechas + Hoy).
+- KPIs con delta vs período anterior (`components/ui/kpi-card.tsx`). Gráficos en **Recharts**.
+- Backend `billing.ts`: params `from/to/chartToUtc/prevFrom/prevTo` + endpoint `GET /api/billing/trend?months=6`.
+  ⚠️ `chartToUtc` acota el gráfico (sin él, un mes pasado arrastra pagos del mes actual).
 
 ## Pendientes al 2026-05-26
 
