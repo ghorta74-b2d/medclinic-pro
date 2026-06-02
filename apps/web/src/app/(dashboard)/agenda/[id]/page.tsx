@@ -253,6 +253,12 @@ function ReassignPanel({
     (new Date(appt.endsAt).getTime() - new Date(appt.startsAt).getTime()) / 60_000
   )
 
+  // ¿El horario actual de la cita sigue libre con el médico elegido?
+  // (solo si no se cambió la fecha y ese horario aparece entre los disponibles)
+  const origDateStr = new Date(appt.startsAt).toLocaleDateString('sv-SE')
+  const origTime = `${String(new Date(appt.startsAt).getHours()).padStart(2, '0')}:${String(new Date(appt.startsAt).getMinutes()).padStart(2, '0')}`
+  const keepCurrentValid = newDoctorId !== '' && newDate === origDateStr && slots.some(s => s.time === origTime)
+
   async function loadSlots(doctorId: string, date: string) {
     if (!doctorId || !date) return
     setLoadingSlots(true)
@@ -340,7 +346,12 @@ function ReassignPanel({
       {newDoctorId && (
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-2">
-            Horario <span className="font-normal text-muted-foreground">(opcional — si no seleccionas, se mantiene el horario actual)</span>
+            Horario{' '}
+            {keepCurrentValid ? (
+              <span className="font-normal text-muted-foreground">(opcional — si no seleccionas, se mantiene el horario actual)</span>
+            ) : (
+              <span className="font-normal text-warning">(el horario actual no está libre con este médico — selecciona uno)</span>
+            )}
           </label>
           {loadingSlots ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -376,7 +387,7 @@ function ReassignPanel({
 
       <button
         onClick={handleReassign}
-        disabled={!newDoctorId || saving}
+        disabled={!newDoctorId || saving || (!selectedSlot && !keepCurrentValid)}
         className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors">
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
         {saving ? 'Reasignando...' : 'Confirmar reasignación'}
