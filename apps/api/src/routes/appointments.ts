@@ -176,6 +176,13 @@ export async function appointmentsRoutes(server: FastifyInstance) {
     // Helper: zero-pad integer to 2 digits
     const pad = (n: number) => String(n).padStart(2, '0')
 
+    // "Ahora" en hora local de la clínica → para ocultar slots ya pasados hoy.
+    // Local = UTC − offsetMs; leemos los campos UTC del Date desplazado.
+    const localNow = new Date(Date.now() - offsetMs)
+    const localTodayStr = `${localNow.getUTCFullYear()}-${pad(localNow.getUTCMonth() + 1)}-${pad(localNow.getUTCDate())}`
+    const isTodayLocal = date === localTodayStr
+    const nowLocalMin = localNow.getUTCHours() * 60 + localNow.getUTCMinutes()
+
     // Convert stored UTC timestamps → local minutes-since-midnight.
     // UTC → local: subtract offsetMs, then read the resulting UTC fields.
     // e.g. Jorge at 18:00Z (UTC-6 clinic) → 18:00Z − 6h = 12:00Z → getUTCHours()=12 ✓
@@ -216,7 +223,7 @@ export async function appointmentsRoutes(server: FastifyInstance) {
           time:     `${pad(curH)}:${pad(curM)}`,
           startsAt: `${date}T${pad(curH)}:${pad(curM)}:00`,
           endsAt:   `${date}T${pad(slotEndH)}:${pad(slotEndMin)}:00`,
-          available: !isBooked,
+          available: !isBooked && !(isTodayLocal && slotStartM < nowLocalMin),
         })
 
         curM += duration
