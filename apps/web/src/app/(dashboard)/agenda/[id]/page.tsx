@@ -60,12 +60,12 @@ function getActions(status: AppointmentStatus): Action[] {
       ]
     case 'CONFIRMED':
       return [
-        { label: 'Registrar llegada', nextStatus: 'CHECKED_IN', style: 'bg-warning hover:bg-warning/90 text-white', icon: <CheckCircle2 className="w-4 h-4" /> },
+        { label: 'Registrar llegada', nextStatus: 'CHECKED_IN', style: 'bg-primary hover:bg-primary/90 text-white', icon: <CheckCircle2 className="w-4 h-4" /> },
         { label: 'Cancelar',          nextStatus: 'CANCELLED',  style: 'border border-red-300 text-destructive hover:bg-destructive/10', icon: <XCircle className="w-4 h-4" /> },
       ]
     case 'CHECKED_IN':
       return [
-        { label: 'Iniciar consulta', nextStatus: 'IN_PROGRESS', style: 'bg-warning hover:bg-warning/90 text-white', icon: <Stethoscope className="w-4 h-4" /> },
+        { label: 'Iniciar consulta', nextStatus: 'IN_PROGRESS', style: 'bg-primary hover:bg-primary/90 text-white', icon: <Stethoscope className="w-4 h-4" /> },
         { label: 'Cancelar',         nextStatus: 'CANCELLED',   style: 'border border-red-300 text-destructive hover:bg-destructive/10', icon: <XCircle className="w-4 h-4" /> },
       ]
     case 'IN_PROGRESS':
@@ -602,7 +602,7 @@ export default function AppointmentDetailPage() {
               <button
                 onClick={handleTakeover}
                 disabled={takeoverLoading}
-                className="flex-1 py-2.5 bg-warning hover:bg-warning/90 disabled:opacity-50 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors">
+                className="flex-1 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors">
                 {takeoverLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
                 Atender paciente
               </button>
@@ -776,7 +776,7 @@ export default function AppointmentDetailPage() {
                       <button
                         onClick={() => setShowTakeoverModal(true)}
                         disabled={!!actionLoading}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-warning hover:bg-warning/90 text-white transition-colors disabled:opacity-50">
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary hover:bg-primary/90 text-white transition-colors disabled:opacity-50">
                         <UserCheck className="w-4 h-4" />
                         Atender cita
                       </button>
