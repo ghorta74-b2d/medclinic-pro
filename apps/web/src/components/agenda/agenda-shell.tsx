@@ -25,7 +25,7 @@ import {
 } from '@/components/agenda/lib'
 
 type ViewMode = 'dia' | 'semana' | 'mes'
-interface Doctor { id: string; firstName: string; lastName: string }
+interface Doctor { id: string; firstName: string; lastName: string; specialty?: string }
 
 const HOUR12 = false // es-MX → 24h
 const START_HOUR = DEFAULT_START_HOUR
@@ -160,7 +160,7 @@ export function AgendaShell() {
     const map = new Map<string, Doctor>()
     for (const a of appointments) {
       if (a.doctor && !map.has(a.doctorId)) {
-        map.set(a.doctorId, { id: a.doctorId, firstName: a.doctor.firstName, lastName: a.doctor.lastName })
+        map.set(a.doctorId, { id: a.doctorId, firstName: a.doctor.firstName, lastName: a.doctor.lastName, specialty: a.doctor.specialty })
       }
     }
     return Array.from(map.values())

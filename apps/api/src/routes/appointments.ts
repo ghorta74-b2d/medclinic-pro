@@ -50,6 +50,14 @@ const UpdateAppointmentSchema = CreateAppointmentSchema.partial().extend({
   takeover: z.boolean().optional(), // ADMIN takes over another doctor's appointment
 })
 
+const CreateAppointmentTypeSchema = z.object({
+  name: z.string().min(1).max(60),
+  durationMinutes: z.coerce.number().int().min(5).max(480).optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  price: z.coerce.number().min(0).optional(),
+  description: z.string().max(200).optional(),
+})
+
 const AvailabilityQuerySchema = z.object({
   doctorId:  z.string(),
   date:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
@@ -605,5 +613,47 @@ export async function appointmentsRoutes(server: FastifyInstance) {
     })
 
     return reply.send({ data: types })
+  })
+
+  // POST /api/appointments/types — crear un tipo de consulta en el catálogo
+  server.post('/types', { preHandler: requireStaff }, async (request, reply) => {
+    const parsed = CreateAppointmentTypeSchema.safeParse(request.body)
+    if (!parsed.success) return Errors.VALIDATION(reply, parsed.error.format())
+
+    const { clinicId, authUserId, role } = request.authUser
+    const data = parsed.data
+
+    // Evitar duplicados por nombre (case-insensitive) dentro de la clínica
+    const existing = await prisma.appointmentType.findFirst({
+      where: { clinicId, name: { equals: data.name, mode: 'insensitive' } },
+    })
+    if (existing) {
+      return existing.isActive
+        ? reply.status(409).send({ error: { message: 'Ya existe un tipo de consulta con ese nombre.' } })
+        : reply.send({ data: await prisma.appointmentType.update({ where: { id: existing.id }, data: { isActive: true } }) })
+    }
+
+    const created = await prisma.appointmentType.create({
+      data: {
+        clinicId,
+        name: data.name,
+        durationMinutes: data.durationMinutes ?? 30,
+        ...(data.color ? { color: data.color } : {}),
+        ...(data.price !== undefined ? { price: data.price } : {}),
+        ...(data.description ? { description: data.description } : {}),
+      },
+    })
+
+    await auditLog({
+      user: { authUserId, clinicId, role },
+      action: 'CREATE',
+      resourceType: 'AppointmentType',
+      resourceId: created.id,
+      newValue: { name: created.name },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
+    })
+
+    return reply.status(201).send({ data: created })
   })
 }

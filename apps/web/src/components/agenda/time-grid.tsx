@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   HOUR_HEIGHT,
+  SNAP_MIN,
   hourRange,
   formatHourLabel,
   formatShortTime,
@@ -62,7 +63,7 @@ export function TimeGrid({
     startHour,
     endHour,
     hourHeight: HOUR_HEIGHT,
-    snapMin: 15,
+    snapMin: SNAP_MIN,
     enabled,
     onCreate,
     onMove,

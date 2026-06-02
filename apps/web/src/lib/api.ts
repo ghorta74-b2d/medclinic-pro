@@ -231,6 +231,11 @@ export const api = {
     checkin: (id: string) =>
       request(`/api/appointments/${id}/checkin`, { method: 'POST' }),
     types: () => request('/api/appointments/types'),
+    createType: async (data: unknown) => {
+      const result = await request('/api/appointments/types', { method: 'POST', body: JSON.stringify(data) })
+      invalidateCacheFor('/api/appointments/types')
+      return result
+    },
   },
 
   // Bloqueos de horario (vacaciones, comida, ausencias)

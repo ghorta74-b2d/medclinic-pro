@@ -15,12 +15,13 @@ import {
   type BlockReason,
   type AppointmentType,
 } from 'medclinic-shared'
-import type { AgendaItem } from './lib'
+import { getComplaints, type AgendaItem } from './lib'
 
 interface EditorDoctor {
   id: string
   firstName: string
   lastName: string
+  specialty?: string
 }
 
 interface PatientHit {
@@ -75,7 +76,11 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
   const [patients, setPatients] = useState<PatientHit[]>([])
   const [typeId, setTypeId] = useState('')
   const [types, setTypes] = useState<AppointmentType[]>([])
+  const [addingType, setAddingType] = useState(false)
+  const [newTypeName, setNewTypeName] = useState('')
+  const [savingType, setSavingType] = useState(false)
   const [chief, setChief] = useState('')
+  const [motivoOther, setMotivoOther] = useState(false)
   const [status, setStatus] = useState<AppointmentStatus>('SCHEDULED')
 
   // Bloqueo
@@ -104,7 +109,11 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
       setPatientSearch('')
       setPatients([])
       setTypeId(a?.appointmentTypeId ?? '')
-      setChief(a?.chiefComplaint ?? '')
+      setAddingType(false)
+      setNewTypeName('')
+      const cc = a?.chiefComplaint ?? ''
+      setChief(cc)
+      setMotivoOther(cc !== '' && !getComplaints(a?.doctor?.specialty).includes(cc))
       setStatus((a?.status as AppointmentStatus) ?? 'SCHEDULED')
     } else {
       const b = target.item?.block
@@ -146,6 +155,29 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
     const end = new Date(`${dateStr}T${endTime}:00`)
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) return null
     return { startsAt: start.toISOString(), endsAt: end.toISOString() }
+  }
+
+  const effectiveDoctorId = lockedDoctorId ?? doctorId
+  const selectedDoctor = doctors.find((d) => d.id === effectiveDoctorId)
+  const complaints = getComplaints(selectedDoctor?.specialty)
+
+  async function handleAddType() {
+    const name = newTypeName.trim()
+    if (!name) return
+    setSavingType(true)
+    setError(null)
+    try {
+      const res = (await api.appointments.createType({ name })) as { data: AppointmentType }
+      setTypes((prev) => [...prev, res.data].sort((a, b) => a.name.localeCompare(b.name)))
+      setTypeId(res.data.id)
+      setAddingType(false)
+      setNewTypeName('')
+      toast({ variant: 'success', title: 'Tipo de consulta agregado' })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo agregar el tipo.')
+    } finally {
+      setSavingType(false)
+    }
   }
 
   async function handleSave() {
@@ -342,11 +374,11 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
         </div>
         <div>
           <label className={labelCls}>Inicio</label>
-          <input type="time" step={900} value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+          <input type="time" step={1800} value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
         </div>
         <div>
           <label className={labelCls}>Fin</label>
-          <input type="time" step={900} value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputCls} />
+          <input type="time" step={1800} value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputCls} />
         </div>
       </div>
 
@@ -356,10 +388,34 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={labelCls}>Tipo de consulta</label>
-              <select value={typeId} onChange={(e) => setTypeId(e.target.value)} className={inputCls}>
-                <option value="">Sin especificar</option>
-                {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+              {addingType ? (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    autoFocus
+                    value={newTypeName}
+                    onChange={(e) => setNewTypeName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddType() } }}
+                    placeholder="Nombre del tipo"
+                    className={inputCls}
+                  />
+                  <button type="button" onClick={handleAddType} disabled={savingType} className="shrink-0 rounded-md bg-primary px-2.5 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50">
+                    {savingType ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Agregar'}
+                  </button>
+                  <button type="button" onClick={() => { setAddingType(false); setNewTypeName('') }} className="shrink-0 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted">
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={typeId}
+                  onChange={(e) => { if (e.target.value === '__add__') setAddingType(true); else setTypeId(e.target.value) }}
+                  className={inputCls}
+                >
+                  <option value="">Sin especificar</option>
+                  {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  <option value="__add__">+ Agregar tipo…</option>
+                </select>
+              )}
             </div>
             {isEdit && (
               <div>
@@ -372,7 +428,34 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
           </div>
           <div>
             <label className={labelCls}>Motivo de consulta</label>
-            <input value={chief} onChange={(e) => setChief(e.target.value)} placeholder="Opcional" className={inputCls} />
+            {motivoOther ? (
+              <div className="space-y-1">
+                <input
+                  autoFocus
+                  value={chief}
+                  onChange={(e) => setChief(e.target.value)}
+                  placeholder="Escribe el motivo"
+                  className={inputCls}
+                />
+                <button
+                  type="button"
+                  onClick={() => { setMotivoOther(false); setChief('') }}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Elegir de la lista
+                </button>
+              </div>
+            ) : (
+              <select
+                value={complaints.includes(chief) ? chief : ''}
+                onChange={(e) => { if (e.target.value === '__other__') { setMotivoOther(true); setChief('') } else setChief(e.target.value) }}
+                className={inputCls}
+              >
+                <option value="">Sin especificar</option>
+                {complaints.map((c) => <option key={c} value={c}>{c}</option>)}
+                <option value="__other__">Otro…</option>
+              </select>
+            )}
           </div>
         </>
       )}

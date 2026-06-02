@@ -9,9 +9,9 @@ import type { Appointment, ScheduleBlock } from 'medclinic-shared'
 export const HOUR_HEIGHT = 60 // px por hora → 1px = 1min (matemática trivial)
 export const DEFAULT_START_HOUR = 9
 export const DEFAULT_END_HOUR = 19
-export const SNAP_MIN = 15
+export const SNAP_MIN = 30
 export const DEFAULT_DURATION_MIN = 30
-export const MIN_EVENT_MIN = 15
+export const MIN_EVENT_MIN = 30
 
 // ── Modelo unificado ─────────────────────────────────────────
 export type AgendaItemKind = 'appointment' | 'block'
@@ -143,4 +143,27 @@ export function formatShortTime(d: Date, hour12: boolean): string {
 
 export function hourRange(startHour: number, endHour: number): number[] {
   return Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i)
+}
+
+// ── Catálogo de motivos de consulta por especialidad ─────────
+const COMPLAINTS: Record<string, string[]> = {
+  'medicina general': ['Fiebre', 'Tos y gripe', 'Dolor de cabeza', 'Dolor abdominal', 'Presión arterial', 'Control de diabetes', 'Revisión general', 'Seguimiento'],
+  pediatría:         ['Fiebre', 'Tos', 'Diarrea', 'Vacunación', 'Control del niño sano', 'Revisión de crecimiento', 'Llanto excesivo'],
+  ginecología:       ['Revisión anual', 'Control prenatal', 'Dolor pélvico', 'Papanicolaou', 'Planificación familiar', 'Irregularidad menstrual'],
+  cardiología:       ['Dolor en el pecho', 'Palpitaciones', 'Presión alta', 'Falta de aire', 'Mareos', 'Control cardiológico'],
+  dermatología:      ['Erupción cutánea', 'Acné', 'Revisión de lunares', 'Caída de cabello', 'Comezón', 'Manchas en piel'],
+  ortopedia:         ['Dolor de rodilla', 'Dolor lumbar', 'Dolor de hombro', 'Fractura', 'Lesión deportiva', 'Artritis'],
+  oftalmología:      ['Revisión de vista', 'Ojo rojo', 'Visión borrosa', 'Lentes nuevos', 'Dolor ocular'],
+  neurología:        ['Dolor de cabeza crónico', 'Migraña', 'Mareos', 'Convulsiones', 'Entumecimiento'],
+  psiquiatría:       ['Ansiedad', 'Depresión', 'Insomnio', 'Control de medicamento', 'Estrés'],
+  endocrinología:    ['Control de diabetes', 'Tiroides', 'Sobrepeso', 'Control hormonal', 'Colesterol alto'],
+  nutrición:         ['Control de peso', 'Plan alimenticio', 'Diabetes nutricional', 'Colesterol', 'Obesidad'],
+  default:           ['Revisión general', 'Consulta de seguimiento', 'Primera vez', 'Urgencia', 'Control mensual', 'Postoperatorio'],
+}
+
+export function getComplaints(specialty?: string | null): string[] {
+  if (!specialty) return COMPLAINTS['default']!
+  const s = specialty.toLowerCase()
+  const key = Object.keys(COMPLAINTS).find((k) => s.includes(k))
+  return COMPLAINTS[key ?? 'default'] ?? COMPLAINTS['default']!
 }
