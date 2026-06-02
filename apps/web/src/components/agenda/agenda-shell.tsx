@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { DayStats } from '@/components/agenda/day-stats'
 import { DayView } from '@/components/agenda/day-view'
@@ -45,6 +46,7 @@ function getMonthRange(date: Date) {
 
 export function AgendaShell() {
   const isDesktop = useIsDesktop()
+  const router = useRouter()
   const { toast } = useToast()
 
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -199,9 +201,14 @@ export function AgendaShell() {
     setEditorOpen(true)
   }, [])
   const handleActivate = useCallback((item: AgendaItem) => {
+    // Una cita abre la pantalla de detalle completa; un bloqueo abre el editor inline.
+    if (item.kind === 'appointment') {
+      router.push(`/agenda/${item.id}`)
+      return
+    }
     setEditorTarget({ mode: 'edit', kind: item.kind, start: item.start, end: item.end, item })
     setEditorOpen(true)
-  }, [])
+  }, [router])
   const openNew = useCallback(() => {
     const start = dateAtMinutes(selectedDate, START_HOUR * 60)
     const end = dateAtMinutes(selectedDate, START_HOUR * 60 + 30)
