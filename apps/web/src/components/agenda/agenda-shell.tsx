@@ -364,6 +364,7 @@ export function AgendaShell() {
         target={editorTarget}
         doctors={doctors.length > 0 ? doctors : legendDoctors}
         lockedDoctorId={lockedDoctorId}
+        canReassign={isAdmin || isStaff}
         onSaved={() => { invalidateAgendaCache(); loadData() }}
       />
     </>
