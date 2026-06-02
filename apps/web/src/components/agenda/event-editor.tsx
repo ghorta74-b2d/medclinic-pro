@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, Trash2, CalendarClock, Ban } from 'lucide-react'
+import { Loader2, Trash2, CalendarClock, Ban, Check } from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn, localDateStr } from '@/lib/utils'
 import { useIsDesktop } from '@/hooks/use-media-query'
@@ -13,7 +13,6 @@ import {
   BLOCK_REASON_LABELS,
   type AppointmentStatus,
   type BlockReason,
-  type AppointmentType,
 } from 'medclinic-shared'
 import { getComplaints, type AgendaItem } from './lib'
 
@@ -57,6 +56,10 @@ const STATUS_OPTIONS: AppointmentStatus[] = [
   'SCHEDULED', 'CONFIRMED', 'CHECKED_IN', 'IN_PROGRESS', 'COMPLETED', 'NO_SHOW',
 ]
 const REASON_OPTIONS: BlockReason[] = ['VACATION', 'MEAL', 'PERSONAL', 'OTHER']
+// Estados en los que aún tiene sentido "Confirmar"
+const CONFIRMABLE = new Set<AppointmentStatus>(['SCHEDULED'])
+
+type PatientMode = 'search' | 'new'
 
 export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorId, onSaved }: EventEditorProps) {
   const isDesktop = useIsDesktop()
@@ -69,16 +72,17 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('09:30')
 
-  // Cita
+  // Paciente
+  const [patientMode, setPatientMode] = useState<PatientMode>('search')
   const [patientId, setPatientId] = useState('')
   const [patientName, setPatientName] = useState('')
   const [patientSearch, setPatientSearch] = useState('')
   const [patients, setPatients] = useState<PatientHit[]>([])
-  const [typeId, setTypeId] = useState('')
-  const [types, setTypes] = useState<AppointmentType[]>([])
-  const [addingType, setAddingType] = useState(false)
-  const [newTypeName, setNewTypeName] = useState('')
-  const [savingType, setSavingType] = useState(false)
+  const [newFirst, setNewFirst] = useState('')
+  const [newLast, setNewLast] = useState('')
+  const [newPhone, setNewPhone] = useState('')
+
+  // Cita
   const [chief, setChief] = useState('')
   const [motivoOther, setMotivoOther] = useState(false)
   const [status, setStatus] = useState<AppointmentStatus>('SCHEDULED')
@@ -101,16 +105,15 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
     setDateStr(localDateStr(target.start))
     setStartTime(timeStr(target.start))
     setEndTime(timeStr(target.end))
+    setPatientMode('search')
+    setPatientSearch('')
+    setPatients([])
+    setNewFirst(''); setNewLast(''); setNewPhone('')
 
     if (target.kind === 'appointment') {
       const a = target.item?.appointment
       setPatientId(a?.patientId ?? '')
       setPatientName(a?.patient ? `${a.patient.firstName} ${a.patient.lastName}` : '')
-      setPatientSearch('')
-      setPatients([])
-      setTypeId(a?.appointmentTypeId ?? '')
-      setAddingType(false)
-      setNewTypeName('')
       const cc = a?.chiefComplaint ?? ''
       setChief(cc)
       setMotivoOther(cc !== '' && !getComplaints(a?.doctor?.specialty).includes(cc))
@@ -122,17 +125,11 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
     }
   }, [open, target, lockedDoctorId])
 
-  // Catálogo de tipos de cita
-  useEffect(() => {
-    if (!open) return
-    api.appointments.types()
-      .then((res) => setTypes((res as { data: AppointmentType[] }).data ?? []))
-      .catch(() => {})
-  }, [open])
-
   // Búsqueda de pacientes
   useEffect(() => {
-    if (kind !== 'appointment' || patientSearch.trim().length < 2) { setPatients([]); return }
+    if (kind !== 'appointment' || patientMode !== 'search' || patientSearch.trim().length < 2) {
+      setPatients([]); return
+    }
     let cancelled = false
     const t = setTimeout(() => {
       api.patients.list({ q: patientSearch, limit: '8' })
@@ -140,7 +137,7 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
         .catch(() => {})
     }, 250)
     return () => { cancelled = true; clearTimeout(t) }
-  }, [patientSearch, kind])
+  }, [patientSearch, kind, patientMode])
 
   // Foco inicial en médico (campo obligatorio en "Todos los médicos")
   useEffect(() => {
@@ -161,23 +158,21 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
   const selectedDoctor = doctors.find((d) => d.id === effectiveDoctorId)
   const complaints = getComplaints(selectedDoctor?.specialty)
 
-  async function handleAddType() {
-    const name = newTypeName.trim()
-    if (!name) return
-    setSavingType(true)
-    setError(null)
-    try {
-      const res = (await api.appointments.createType({ name })) as { data: AppointmentType }
-      setTypes((prev) => [...prev, res.data].sort((a, b) => a.name.localeCompare(b.name)))
-      setTypeId(res.data.id)
-      setAddingType(false)
-      setNewTypeName('')
-      toast({ variant: 'success', title: 'Tipo de consulta agregado' })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo agregar el tipo.')
-    } finally {
-      setSavingType(false)
+  /** Resuelve el patientId: si es paciente nuevo, lo crea primero. */
+  async function resolvePatientId(): Promise<string | null> {
+    if (patientMode === 'search') {
+      if (!patientId) { setError('Selecciona el paciente.'); return null }
+      return patientId
     }
+    const first = newFirst.trim()
+    const last = newLast.trim()
+    const digits = newPhone.replace(/\D/g, '')
+    if (!first || !last) { setError('Captura nombre y apellido del paciente.'); return null }
+    if (digits.length !== 10) { setError('El teléfono debe tener 10 dígitos.'); return null }
+    const res = (await api.patients.create({
+      firstName: first, lastName: last, phone: `+52${digits}`,
+    })) as { data: { id: string } }
+    return res.data.id
   }
 
   async function handleSave() {
@@ -190,21 +185,20 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
     setSaving(true)
     try {
       if (kind === 'appointment') {
-        if (!patientId) { setError('Selecciona el paciente.'); setSaving(false); return }
         if (isEdit && target?.item) {
           await api.appointments.update(target.item.id, {
             doctorId: effectiveDoctor,
-            appointmentTypeId: typeId || undefined,
             startsAt: range.startsAt,
             endsAt: range.endsAt,
             chiefComplaint: chief || undefined,
             status,
           })
         } else {
+          const pid = await resolvePatientId()
+          if (!pid) { setSaving(false); return }
           await api.appointments.create({
-            patientId,
+            patientId: pid,
             doctorId: effectiveDoctor,
-            appointmentTypeId: typeId || undefined,
             startsAt: range.startsAt,
             endsAt: range.endsAt,
             chiefComplaint: chief || undefined,
@@ -213,18 +207,11 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
       } else {
         if (isEdit && target?.item) {
           await api.blocks.update(target.item.id, {
-            startsAt: range.startsAt,
-            endsAt: range.endsAt,
-            reason,
-            note: note || undefined,
+            startsAt: range.startsAt, endsAt: range.endsAt, reason, note: note || undefined,
           })
         } else {
           await api.blocks.create({
-            doctorId: effectiveDoctor,
-            startsAt: range.startsAt,
-            endsAt: range.endsAt,
-            reason,
-            note: note || undefined,
+            doctorId: effectiveDoctor, startsAt: range.startsAt, endsAt: range.endsAt, reason, note: note || undefined,
           })
         }
       }
@@ -236,6 +223,20 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleConfirm() {
+    if (!target?.item) return
+    setSaving(true)
+    setError(null)
+    try {
+      await api.appointments.update(target.item.id, { status: 'CONFIRMED' })
+      toast({ variant: 'success', title: 'Cita confirmada' })
+      onSaved()
+      onOpenChange(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo confirmar.')
+    } finally { setSaving(false) }
   }
 
   async function handleCancelAppointment() {
@@ -304,12 +305,7 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
             })()}
           </div>
         ) : (
-          <select
-            ref={doctorRef}
-            value={doctorId}
-            onChange={(e) => setDoctorId(e.target.value)}
-            className={inputCls}
-          >
+          <select ref={doctorRef} value={doctorId} onChange={(e) => setDoctorId(e.target.value)} className={inputCls}>
             <option value="">Selecciona un médico…</option>
             {doctors.map((d) => (
               <option key={d.id} value={d.id}>Dr. {d.firstName} {d.lastName}</option>
@@ -321,19 +317,38 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
       {/* Paciente (cita) */}
       {kind === 'appointment' && (
         <div className="relative">
-          <label className={labelCls}>Paciente *</label>
+          <div className="mb-1 flex items-center justify-between">
+            <label className="text-xs font-medium text-muted-foreground">Paciente *</label>
+            {!isEdit && !patientName && (
+              <div className="flex items-center gap-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setPatientMode('search'); setError(null) }}
+                  className={cn('rounded px-1.5 py-0.5', patientMode === 'search' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground')}
+                >
+                  Buscar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPatientMode('new'); setError(null) }}
+                  className={cn('rounded px-1.5 py-0.5', patientMode === 'new' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground')}
+                >
+                  + Nuevo
+                </button>
+              </div>
+            )}
+          </div>
+
           {patientName ? (
             <div className="flex items-center justify-between rounded-md border border-input bg-surface px-3 py-2 text-sm">
               <span className="font-medium text-foreground">{patientName}</span>
-              <button
-                type="button"
-                onClick={() => { setPatientId(''); setPatientName('') }}
-                className="text-xs text-primary hover:underline"
-              >
-                Cambiar
-              </button>
+              {!isEdit && (
+                <button type="button" onClick={() => { setPatientId(''); setPatientName('') }} className="text-xs text-primary hover:underline">
+                  Cambiar
+                </button>
+              )}
             </div>
-          ) : (
+          ) : patientMode === 'search' ? (
             <>
               <input
                 value={patientSearch}
@@ -347,12 +362,7 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
                     <button
                       key={p.id}
                       type="button"
-                      onClick={() => {
-                        setPatientId(p.id)
-                        setPatientName(`${p.firstName} ${p.lastName}`)
-                        setPatients([])
-                        setPatientSearch('')
-                      }}
+                      onClick={() => { setPatientId(p.id); setPatientName(`${p.firstName} ${p.lastName}`); setPatients([]); setPatientSearch('') }}
                       className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
                     >
                       <span>{p.firstName} {p.lastName}</span>
@@ -362,6 +372,21 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
                 </div>
               )}
             </>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <input value={newFirst} onChange={(e) => setNewFirst(e.target.value)} placeholder="Nombre" className={inputCls} />
+              <input value={newLast} onChange={(e) => setNewLast(e.target.value)} placeholder="Apellido" className={inputCls} />
+              <div className="col-span-2 flex items-center rounded-md border border-input bg-surface px-3 focus-within:ring-2 focus-within:ring-primary">
+                <span className="text-sm text-muted-foreground">+52</span>
+                <input
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  inputMode="numeric"
+                  placeholder="10 dígitos"
+                  className="w-full bg-transparent px-2 py-2 text-sm focus:outline-none"
+                />
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -385,63 +410,20 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
       {/* Campos específicos de cita */}
       {kind === 'appointment' && (
         <>
-          <div className="grid grid-cols-2 gap-2">
+          {isEdit && (
             <div>
-              <label className={labelCls}>Tipo de consulta</label>
-              {addingType ? (
-                <div className="flex items-center gap-1.5">
-                  <input
-                    autoFocus
-                    value={newTypeName}
-                    onChange={(e) => setNewTypeName(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddType() } }}
-                    placeholder="Nombre del tipo"
-                    className={inputCls}
-                  />
-                  <button type="button" onClick={handleAddType} disabled={savingType} className="shrink-0 rounded-md bg-primary px-2.5 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50">
-                    {savingType ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Agregar'}
-                  </button>
-                  <button type="button" onClick={() => { setAddingType(false); setNewTypeName('') }} className="shrink-0 rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-muted">
-                    ×
-                  </button>
-                </div>
-              ) : (
-                <select
-                  value={typeId}
-                  onChange={(e) => { if (e.target.value === '__add__') setAddingType(true); else setTypeId(e.target.value) }}
-                  className={inputCls}
-                >
-                  <option value="">Sin especificar</option>
-                  {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  <option value="__add__">+ Agregar tipo…</option>
-                </select>
-              )}
+              <label className={labelCls}>Estado</label>
+              <select value={status} onChange={(e) => setStatus(e.target.value as AppointmentStatus)} className={inputCls}>
+                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+              </select>
             </div>
-            {isEdit && (
-              <div>
-                <label className={labelCls}>Estado</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value as AppointmentStatus)} className={inputCls}>
-                  {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-                </select>
-              </div>
-            )}
-          </div>
+          )}
           <div>
             <label className={labelCls}>Motivo de consulta</label>
             {motivoOther ? (
               <div className="space-y-1">
-                <input
-                  autoFocus
-                  value={chief}
-                  onChange={(e) => setChief(e.target.value)}
-                  placeholder="Escribe el motivo"
-                  className={inputCls}
-                />
-                <button
-                  type="button"
-                  onClick={() => { setMotivoOther(false); setChief('') }}
-                  className="text-xs text-primary hover:underline"
-                >
+                <input autoFocus value={chief} onChange={(e) => setChief(e.target.value)} placeholder="Escribe el motivo" className={inputCls} />
+                <button type="button" onClick={() => { setMotivoOther(false); setChief('') }} className="text-xs text-primary hover:underline">
                   Elegir de la lista
                 </button>
               </div>
@@ -478,41 +460,34 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
+      {/* Confirmar (cita agendada) */}
+      {isEdit && kind === 'appointment' && CONFIRMABLE.has(status) && (
+        <button
+          type="button"
+          onClick={handleConfirm}
+          disabled={saving}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm font-medium text-success hover:bg-success/20 disabled:opacity-50"
+        >
+          <Check className="h-4 w-4" /> Confirmar cita
+        </button>
+      )}
+
       {/* Acciones */}
       <div className="flex items-center gap-2 pt-1">
         {isEdit && kind === 'appointment' && (
-          <button
-            type="button"
-            onClick={handleCancelAppointment}
-            disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
-          >
+          <button type="button" onClick={handleCancelAppointment} disabled={saving} className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50">
             <Ban className="h-4 w-4" /> Cancelar cita
           </button>
         )}
         {isEdit && kind === 'block' && (
-          <button
-            type="button"
-            onClick={handleDeleteBlock}
-            disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
-          >
+          <button type="button" onClick={handleDeleteBlock} disabled={saving} className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50">
             <Trash2 className="h-4 w-4" /> Eliminar
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => onOpenChange(false)}
-          className="ml-auto rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
-        >
+        <button type="button" onClick={() => onOpenChange(false)} className="ml-auto rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
           Cerrar
         </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
-        >
+        <button type="button" onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50">
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
           Guardar
         </button>

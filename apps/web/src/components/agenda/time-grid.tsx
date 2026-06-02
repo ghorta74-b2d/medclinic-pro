@@ -11,6 +11,8 @@ import {
   formatShortTime,
   isSameLocalDay,
   minutesSinceMidnight,
+  startOfLocalDay,
+  clamp,
   dateAtMinutes,
   type AgendaItem,
 } from './lib'
@@ -95,6 +97,23 @@ export function TimeGrid({
   const heightFor = (a: Date, b: Date) =>
     ((minutesSinceMidnight(b) - minutesSinceMidnight(a)) / 60) * HOUR_HEIGHT
 
+  // Horarios pasados: días previos a hoy (completo) o, en hoy, antes de "ahora".
+  const endMin = endHour * 60
+  const nowMin = minutesSinceMidnight(now.now)
+  const todayMidTime = startOfLocalDay(now.now).getTime()
+  const pastUntilMin = (day: Date): number => {
+    const dm = startOfLocalDay(day).getTime()
+    if (dm < todayMidTime) return endMin // día pasado → todo bloqueado
+    if (isSameLocalDay(day, now.now)) return clamp(nowMin, startMin, endMin)
+    return startMin // futuro → nada bloqueado
+  }
+  const minuteAtClientY = (clientY: number): number => {
+    const el = bodyRef.current
+    if (!el) return startMin
+    const rect = el.getBoundingClientRect()
+    return startMin + ((clientY - rect.top) / HOUR_HEIGHT) * 60
+  }
+
   return (
     <TooltipProvider delayDuration={250}>
       <div className="flex flex-col rounded-xl border border-border bg-card overflow-hidden">
@@ -158,6 +177,8 @@ export function TimeGrid({
               <div className="absolute inset-0 flex">
                 {days.map((day, ci) => {
                   const { dayItems, layout } = perColumn[ci]!
+                  const pastUntil = pastUntilMin(day)
+                  const shadeH = ((Math.min(pastUntil, endMin) - startMin) / 60) * HOUR_HEIGHT
                   return (
                     <div
                       key={ci}
@@ -167,16 +188,30 @@ export function TimeGrid({
                       aria-label={day.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
                       onPointerDown={(e) => {
                         // Solo iniciar create si el target es el fondo de la columna
-                        if (e.currentTarget === e.target) startCreate(e, ci)
+                        // y el punto no cae en un horario ya pasado.
+                        if (e.currentTarget !== e.target) return
+                        if (minuteAtClientY(e.clientY) < pastUntil) return
+                        startCreate(e, ci)
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          const base = dateAtMinutes(day, startMin)
-                          onCreate(base, dateAtMinutes(day, startMin + 30), ci)
+                          const baseMin = pastUntil <= startMin
+                            ? startMin
+                            : Math.ceil(pastUntil / SNAP_MIN) * SNAP_MIN
+                          if (baseMin + 30 > endMin) return // no quedan horarios futuros hoy
+                          onCreate(dateAtMinutes(day, baseMin), dateAtMinutes(day, baseMin + 30), ci)
                         }
                       }}
                       className="relative flex-1 border-l border-border first:border-l-0 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/40"
                     >
+                      {/* Sombreado de horario pasado (no se permite capturar ahí) */}
+                      {shadeH > 0 && (
+                        <div
+                          className="pointer-events-none absolute inset-x-0 top-0 z-0 bg-muted/50"
+                          style={{ height: shadeH }}
+                          aria-hidden
+                        />
+                      )}
                       {dayItems.map((it) => {
                         const box = layout[it.id] ?? { leftPct: 0, widthPct: 100 }
                         const isDraftItem = draft && draft.itemId === it.id
