@@ -1630,7 +1630,6 @@ export default function PatientDetailPage() {
   const [showProfile, setShowProfile] = useState(false)
   const [labEditMode, setLabEditMode] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [autoOpenConsulta, setAutoOpenConsulta] = useState(false)
   const [autoOpenAppointmentId, setAutoOpenAppointmentId] = useState<string | undefined>(undefined)
 
   // Only STAFF ("Administrativo") is restricted — ADMIN is the clinic owner/doctor and has full access
@@ -1645,8 +1644,11 @@ export default function PatientDetailPage() {
     const aptId = sessionStorage.getItem('_open_new_consulta')
     if (aptId) {
       sessionStorage.removeItem('_open_new_consulta')
+      // Llegamos desde "Iniciar consulta" en la agenda: mostramos el expediente
+      // (pestaña Consultas) para que el médico revise el historial. NO abrimos la
+      // consulta automáticamente — el médico la inicia (normal o IA) cuando quiera.
+      // Conservamos el id de la cita para vincular la nota al iniciarla.
       setActiveTab('consultas')
-      setAutoOpenConsulta(true)
       setAutoOpenAppointmentId(aptId)
     }
   }, [id])
@@ -1807,7 +1809,6 @@ export default function PatientDetailPage() {
               patient={patient}
               notes={timeline?.notes ?? []}
               onRefresh={loadTimeline}
-              autoOpen={autoOpenConsulta}
               autoOpenAppointmentId={autoOpenAppointmentId}
             />
           )}
