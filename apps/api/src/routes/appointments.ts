@@ -455,6 +455,28 @@ export async function appointmentsRoutes(server: FastifyInstance) {
       })
       if (!newDoctor) return Errors.NOT_FOUND(reply, 'Doctor')
 
+      // Validar disponibilidad del NUEVO médico en el horario destino
+      const newStart = new Date(data.startsAt ?? existing.startsAt)
+      const newEnd   = new Date(data.endsAt ?? existing.endsAt)
+      const apptClash = await prisma.appointment.findFirst({
+        where: {
+          id: { not: id }, // ignorar la propia cita
+          doctorId: newDoctor.id,
+          status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+          startsAt: { lt: newEnd },
+          endsAt: { gt: newStart },
+        },
+      })
+      if (apptClash) {
+        return reply.status(409).send({ error: { message: 'El médico ya tiene una cita en ese horario.' } })
+      }
+      const blockClash = await prisma.scheduleBlock.findFirst({
+        where: { doctorId: newDoctor.id, startsAt: { lt: newEnd }, endsAt: { gt: newStart } },
+      })
+      if (blockClash) {
+        return reply.status(409).send({ error: { message: 'El médico tiene un bloqueo en ese horario.' } })
+      }
+
       const originalDoctor = existing.doctor
       const patient = existing.patient
       const aptTime = new Date(data.startsAt ?? existing.startsAt).toLocaleString('es-MX', {
