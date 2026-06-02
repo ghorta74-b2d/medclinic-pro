@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Trash2, CalendarClock, Ban, Check, ExternalLink } from 'lucide-react'
+import { Loader2, Trash2, CalendarClock, Ban, Check, Stethoscope } from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn, localDateStr } from '@/lib/utils'
 import { useIsDesktop } from '@/hooks/use-media-query'
@@ -507,14 +507,14 @@ export function EventEditor({ open, onOpenChange, target, doctors, lockedDoctorI
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      {/* Ver detalle completo (iniciar consulta, check-in, tomar la cita, expediente) */}
+      {/* Iniciar consulta / expediente → flujo clínico completo en /agenda/[id] */}
       {isEdit && kind === 'appointment' && target?.item && (
         <button
           type="button"
           onClick={() => { onOpenChange(false); router.push(`/agenda/${target.item!.id}`) }}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
         >
-          <ExternalLink className="h-4 w-4" /> Ver detalle (iniciar consulta, check-in, expediente)
+          <Stethoscope className="h-4 w-4" /> Iniciar consulta / Ver expediente
         </button>
       )}
 
