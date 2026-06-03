@@ -6,7 +6,7 @@ SaaS de gestión clínica para LATAM. Monorepo pnpm + Turborepo.
 **WD:** `/Users/gerardohorta/Library/Mobile Documents/com~apple~CloudDocs/B2D Automation/CLAUDE/CLINIC/medclinic-pro`  
 **Repo:** `https://github.com/ghorta74-b2d/medclinic-pro`  
 **Prod:** `https://mediaclinic.mx`  
-**Último commit:** `1abdff1` — 2026-06-01 (⚠️ sin pushear; `origin/main`=`e45633e`)
+**Último commit:** `f1f7b5c` — 2026-06-03 (✅ pusheado y desplegado en prod; `origin/main`=`f1f7b5c`)
 
 ## Stack
 
@@ -78,11 +78,27 @@ SaaS de gestión clínica para LATAM. Monorepo pnpm + Turborepo.
   Prop `viewport` (centra en ventana, `min-h-[70vh]`) vs `fullPage` (sección). `app/(dashboard)/loading.tsx` lo usa.
 - Spinners inline de **botones** siguen siendo `Loader2` (intencional). No usar spinners circulares para página/sección.
 
+### Agenda (`/agenda`) — rediseñada 2026-06-03
+- `components/agenda/agenda-shell.tsx` = orquestador (estado vista/fecha/médico, fetch SWR de citas **+ bloqueos**, contadores, toolbar). La página solo monta `<AgendaShell/>`.
+- Rejilla real: `time-grid.tsx` (Día/Semana, 09–19h, línea de "ahora", auto-scroll) + `day-view`/`week-view`/`month-view`. `event-block.tsx` = `AgendaEvent` (cita + bloqueo rayado).
+- Interacción **pointer events propios** (sin deps): `hooks/use-grid-interaction.ts` (drag-create **snap 30 min**, mover, redimensionar con persistencia optimista + rollback), `use-overlap-layout.ts` (lanes), `use-now-line.ts`. Color por médico: `doctorColor()` en `medclinic-shared`.
+- **Horarios pasados sombreados** y no se pueden capturar (rejilla + editor).
+- `event-editor.tsx` = crear/editar responsivo (Dialog desktop / Sheet móvil). Toggle Cita/Bloqueo. Paciente **buscar o + Nuevo**. Médico obligatorio (foco) en "Todos". Motivo = catálogo `COMPLAINTS` por especialidad + "Otro". **NO** hay "Tipo de consulta" (se quitó). Modalidad sí. Reasignar inline (cambia médico → dispara flujo backend).
+- **Clic en una cita → navega a `/agenda/[id]`** (detalle completo); el editor inline es solo para crear y para editar **bloqueos**.
+- Bloqueos: modelo Prisma `ScheduleBlock` + enum `BlockReason`, rutas `routes/blocks.ts` (`/api/blocks` CRUD), `api.blocks`. Tabla `schedule_blocks` **ya aplicada en prod** (RLS on, sin políticas; backend usa Postgres directo). NO suman a contadores.
+- `availability` (backend): marca no disponibles los slots **ocupados Y pasados de hoy** (vía `utcOffset`). Reagendar/reasignar/alta solo ven futuros y libres.
+- Reasignación: `PATCH /appointments/:id` valida conflicto del **nuevo médico** (cita y bloqueo) → 409. Notifica + email a ambos médicos. El panel del detalle exige elegir horario si el actual no está libre con el nuevo médico.
+
+### Detalle de cita (`/agenda/[id]`)
+- Acciones: confirmar, cancelar, reagendar (slots), reasignar (slots), iniciar consulta. Botones de acción primaria en **azul**.
+- **"Iniciar consulta"** → pone la cita `IN_PROGRESS` y navega al **expediente** del paciente (`/pacientes/[id]`, pestaña Consultas) para revisar historial. NO auto-abre la nota; el médico inicia consulta (normal o IA). El vínculo cita→nota se conserva (`_open_new_consulta` → `autoOpenAppointmentId`).
+
 ### Cobros + Dashboard
 - Navegación por meses con `components/ui/period-navigator.tsx` (Día/Semana/Mes + flechas + Hoy).
 - KPIs con delta vs período anterior (`components/ui/kpi-card.tsx`). Gráficos en **Recharts**.
 - Backend `billing.ts`: params `from/to/chartToUtc/prevFrom/prevTo` + endpoint `GET /api/billing/trend?months=6`.
   ⚠️ `chartToUtc` acota el gráfico (sin él, un mes pasado arrastra pagos del mes actual).
+- **"Pacientes atendidos"** = citas con estado `COMPLETED`. La cita pasa a COMPLETED **al FIRMAR la nota clínica** (`clinical-notes/:id/sign` → `appointment.status=COMPLETED`); "Guardar borrador" la deja `IN_PROGRESS` (a propósito, NOM-004). Si el KPI sale 0 con citas, es que no se firmaron notas.
 
 ## Pendientes al 2026-05-26
 
