@@ -46,11 +46,16 @@ jobs:
         with:
           fetch-depth: 0          # historial completo para el bundle
 
-      - name: Instalar dependencias (age, awscli, curl, python3)
+      - name: Instalar dependencias (age + aws si falta)
         run: |
           set -e
           sudo apt-get update -qq
-          sudo apt-get install -y -qq age awscli >/dev/null
+          sudo apt-get install -y -qq age >/dev/null
+          if ! command -v aws >/dev/null; then
+            curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+            unzip -q /tmp/awscliv2.zip -d /tmp && sudo /tmp/aws/install
+          fi
+          age --version && aws --version
 
       - name: Ejecutar backup de código + assets
         run: bash scripts/backup/backup-code-assets.sh

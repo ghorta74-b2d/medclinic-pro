@@ -33,11 +33,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Instalar dependencias (awscli, curl)
+      - name: Instalar dependencias (aws si falta)
         run: |
           set -e
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq awscli >/dev/null
+          if ! command -v aws >/dev/null; then
+            curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+            unzip -q /tmp/awscliv2.zip -d /tmp && sudo /tmp/aws/install
+          fi
+          aws --version
 
       - name: Verificar integridad del último backup
         run: bash scripts/backup/verify-backup.sh
