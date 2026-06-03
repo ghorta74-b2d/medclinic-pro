@@ -132,15 +132,31 @@ CRON_TZ=America/Mexico_City
 ```
 
 ### 7.2 Qué hace `scripts/backup/backup-db.sh`
-1. `pg_dump --format=custom --compress=9` (conexión **directa**, puerto 5432) de los schemas `public`, `auth`, `storage`.
-2. Calcula **SHA-256** y lo guarda en un sidecar `.sha256`.
-3. **Smoke-restore** del dump en un Postgres efímero (`postgres:17`) y valida conteos de tablas clave — *un backup que no restaura, falla el job*.
-4. Cifra con **`age`** (clave pública) → `medclinic_db_<YYYYMMDD>_<slot>.dump.age`.
-5. Sube a R2 y **verifica el tamaño del objeto remoto**.
-6. Aplica **purga GFS** de respaldos vencidos.
-7. **Ping de éxito** a healthchecks.io. En cualquier fallo: **email a `gerardo@b2d.mx`** + ping `/fail`.
 
-> **Limitación documentada:** los roles a nivel de clúster (`pg_dumpall --roles-only`) no son accesibles sin superusuario en Supabase. No es problema porque la restauración apunta a un **proyecto Supabase nuevo**, que ya provee los roles del sistema. El dump incluye los **datos** de usuarios (schema `auth`).
+> **Por qué export por API y no `pg_dump`:** el pooler IPv4 de Supabase (Supavisor)
+> solo acepta el usuario `postgres` (cuyo password no es recuperable y no debe rotarse
+> sin riesgo a producción), y la conexión directa Postgres es **IPv6-only**, inalcanzable
+> desde GitHub Actions (IPv4). Por eso el backup exporta vía **API sobre HTTPS** con la
+> `service_role` key: cero password de BD, cero conexión Postgres, **solo lectura**.
+
+1. **`export-db.py`** exporta TODAS las tablas del schema `public` vía PostgREST
+   (la `service_role` bypassa RLS → captura todas las filas) → un **NDJSON por tabla**,
+   más los usuarios de Auth vía **Auth Admin API**, más `manifest.json` con conteos.
+2. **Validación (smoke)** sobre el manifiesto: tablas clave presentes y total de filas > 0
+   (las tablas clínicas no pueden venir vacías) — *un backup que no se valida no es un backup*.
+3. Empaqueta en `tar.gz` y calcula **SHA-256** → sidecar `.sha256`.
+4. Cifra con **`age`** (clave pública) → `medclinic_db_<YYYYMMDD>_<slot>.tar.gz.age`.
+5. Sube a R2 y **verifica el tamaño del objeto remoto**.
+6. Aplica **purga GFS**. 7. **Ping de éxito**; en fallo **email a `gerardo@b2d.mx`** + ping `/fail`.
+
+> **El esquema NO va en este backup:** el DDL, las migraciones y las políticas RLS viven
+> en el repositorio (`apps/api/prisma` + `supabase/migrations`) y se respaldan con el backup
+> de código (§8). Recuperación = **aplicar migraciones Prisma + cargar estos datos**.
+>
+> **Limitación de Auth:** la Auth Admin API **no** devuelve los hashes de contraseña
+> (`encrypted_password`), por diseño de GoTrue. Tras una recuperación total los usuarios
+> conservan identidad, rol y metadata, pero **deben restablecer su contraseña** (o
+> re-invitarse). `auth_users.ndjson` queda en el archivo para este fin.
 
 ### 7.3 Retención (GFS) y costo
 - **Diarios:** cada corrida se conserva **30 días** (~60 objetos, por las 2/día).
@@ -167,9 +183,11 @@ CRON_TZ=America/Mexico_City
 ### 7.5 Verificación de restauración (en 3 capas)
 > *"Un backup que no se ha probado no es un backup."*
 
-1. **Cada corrida — smoke-restore efímero** (en `backup-db.sh`, antes de cifrar): restaura en un Postgres desechable y valida conteos. No requiere clave privada.
-2. **Semanal — `verify-backup.sh`** (`.github/workflows/verify-backup.yml`): descarga el último `.age` de R2 y **recompara el SHA-256** contra el sidecar → confirma que el artefacto almacenado está íntegro y es descargable, **sin descifrar** (la clave privada sigue offline).
-3. **Mensual — `restore-rehearsal.sh`** (manual): con la **clave privada offline**, descarga → descifra → restaura en una BD desechable → valida conteos, integridad referencial y drift contra `schema.prisma`. Se mantiene manual a propósito para no exponer la clave de descifrado en CI.
+1. **Cada corrida — validación de manifiesto** (en `backup-db.sh`): verifica que el export
+   contiene las tablas clave y que el total de filas > 0 (tablas clínicas no vacías). Si no,
+   el job falla y alerta.
+2. **Semanal — `verify-backup.sh`** (`.github/workflows/verify-backup.yml`): descarga el último `.tar.gz.age` de R2 y **recompara el SHA-256** contra el sidecar → confirma que el artefacto almacenado está íntegro y es descargable, **sin descifrar** (la clave privada sigue offline).
+3. **Mensual — `restore-rehearsal.sh`** (manual): con la **clave privada offline**, descarga → verifica checksum → descifra → extrae → valida el manifiesto; con `--target` además **carga los datos en una BD desechable** (`restore-db.py`) y compara los conteos cargados vs el manifiesto. Se mantiene manual a propósito para no exponer la clave de descifrado en CI.
 
 ---
 
@@ -203,10 +221,10 @@ Para cerrar la brecha de RPO nocturna de ~17 h en datos clínicos se recomienda 
 - **Acción:**
   1. Poner la app en mantenimiento (Vercel) para frenar escrituras.
   2. `scripts/backup/restore-db.sh --list` para ver backups disponibles.
-  3. Restaurar el último dump **sano** en un **proyecto Supabase nuevo** (no sobre el corrupto):
+  3. Recrear esquema (migraciones Prisma) y cargar el último export **sano** en un **proyecto Supabase nuevo** (no sobre el corrupto):
      ```bash
      AGE_IDENTITY_FILE=~/keys/medclinic-backup.agekey \
-       scripts/backup/restore-db.sh --target "postgresql://...nuevo..." --key db/medclinic_db_YYYYMMDD_1900.dump.age
+       scripts/backup/restore-db.sh --target "postgresql://...nuevo..." --truncate --key db/medclinic_db_YYYYMMDD_1900.tar.gz.age
      ```
   4. Validar conteos e integridad.
   5. Apuntar `DATABASE_URL`/`DIRECT_URL` en Vercel (web+api) al proyecto restaurado; redeploy.
@@ -246,11 +264,15 @@ Para cerrar la brecha de RPO nocturna de ~17 h en datos clínicos se recomienda 
    pnpm install --frozen-lockfile
    ```
 2. **Proyecto Supabase nuevo** (~10 min): crearlo (misma o nueva región), obtener `DATABASE_URL`/`DIRECT_URL`.
-3. **Restaurar BD** (~5–15 min):
+3. **Recrear esquema + restaurar datos** (~5–15 min):
    ```bash
+   # a) Esquema + RLS desde el código (migraciones Prisma)
+   cd apps/api && DATABASE_URL="postgresql://...nuevo..." npx prisma migrate deploy && cd -
+   # b) Cargar los datos del último backup
    AGE_IDENTITY_FILE=~/keys/medclinic-backup.agekey \
-     scripts/backup/restore-db.sh --target "postgresql://...nuevo..." --allow-prod
+     scripts/backup/restore-db.sh --target "postgresql://...nuevo..." --truncate --allow-prod
    ```
+   Usuarios de Auth: re-invitar / restablecer contraseña (los hashes no se respaldan, §7.2).
 4. **Restaurar Storage** (~10 min): crear el bucket `clinical-files` (privado), descargar `assets/` de R2, descifrar cada objeto y re-subirlo con el service role.
 5. **Variables de entorno** (~20 min): usar el manifiesto de `code/` como checklist; recargar los **valores** (desde el gestor de contraseñas) en Vercel (web+api). Configurar también los secrets de backup.
 6. **Redeploy en Vercel** (~10 min): conectar el repo, deploy de web y api, verificar dominios.
@@ -304,7 +326,9 @@ Para cerrar la brecha de RPO nocturna de ~17 h en datos clínicos se recomienda 
 |---|---|
 | `DRP.md` | Este documento. |
 | `scripts/backup/lib.sh` | Funciones compartidas (log, tiempo MX, healthchecks, email, purga GFS, R2). |
-| `scripts/backup/backup-db.sh` | Backup de BD 2×/día. |
+| `scripts/backup/export-db.py` | Exporta los datos vía API de Supabase (PostgREST + Auth Admin). |
+| `scripts/backup/restore-db.py` | Carga un export en una BD destino (psql, sin pelear con FKs). |
+| `scripts/backup/backup-db.sh` | Backup de BD 2×/día (orquesta export → cifra → R2). |
 | `scripts/backup/verify-backup.sh` | Verificación semanal de integridad (sin descifrar). |
 | `scripts/backup/restore-rehearsal.sh` | Ensayo mensual de restauración (manual, clave offline). |
 | `scripts/backup/restore-db.sh` | Restauración real (interactiva, con confirmación). |

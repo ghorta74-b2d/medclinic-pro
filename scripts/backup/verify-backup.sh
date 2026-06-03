@@ -41,7 +41,7 @@ log_info "Verificación iniciada" "when=$(mx_human)"
 
 # ---- 1. Último .age en R2 -------------------------------------------------
 LATEST="$(r2 ls "s3://${R2_BUCKET}/${R2_PREFIX_DB}/" --recursive \
-  | grep -E '\.dump\.age$' | sort | tail -1)"
+  | grep -E '\.tar\.gz\.age$' | sort | tail -1)"
 [[ -z "$LATEST" ]] && { log_error "No hay backups en R2"; exit 1; }
 
 LATEST_KEY="$(echo "$LATEST" | awk '{print $4}')"

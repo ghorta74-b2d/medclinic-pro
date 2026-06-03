@@ -236,7 +236,7 @@ purge_gfs() {
   # Listado de objetos .age bajo db/ (el .sha256 sigue al .age que conserva).
   local keys
   keys="$(r2 ls "s3://${R2_BUCKET}/${R2_PREFIX_DB}/" --recursive \
-    | awk '{print $4}' | grep -E '\.dump\.age$' || true)"
+    | awk '{print $4}' | grep -E '\.tar\.gz\.age$' || true)"
   [[ -z "$keys" ]] && { log_info "Sin objetos para purgar"; return 0; }
 
   # Sets de "ya conservado" por semana/mes para quedarnos con el primero.
@@ -247,7 +247,7 @@ purge_gfs() {
   # el "primero de la semana/mes" sea el más antiguo de ese período.
   while IFS= read -r key; do
     [[ -z "$key" ]] && continue
-    fname="$(basename "$key")"                       # medclinic_db_20260603_1200.dump.age
+    fname="$(basename "$key")"                       # medclinic_db_20260603_1200.tar.gz.age
     datepart="$(echo "$fname" | grep -oE '[0-9]{8}' | head -1)"
     [[ -z "$datepart" ]] && { log_warn "Nombre sin fecha; se conserva por seguridad" "key=$key"; continue; }
     filedate="${datepart:0:4}-${datepart:4:2}-${datepart:6:2}"
@@ -271,7 +271,7 @@ purge_gfs() {
     else
       log_info "Purgar" "key=$key"
       if r2 rm "s3://${R2_BUCKET}/${key}" 2>/dev/null \
-         && r2 rm "s3://${R2_BUCKET}/${key%.age}.sha256" 2>/dev/null; then
+         && r2 rm "s3://${R2_BUCKET}/${key}.sha256" 2>/dev/null; then
         log_info "Purgado" "key=$key"
       else
         log_warn "No se pudo purgar (¿Object Lock vigente?)" "key=$key"
