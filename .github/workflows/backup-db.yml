@@ -1,0 +1,77 @@
+name: Backup DB
+
+# ============================================================================
+# Dos backups completos diarios de la BD, "sin excepción".
+#
+# HORARIO MÉXICO (America/Mexico_City = UTC-6 fijo, SIN horario de verano):
+#   12:00 MX  ->  18:00 UTC   ->  cron "0 18 * * *"
+#   19:00 MX  ->  01:00 UTC   ->  cron "0 1  * * *"  (cae al día siguiente UTC)
+#
+# ⚠️ GitHub Actions corre SIEMPRE en UTC y sus schedules pueden retrasarse o
+#    saltarse bajo carga de la plataforma. Por eso el dead-man's switch en
+#    healthchecks.io es OBLIGATORIO: si no llega el ping en la ventana, alerta.
+# ============================================================================
+
+on:
+  schedule:
+    - cron: "0 18 * * *"   # 12:00 America/Mexico_City
+    - cron: "0 1 * * *"    # 19:00 America/Mexico_City (día anterior)
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: "Slot forzado (1200 o 1900). Vacío = automático por hora."
+        required: false
+        default: ""
+      dry_run:
+        description: "1 = subir a prefijo test/ y no purgar"
+        required: false
+        default: "0"
+
+concurrency:
+  group: backup-db
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    # pg_dump/pg_restore 17 garantizado (coincide con Postgres 17.6 de Supabase).
+    container:
+      image: postgres:17
+    services:
+      # Postgres efímero para el smoke-restore en cada corrida.
+      smoke:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: smoke
+          POSTGRES_DB: smoke
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+
+    env:
+      SUPABASE_DB_URL_DIRECT: ${{ secrets.SUPABASE_DB_URL_DIRECT }}
+      R2_ACCOUNT_ID:          ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID:       ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY:   ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET:              ${{ secrets.R2_BUCKET }}
+      R2_ENDPOINT:            ${{ secrets.R2_ENDPOINT }}
+      AGE_PUBLIC_KEY:         ${{ secrets.AGE_PUBLIC_KEY }}
+      HEALTHCHECKS_URL_DB_1200: ${{ secrets.HEALTHCHECKS_URL_DB_1200 }}
+      HEALTHCHECKS_URL_DB_1900: ${{ secrets.HEALTHCHECKS_URL_DB_1900 }}
+      RESEND_API_KEY:         ${{ secrets.RESEND_API_KEY }}
+      ALERT_EMAIL:            ${{ secrets.ALERT_EMAIL }}
+      SMOKE_DB_URL:           postgresql://postgres:smoke@smoke:5432/smoke
+      BACKUP_SLOT:            ${{ github.event.inputs.slot }}
+      DRY_RUN:                ${{ github.event.inputs.dry_run }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar dependencias (git, age, awscli, curl, python3)
+        run: |
+          set -e
+          apt-get update -qq
+          apt-get install -y -qq git age awscli curl python3 ca-certificates >/dev/null
+
+      - name: Ejecutar backup de BD
+        run: bash scripts/backup/backup-db.sh

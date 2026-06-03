@@ -1,0 +1,56 @@
+name: Backup Code + Assets
+
+# ============================================================================
+# Respaldo diario de código (bundle Git con historial completo), assets de
+# Supabase Storage y manifiesto de variables de entorno (sin valores).
+#
+# HORARIO MÉXICO: 03:00 MX -> 09:00 UTC -> cron "0 9 * * *"
+# (fuera de la ventana de los backups de BD, 12:00 y 19:00 MX).
+#
+# ⚠️ GitHub Actions corre en UTC; el dead-man's switch cubre retrasos/saltos.
+# ============================================================================
+
+on:
+  schedule:
+    - cron: "0 9 * * *"    # 03:00 America/Mexico_City
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "1 = subir a prefijo test/"
+        required: false
+        default: "0"
+
+concurrency:
+  group: backup-code
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      R2_ACCOUNT_ID:        ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID:     ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET:            ${{ secrets.R2_BUCKET }}
+      R2_ENDPOINT:          ${{ secrets.R2_ENDPOINT }}
+      AGE_PUBLIC_KEY:       ${{ secrets.AGE_PUBLIC_KEY }}
+      HEALTHCHECKS_URL_CODE: ${{ secrets.HEALTHCHECKS_URL_CODE }}
+      RESEND_API_KEY:       ${{ secrets.RESEND_API_KEY }}
+      ALERT_EMAIL:          ${{ secrets.ALERT_EMAIL }}
+      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      DRY_RUN:              ${{ github.event.inputs.dry_run }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # historial completo para el bundle
+
+      - name: Instalar dependencias (age, awscli, curl, python3)
+        run: |
+          set -e
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age awscli >/dev/null
+
+      - name: Ejecutar backup de código + assets
+        run: bash scripts/backup/backup-code-assets.sh
