@@ -6,8 +6,11 @@ name: Backup DB
 # no requiere password de BD ni conexión Postgres directa (ver export-db.py).
 #
 # HORARIO MÉXICO (America/Mexico_City = UTC-6 fijo, SIN horario de verano):
-#   12:00 MX  ->  18:00 UTC   ->  cron "0 18 * * *"
-#   19:00 MX  ->  01:00 UTC   ->  cron "0 1  * * *"  (cae al día siguiente UTC)
+#   12:09 MX  ->  18:09 UTC   ->  cron "9 18 * * *"
+#   19:09 MX  ->  01:09 UTC   ->  cron "9 1  * * *"  (cae al día siguiente UTC)
+#
+# Nota: el minuto :09 (no :00) es recomendación de GitHub — el inicio de hora
+# es el horario más congestionado y donde más se retrasan/saltan los schedules.
 #
 # ⚠️ GitHub Actions corre SIEMPRE en UTC y sus schedules pueden retrasarse o
 #    saltarse. Por eso el dead-man's switch en healthchecks.io es OBLIGATORIO.
@@ -15,8 +18,8 @@ name: Backup DB
 
 on:
   schedule:
-    - cron: "0 18 * * *"   # 12:00 America/Mexico_City
-    - cron: "0 1 * * *"    # 19:00 America/Mexico_City (día anterior)
+    - cron: "9 18 * * *"   # 12:09 America/Mexico_City
+    - cron: "9 1 * * *"    # 19:09 America/Mexico_City (día anterior)
   workflow_dispatch:
     inputs:
       slot:

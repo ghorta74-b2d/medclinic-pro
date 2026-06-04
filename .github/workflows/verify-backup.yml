@@ -5,12 +5,12 @@ name: Verify Backup
 # SIN descifrar (no usa la clave privada). El ensayo de restauración real con
 # descifrado es MENSUAL y MANUAL (scripts/backup/restore-rehearsal.sh).
 #
-# HORARIO MÉXICO: lunes 04:00 MX -> 10:00 UTC -> cron "0 10 * * 1"
+# HORARIO MÉXICO: lunes 04:09 MX -> 10:09 UTC -> cron "9 10 * * 1"
 # ============================================================================
 
 on:
   schedule:
-    - cron: "0 10 * * 1"   # lunes 04:00 America/Mexico_City
+    - cron: "9 10 * * 1"   # lunes 04:09 America/Mexico_City
   workflow_dispatch: {}
 
 concurrency:

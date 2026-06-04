@@ -114,10 +114,12 @@ El proyecto corre en **Supabase FREE**: no hay PITR, los backups gestionados no 
 
 | Slot | Hora México (UTC-6) | Cron UTC (GitHub Actions) | Cron VPS (`TZ=America/Mexico_City`) |
 |---|---|---|---|
-| Diurno | **12:00** | `0 18 * * *` | `0 12 * * *` |
-| Vespertino | **19:00** | `0 1 * * *` (día siguiente UTC) | `0 19 * * *` |
+| Diurno | **12:09** | `9 18 * * *` | `9 12 * * *` |
+| Vespertino | **19:09** | `9 1 * * *` (día siguiente UTC) | `9 19 * * *` |
 
 > México centro = **UTC-6 fijo** (sin horario de verano desde 2023), por eso el offset es constante todo el año.
+> El minuto **:09** (no :00) sigue la recomendación de GitHub: el inicio de hora es el horario más
+> congestionado y donde más se retrasan o saltan los schedules. La ventana de gracia (2 h) absorbe el resto.
 
 **Runner primario: GitHub Actions** (`.github/workflows/backup-db.yml`). Como GitHub Actions corre en **UTC** y sus schedules **pueden retrasarse o saltarse** bajo carga, el cumplimiento "sin excepción" se garantiza con el **dead-man's switch** (§7.4), no con la confianza en el scheduler.
 
@@ -126,9 +128,9 @@ El proyecto corre en **Supabase FREE**: no hay PITR, los backups gestionados no 
 ```cron
 # /etc/cron.d/medclinic-backup   (asegurar TZ del sistema o exportar TZ)
 CRON_TZ=America/Mexico_City
-0 12 * * *  deploy  cd /opt/medclinic-pro && /usr/bin/env bash scripts/backup/backup-db.sh >> /var/log/medclinic-backup.log 2>&1
-0 19 * * *  deploy  cd /opt/medclinic-pro && /usr/bin/env bash scripts/backup/backup-db.sh >> /var/log/medclinic-backup.log 2>&1
-0  3 * * *  deploy  cd /opt/medclinic-pro && /usr/bin/env bash scripts/backup/backup-code-assets.sh >> /var/log/medclinic-backup.log 2>&1
+9 12 * * *  deploy  cd /opt/medclinic-pro && /usr/bin/env bash scripts/backup/backup-db.sh >> /var/log/medclinic-backup.log 2>&1
+9 19 * * *  deploy  cd /opt/medclinic-pro && /usr/bin/env bash scripts/backup/backup-db.sh >> /var/log/medclinic-backup.log 2>&1
+9  3 * * *  deploy  cd /opt/medclinic-pro && /usr/bin/env bash scripts/backup/backup-code-assets.sh >> /var/log/medclinic-backup.log 2>&1
 ```
 
 ### 7.2 Qué hace `scripts/backup/backup-db.sh`
@@ -173,10 +175,12 @@ CRON_TZ=America/Mexico_City
 
   | Check | Schedule (cron) | Timezone | Grace |
   |---|---|---|---|
-  | `db-1200` | `0 12 * * *` | America/Mexico_City | 60 min |
-  | `db-1900` | `0 19 * * *` | America/Mexico_City | 60 min |
-  | `code` | `0 3 * * *` | America/Mexico_City | 60 min |
-  | `verify` | `0 4 * * 1` | America/Mexico_City | 120 min |
+  | `db-1200` | `9 12 * * *` | America/Mexico_City | 120 min |
+  | `db-1900` | `9 19 * * *` | America/Mexico_City | 120 min |
+  | `code` | `9 3 * * *` | America/Mexico_City | 120 min |
+  | `verify` | `9 4 * * 1` | America/Mexico_City | 120 min |
+
+  > Grace de 2 h: absorbe los retrasos habituales de los schedules de GitHub Actions sin falsas alarmas.
 
 - **Pendiente (fase posterior):** alerta por **WhatsApp** (Meta Cloud API). El gancho `alert_whatsapp()` ya existe en `lib.sh` como no-op documentado; se activará más adelante.
 

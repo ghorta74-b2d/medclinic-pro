@@ -4,15 +4,16 @@ name: Backup Code + Assets
 # Respaldo diario de código (bundle Git con historial completo), assets de
 # Supabase Storage y manifiesto de variables de entorno (sin valores).
 #
-# HORARIO MÉXICO: 03:00 MX -> 09:00 UTC -> cron "0 9 * * *"
-# (fuera de la ventana de los backups de BD, 12:00 y 19:00 MX).
+# HORARIO MÉXICO: 03:09 MX -> 09:09 UTC -> cron "9 9 * * *"
+# (fuera de la ventana de los backups de BD, 12:09 y 19:09 MX; minuto :09 para
+#  evitar la congestión de GitHub al inicio de hora).
 #
 # ⚠️ GitHub Actions corre en UTC; el dead-man's switch cubre retrasos/saltos.
 # ============================================================================
 
 on:
   schedule:
-    - cron: "0 9 * * *"    # 03:00 America/Mexico_City
+    - cron: "9 9 * * *"    # 03:09 America/Mexico_City
   workflow_dispatch:
     inputs:
       dry_run:
