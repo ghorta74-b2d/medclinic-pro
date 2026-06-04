@@ -175,12 +175,17 @@ CRON_TZ=America/Mexico_City
 
   | Check | Schedule (cron) | Timezone | Grace |
   |---|---|---|---|
-  | `db-1200` | `9 12 * * *` | America/Mexico_City | 120 min |
-  | `db-1900` | `9 19 * * *` | America/Mexico_City | 120 min |
-  | `code` | `9 3 * * *` | America/Mexico_City | 120 min |
-  | `verify` | `9 4 * * 1` | America/Mexico_City | 120 min |
+  | `db-1200` | `9 12 * * *` | America/Mexico_City | 6 h |
+  | `db-1900` | `9 19 * * *` | America/Mexico_City | 6 h |
+  | `code` | `9 3 * * *` | America/Mexico_City | 6 h |
+  | `verify` | `9 4 * * 1` | America/Mexico_City | 6 h |
 
-  > Grace de 2 h: absorbe los retrasos habituales de los schedules de GitHub Actions sin falsas alarmas.
+  > **Grace de 6 h:** el cron gratuito de GitHub Actions retrasa los `schedule` de forma notable
+  > (se observó ~3 h en producción; los `workflow_dispatch` manuales/API, en cambio, corren al
+  > instante). Una gracia de 6 h absorbe ese retraso y evita falsas alarmas. Un backup que corre
+  > tarde sigue siendo válido para DR; lo que el dead-man's switch detecta es que NO corra en 6 h.
+  > Si se requiriera horario exacto, la opción documentada es un disparador externo (cron-job.org u
+  > otro) que invoque el workflow vía API de GitHub, o un runner propio/Vercel Pro cron.
 
 - **Pendiente (fase posterior):** alerta por **WhatsApp** (Meta Cloud API). El gancho `alert_whatsapp()` ya existe en `lib.sh` como no-op documentado; se activará más adelante.
 
