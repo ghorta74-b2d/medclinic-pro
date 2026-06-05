@@ -141,18 +141,33 @@ for o in json.load(sys.stdin):
   done
   log_info "Assets descargados de Storage" "count=$ASSET_COUNT" "bucket=$BUCKET_NAME"
 
-  # Cifrar cada asset y sync incremental a R2 (solo sube lo que cambió por tamaño/fecha).
+  # Cifrar y subir assets a R2: SOLO los nuevos (no existentes).
+  # Los assets son inmutables (PDFs clínicos no cambian una vez generados).
+  # El Object Lock bloquea sobrescribir objetos existentes → es la protección
+  # correcta; simplemente los saltamos porque ya están respaldados.
   if (( ASSET_COUNT > 0 )); then
-    ENC_DIR="${WORKDIR}/assets_enc"
+    NEW_COUNT=0; SKIP_COUNT=0
     while IFS= read -r f; do
       rel="${f#"$MIRROR"/}"
-      out="${ENC_DIR}/${rel}.age"
-      mkdir -p "$(dirname "$out")"
-      age -r "$AGE_PUBLIC_KEY" -o "$out" "$f"
+      dest_key="${DEST_ASSETS}/${rel}.age"
+      # Verificar si ya existe en R2 (head-object; 0=existe, !=0=no existe)
+      if r2api head-object --bucket "$R2_BUCKET" --key "$dest_key" \
+           --query 'ContentLength' --output text >/dev/null 2>&1; then
+        SKIP_COUNT=$(( SKIP_COUNT + 1 ))
+        continue  # ya respaldado y protegido por Object Lock → saltar
+      fi
+      # Nuevo asset: cifrar y subir
+      tmp_enc="${WORKDIR}/_asset.age"
+      age -r "$AGE_PUBLIC_KEY" -o "$tmp_enc" "$f"
+      upload_asset() { r2 cp "$tmp_enc" "s3://${R2_BUCKET}/${dest_key}"; }
+      if with_retry 3 5 -- upload_asset; then
+        NEW_COUNT=$(( NEW_COUNT + 1 ))
+        rm -f "$tmp_enc"
+      else
+        log_warn "No se pudo subir asset" "key=$dest_key"
+      fi
     done < <(find "$MIRROR" -type f)
-    sync_assets() { r2 sync "$ENC_DIR" "s3://${R2_BUCKET}/${DEST_ASSETS}/"; }
-    with_retry 3 5 -- sync_assets
-    log_info "Assets cifrados y sincronizados a R2" "count=$ASSET_COUNT"
+    log_info "Assets sincronizados a R2" "new=$NEW_COUNT" "already_backed_up=$SKIP_COUNT"
   fi
 fi
 
