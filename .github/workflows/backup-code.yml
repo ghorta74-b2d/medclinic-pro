@@ -43,7 +43,7 @@ jobs:
       DRY_RUN:              ${{ github.event.inputs.dry_run }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0          # historial completo para el bundle
 

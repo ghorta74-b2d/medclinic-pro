@@ -31,7 +31,7 @@ jobs:
       ALERT_EMAIL:          ${{ secrets.ALERT_EMAIL }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Instalar dependencias (aws si falta)
         run: |

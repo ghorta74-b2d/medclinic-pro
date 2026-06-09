@@ -54,7 +54,7 @@ jobs:
       DRY_RUN:                   ${{ github.event.inputs.dry_run }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # El slot se fija por el CRON que disparó (no por la hora de ejecución),
       # porque GitHub retrasa los schedules de forma variable y eso provocaba
