@@ -34,7 +34,10 @@ source "${SCRIPT_DIR}/lib.sh"
 # ---- Configuración --------------------------------------------------------
 SLOT="$(mx_slot)"
 STAMP="$(mx_date)"
-BASENAME="medclinic_db_${STAMP}_${SLOT}"
+# Timestamp UTC para uniquidad: GitHub retrasa los schedules de forma variable,
+# y dos runs podrían caer el mismo día+slot → mismo nombre → choque con Object
+# Lock. Con el HHMMSS cada artefacto es único y nunca se intenta sobrescribir.
+BASENAME="medclinic_db_${STAMP}_${SLOT}_$(date -u +%H%M%S)"
 WORKDIR="$(mktemp -d)"
 export EXPORT_DIR="${WORKDIR}/export"
 TARBALL="${WORKDIR}/${BASENAME}.tar.gz"

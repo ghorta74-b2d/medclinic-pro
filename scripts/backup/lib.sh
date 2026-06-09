@@ -277,7 +277,7 @@ purge_gfs() {
         log_warn "No se pudo purgar (¿Object Lock vigente?)" "key=$key"
       fi
     fi
-  done <<< "$(echo "$keys" | sort -t_ -k3,4)"
+  done <<< "$(echo "$keys" | sort -t_ -k3)"
 
   log_info "Purga GFS completada"
 }

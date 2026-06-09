@@ -51,11 +51,21 @@ jobs:
       HEALTHCHECKS_URL_DB_1900:  ${{ secrets.HEALTHCHECKS_URL_DB_1900 }}
       RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
       ALERT_EMAIL:               ${{ secrets.ALERT_EMAIL }}
-      BACKUP_SLOT:               ${{ github.event.inputs.slot }}
       DRY_RUN:                   ${{ github.event.inputs.dry_run }}
 
     steps:
       - uses: actions/checkout@v4
+
+      # El slot se fija por el CRON que disparó (no por la hora de ejecución),
+      # porque GitHub retrasa los schedules de forma variable y eso provocaba
+      # que un run de las 19:09 atrasado se auto-etiquetara como 1200 (colisión).
+      - name: Determinar slot
+        run: |
+          case "${{ github.event.schedule }}" in
+            "9 18 * * *") echo "BACKUP_SLOT=1200" >> "$GITHUB_ENV" ;;
+            "9 1 * * *")  echo "BACKUP_SLOT=1900" >> "$GITHUB_ENV" ;;
+            *)            echo "BACKUP_SLOT=${{ github.event.inputs.slot || '1200' }}" >> "$GITHUB_ENV" ;;
+          esac
 
       - name: Instalar dependencias (age + aws si falta)
         run: |
