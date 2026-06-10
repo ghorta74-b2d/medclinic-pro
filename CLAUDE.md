@@ -6,7 +6,7 @@ SaaS de gestión clínica para LATAM. Monorepo pnpm + Turborepo.
 **WD:** `/Users/gerardohorta/Library/Mobile Documents/com~apple~CloudDocs/B2D Automation/CLAUDE/CLINIC/medclinic-pro`  
 **Repo:** `https://github.com/ghorta74-b2d/medclinic-pro`  
 **Prod:** `https://mediaclinic.mx`  
-**Último commit:** `f1f7b5c` — 2026-06-03 (✅ pusheado y desplegado en prod; `origin/main`=`f1f7b5c`)
+**Último commit:** `7c5432c` — 2026-06-09 (✅ pusheado; `origin/main`=`7c5432c`)
 
 ## Stack
 
@@ -100,19 +100,27 @@ SaaS de gestión clínica para LATAM. Monorepo pnpm + Turborepo.
   ⚠️ `chartToUtc` acota el gráfico (sin él, un mes pasado arrastra pagos del mes actual).
 - **"Pacientes atendidos"** = citas con estado `COMPLETED`. La cita pasa a COMPLETED **al FIRMAR la nota clínica** (`clinical-notes/:id/sign` → `appointment.status=COMPLETED`); "Guardar borrador" la deja `IN_PROGRESS` (a propósito, NOM-004). Si el KPI sale 0 con citas, es que no se firmaron notas.
 
-## Pendientes al 2026-05-26
+### DRP / Backups (desplegado 2026-06-09, LIVE)
+- **Documento maestro:** `DRP.md` (raíz). Scripts en `scripts/backup/`. Detalle completo en memoria [[session_2026_06_03_drp_backups]].
+- **Backup BD 2×/día** (`.github/workflows/backup-db.yml`, 12:09/19:09 MX): export lógico vía **API** (PostgREST + Auth Admin), NO pg_dump. `export-db.py` → NDJSON+manifest → `age` (clave pública) → **Cloudflare R2** `medclinic-backups` (Object Lock 30d). Cero password de BD, solo lectura.
+- **Backup código+assets** diario 03:09 MX (`backup-code-assets.sh`): git bundle + assets Storage (salta los ya existentes) + manifiesto env.
+- **Verify** semanal (lunes) + **healthchecks.io** (4 checks, grace 6h, email gerardo@b2d.mx). Reportes weekly + reminder diario si cae.
+- **Restore:** `restore-db.sh`/`restore-db.py` (recrear esquema con `prisma migrate deploy` + cargar datos). Llave privada `age` en `~/medclinic-backup.agekey` (offline: gestor + USB `HDRIVE GH`).
+- **Reglas de oro del sistema:** (1) cada artefacto R2 debe tener nombre ÚNICO (Object Lock impide sobrescribir); (2) el slot 1200/1900 lo fija el cron (`github.event.schedule`), no la hora de ejecución (GitHub retrasa schedules ~3h); (3) el repo en iCloud genera refs git corruptos → `find .git/refs -name "* 2" -delete`.
+
+## Pendientes
 
 ### 🔴 Críticos (manual)
 1. Rotar contraseña DB en Supabase → actualizar `DATABASE_URL` + `DIRECT_URL` en Vercel API
 2. Borrar sucursales placeholder de farmacias desde Superadmin
-3. `RESEND_API_KEY` en Vercel medclinic-api
-4. `NEXT_PUBLIC_APP_URL=https://mediaclinic.mx` en Vercel medclinic-api
-5. GitHub Actions Secrets para CI
+
+### 🟡 Hardening DRP
+- Rotar el token Cloudflare `cfut_...` por un **R2 API Token dedicado** (está en transcript). ⚠️ NO revocar sin reemplazar (las creds S3 derivan de él) → actualizar `R2_ACCESS_KEY_ID`+`R2_SECRET_ACCESS_KEY`.
+- Implementar alerta WhatsApp (gancho `alert_whatsapp()` en `lib.sh`, hoy no-op).
+- (Opcional) Supabase Pro + PITR para cerrar brecha RPO nocturno y horario exacto.
 
 ### 🟡 Medios
-- MFA TOTP en Supabase Auth
-- HIBP en Supabase Auth Settings
-- `PLACEHOLDER_BING` en `apps/web/src/app/layout.tsx`
+- MFA TOTP en Supabase Auth · HIBP en Supabase Auth Settings · `PLACEHOLDER_BING` en `apps/web/src/app/layout.tsx`
 
 ### 🟡 Código próxima sesión
 - Rate limit: `/upload` (5/min) y `/api/consulta-ia` (10/min)
