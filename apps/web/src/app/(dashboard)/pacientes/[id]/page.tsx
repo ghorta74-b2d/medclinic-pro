@@ -15,6 +15,7 @@ import {
 import type { Patient, ClinicalNote, Appointment, Prescription, LabResult, VitalSigns } from 'medclinic-shared'
 import { GENDER_LABELS, BLOOD_TYPE_LABELS, STATUS_LABELS } from 'medclinic-shared'
 import { cn } from '@/lib/utils'
+import { useToast } from '@/components/ui/use-toast'
 import { PrescriptionBuilder } from '@/components/prescriptions/prescription-builder'
 import { PrescriptionCard } from '@/components/prescriptions/prescription-card'
 import { ClinicalNoteEditor } from '@/components/clinical-notes/note-editor'
@@ -1631,9 +1632,35 @@ export default function PatientDetailPage() {
   const [labEditMode, setLabEditMode] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [autoOpenAppointmentId, setAutoOpenAppointmentId] = useState<string | undefined>(undefined)
+  const [exporting, setExporting] = useState(false)
+  const { toast } = useToast()
 
   // Only STAFF ("Administrativo") is restricted — ADMIN is the clinic owner/doctor and has full access
   const isReadOnly = userRole === 'STAFF'
+
+  async function handleExportHistory() {
+    if (!patient || exporting) return
+    setExporting(true)
+    try {
+      const blob = await api.patients.exportClinicalHistoryPdf(patient.id)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `historia-clinica-${patient.lastName || 'paciente'}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: 'No se pudo exportar',
+        description: e instanceof Error ? e.message : 'Intenta de nuevo más tarde.',
+      })
+    } finally {
+      setExporting(false)
+    }
+  }
 
   useEffect(() => {
     loadPatient()
@@ -1696,6 +1723,15 @@ export default function PatientDetailPage() {
         subtitle={patient.dateOfBirth ? `${calculateAge(patient.dateOfBirth)} años${patient.gender ? ` · ${GENDER_LABELS[patient.gender]}` : ''}` : ''}
         actions={
           <div className="flex items-center gap-2">
+            {!isReadOnly && (
+              <button onClick={handleExportHistory} disabled={exporting}
+                title="Exportar historia clínica en PDF"
+                className="flex items-center gap-1.5 border border-border hover:bg-accent text-foreground text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                {exporting
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando…</>
+                  : <><Download className="w-3.5 h-3.5" /> Exportar</>}
+              </button>
+            )}
             <button onClick={() => setShowEdit(true)}
               className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
               <Pencil className="w-3.5 h-3.5" /> Editar

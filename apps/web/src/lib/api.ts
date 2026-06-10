@@ -260,6 +260,14 @@ export const api = {
     get: (id: string) => request(`/api/patients/${id}`),
     timeline: (id: string) => request(`/api/patients/${id}/timeline`),
     dataExport: (id: string) => request(`/api/patients/${id}/data-export`),
+    exportClinicalHistoryPdf: async (id: string): Promise<Blob> => {
+      const token = await getToken()
+      const res = await fetch(`${API_URL}/api/patients/${id}/clinical-history-pdf`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error('No se pudo exportar la historia clínica')
+      return res.blob()
+    },
     create: (data: unknown) =>
       request('/api/patients', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: unknown) =>

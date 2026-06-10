@@ -4,6 +4,10 @@ import { prisma } from '../lib/prisma.js'
 import { authenticate, requireStaff } from '../middleware/auth.js'
 import { auditLog } from '../middleware/audit.js'
 import { Errors } from '../lib/errors.js'
+// Lazy-loaded to avoid @react-pdf/renderer initializing at module load time
+// (yoga layout engine crashes Vercel serverless on cold start)
+const getClinicalHistoryPdf = () =>
+  import('../services/clinical-history-pdf.js').then(m => m.generateClinicalHistoryPdf)
 
 /**
  * Validates a Mexican CURP using the official RENAPO check-digit algorithm.
@@ -362,6 +366,78 @@ export async function patientsRoutes(server: FastifyInstance) {
         insurances,
       },
     })
+  })
+
+  // GET /api/patients/:id/clinical-history-pdf — Historia clínica estructurada (PDF)
+  // Solo ADMIN y DOCTOR; STAFF no puede exportar expediente. Descarga directa (no se sube a Storage).
+  server.get('/:id/clinical-history-pdf', { preHandler: requireStaff }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { clinicId, authUserId, role, doctorId } = request.authUser
+
+    if (role === 'STAFF') {
+      return reply.status(403).send({ error: { message: 'Acceso denegado. Solo médicos y administradores pueden exportar la historia clínica.' } })
+    }
+
+    const patient = await prisma.patient.findFirst({ where: { id, clinicId } })
+    if (!patient) return Errors.NOT_FOUND(reply, 'Patient')
+
+    const [clinic, generatedBy, notes, prescriptions, labResultsCount] = await Promise.all([
+      prisma.clinic.findUnique({
+        where: { id: clinicId },
+        select: { name: true, address: true, city: true, phone: true },
+      }),
+      doctorId
+        ? prisma.doctor.findUnique({
+            where: { id: doctorId },
+            select: { firstName: true, lastName: true, licenseNumber: true },
+          })
+        : Promise.resolve(null),
+      // Solo notas firmadas (registro legal NOM-004), orden cronológico ascendente
+      prisma.clinicalNote.findMany({
+        where: { patientId: id, clinicId, status: { in: ['SIGNED', 'AMENDED'] } },
+        include: {
+          doctor: { select: { firstName: true, lastName: true, licenseNumber: true } },
+          vitalSigns: true,
+        },
+        orderBy: [{ signedAt: 'asc' }, { createdAt: 'asc' }],
+      }),
+      prisma.prescription.findMany({
+        where: { patientId: id, clinicId },
+        include: {
+          doctor: { select: { firstName: true, lastName: true } },
+          items: { orderBy: { sortOrder: 'asc' } },
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.labResult.count({ where: { patientId: id, clinicId, deletedAt: null } }),
+    ])
+
+    const generateClinicalHistoryPdf = await getClinicalHistoryPdf()
+    const pdfBuffer = await generateClinicalHistoryPdf({
+      generatedAt: new Date(),
+      generatedBy,
+      clinic,
+      patient,
+      notes,
+      prescriptions,
+      labResultsCount,
+    })
+
+    await auditLog({
+      user: { authUserId, clinicId, role },
+      action: 'EXPORT',
+      resourceType: 'Patient',
+      resourceId: id,
+      metadata: { reason: 'CLINICAL_HISTORY_PDF', exportedAt: new Date().toISOString() },
+      ip: request.ip,
+      userAgent: request.headers['user-agent'],
+    })
+
+    const safeLastName = (patient.lastName || 'paciente').normalize('NFD').replace(/[^\w]/g, '_')
+    return reply
+      .header('Content-Type', 'application/pdf')
+      .header('Content-Disposition', `attachment; filename="historia-clinica-${safeLastName}-${id}.pdf"`)
+      .send(pdfBuffer)
   })
 
   // DELETE /api/patients/:id — soft delete
