@@ -34,6 +34,18 @@ export async function buildServer() {
     trustProxy: true,
   })
 
+  // ── Content-type fallback ────────────────────────────────
+  // Vercel's serverless runtime forwards bodyless POST/PATCH requests with
+  // `Transfer-Encoding: chunked` and no `Content-Type`, which Fastify cannot
+  // match to a parser → spurious 415 (FST_ERR_CTP_INVALID_MEDIA_TYPE) on every
+  // action endpoint that sends no body (sign, amend, generate-pdf, send-whatsapp…).
+  // Accept unknown/empty content types: an empty payload becomes `undefined`
+  // (no body), anything else is passed through as a raw string. The specific
+  // application/json and multipart/form-data parsers still take precedence.
+  server.addContentTypeParser('*', { parseAs: 'string' }, (_req, body, done) => {
+    done(null, body === '' ? undefined : body)
+  })
+
   // ── Plugins ──────────────────────────────────────────────
   await server.register(helmet, {
     contentSecurityPolicy: false, // API only, no HTML
