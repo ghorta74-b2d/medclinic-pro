@@ -4,16 +4,20 @@ name: Backup Code + Assets
 # Respaldo diario de código (bundle Git con historial completo), assets de
 # Supabase Storage y manifiesto de variables de entorno (sin valores).
 #
-# HORARIO MÉXICO: 03:09 MX -> 09:09 UTC -> cron "9 9 * * *"
+# HORARIO MÉXICO: 00:09 MX -> 06:09 UTC -> cron "9 6 * * *"
 # (fuera de la ventana de los backups de BD, 12:09 y 19:09 MX; minuto :09 para
 #  evitar la congestión de GitHub al inicio de hora).
 #
-# ⚠️ GitHub Actions corre en UTC; el dead-man's switch cubre retrasos/saltos.
+# ⚠️ GitHub Actions corre en UTC y retrasa los schedules 2-4 h (a veces más).
+# El check de Healthchecks `medclinic-code` espera el ping a las 03:09 MX con
+# 6 h de gracia -> deadline 09:09 MX. Disparamos el job a las 00:09 MX (en vez
+# de 03:09) para darle ~9 h de cabeza: aun con el retraso típico de GitHub el
+# ping de éxito llega muy por delante del deadline y se evitan falsos DOWN.
 # ============================================================================
 
 on:
   schedule:
-    - cron: "9 9 * * *"    # 03:09 America/Mexico_City
+    - cron: "9 6 * * *"    # 00:09 America/Mexico_City (06:09 UTC)
   workflow_dispatch:
     inputs:
       dry_run:
