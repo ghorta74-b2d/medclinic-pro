@@ -92,8 +92,8 @@ export default function InvitePage() {
     setResendLoading(true)
     setResendError('')
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://medclinic-api.vercel.app'
-      const res = await fetch(`${apiUrl}/api/checkout/resend-invite`, {
+      // Same-origin proxy (see next.config.mjs rewrites) — avoids networks that block *.vercel.app
+      const res = await fetch(`/backend/api/checkout/resend-invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: resendEmail }),

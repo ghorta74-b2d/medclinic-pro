@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { Loader2, Eye, EyeOff, ShieldCheck, Lock, CheckCircle, ArrowRight } from 'lucide-react'
 import { AuthSplitLayout } from '@/components/auth-split-layout'
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+// Same-origin proxy (see next.config.mjs rewrites) — avoids networks that block *.vercel.app
+const API_URL = '/backend'
 
 const inputClass = 'w-full px-4 py-3.5 bg-white border border-gray-300 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#3730a3] focus:border-transparent transition-colors'
 const labelClass = 'block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5'

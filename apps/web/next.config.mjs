@@ -67,6 +67,22 @@ const nextConfig = {
       { source: '/landing2', destination: '/', permanent: true },
     ]
   },
+  // Same-origin proxy to the backend API.
+  //
+  // The browser must NEVER call the API host (*.vercel.app) directly: some
+  // clinic networks (corporate WiFi / DNS content-filters) block "*.vercel.app",
+  // which made every authenticated call fail and the UI silently render
+  // "0 pacientes / sin registros". Instead the browser hits mediaclinic.mx/backend/*
+  // and Next.js forwards the request to the real API server-side (server-to-server
+  // traffic is never affected by the client's network filter). Bonus: same-origin
+  // means no CORS round-trip.
+  async rewrites() {
+    const apiOrigin =
+      process.env.NEXT_PUBLIC_API_URL || 'https://medclinic-api.vercel.app'
+    return [
+      { source: '/backend/:path*', destination: `${apiOrigin}/:path*` },
+    ]
+  },
 }
 
 export default nextConfig
