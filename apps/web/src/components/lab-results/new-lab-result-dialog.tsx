@@ -76,7 +76,8 @@ export function NewLabResultDialog({ onClose, onCreated, patientId: defaultPatie
 
         // Use raw fetch for multipart
         const token = null // get from supabase session in real app
-        await fetch(`${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'}/api/lab-results/${res.data.id}/upload`, {
+        // Same-origin proxy (see next.config.mjs rewrites) — avoids networks that block *.vercel.app
+        await fetch(`/backend/api/lab-results/${res.data.id}/upload`, {
           method: 'POST',
           body: formData,
           headers: token ? { Authorization: `Bearer ${token}` } : {},

@@ -1,6 +1,12 @@
 // API client for the MedClinic Pro backend
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+// In the browser we ALWAYS go through the same-origin proxy ("/backend", see the
+// `rewrites()` in next.config.mjs) instead of calling the API host directly. Some
+// clinic networks block "*.vercel.app", which made every call fail and the UI
+// silently show "0 / sin registros". On the server there is no filtering, so we
+// hit the API origin directly.
+const API_ORIGIN = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = typeof window === 'undefined' ? API_ORIGIN : '/backend'
 
 // Singleton Supabase client — import and instantiate only once per page load
 type BrowserClient = Awaited<ReturnType<typeof import('@supabase/ssr')['createBrowserClient']>>
@@ -122,8 +128,7 @@ export const sessionCache = {
 // Warm up the serverless API function — call this as early as possible
 // so that cold starts resolve before the user needs real data.
 export function warmupApi(): void {
-  const base = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
-  fetch(`${base}/health`, { method: 'GET' }).catch(() => {})
+  fetch(`${API_URL}/health`, { method: 'GET' }).catch(() => {})
 }
 
 // ── Stale-while-revalidate helpers ───────────────────────────────────────────
