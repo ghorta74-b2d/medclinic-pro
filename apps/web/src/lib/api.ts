@@ -8,6 +8,24 @@
 const API_ORIGIN = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 const API_URL = typeof window === 'undefined' ? API_ORIGIN : '/backend'
 
+// Thrown when the API host can't be reached at all (no internet / network blocks
+// it / server down) — distinct from an HTTP error. Lets the UI show a clear
+// "sin conexión" state instead of a misleading empty "0 registros".
+export class ApiConnectionError extends Error {
+  constructor() {
+    super('No se pudo conectar con el servidor. Revisa tu conexión a internet e inténtalo de nuevo.')
+    this.name = 'ApiConnectionError'
+  }
+}
+
+// Broadcasts reachability so a global banner can react regardless of which page
+// made the call. Fired on every request: offline on a network-level failure,
+// online as soon as any call succeeds.
+function notifyConnection(online: boolean): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(online ? 'mc:api-online' : 'mc:api-offline'))
+}
+
 // Singleton Supabase client — import and instantiate only once per page load
 type BrowserClient = Awaited<ReturnType<typeof import('@supabase/ssr')['createBrowserClient']>>
 let _clientPromise: Promise<BrowserClient> | null = null
@@ -180,14 +198,25 @@ async function request<T>(
 
   const token = await getToken()
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers ?? {}),
-    },
-  })
+  let response: Response
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers ?? {}),
+      },
+    })
+  } catch {
+    // fetch() rejects only on network-level failures (host unreachable / blocked
+    // / offline), never on HTTP error codes. Surface it as a connection problem.
+    notifyConnection(false)
+    throw new ApiConnectionError()
+  }
+
+  // Reached the server — clear any "sin conexión" banner.
+  notifyConnection(true)
 
   if (!response.ok) {
     // 401 → clear token cache so next request re-fetches a fresh session

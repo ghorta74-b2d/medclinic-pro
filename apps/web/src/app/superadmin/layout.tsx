@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { LayoutDashboard, Building2, Settings, Pill } from 'lucide-react'
 import { LogoutButton } from './logout-button'
+import { ConnectionBanner } from '@/components/ui/connection-banner'
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -53,6 +54,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       <main className="flex-1 overflow-auto">
         {children}
       </main>
+
+      <ConnectionBanner />
     </div>
   )
 }
