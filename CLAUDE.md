@@ -108,6 +108,13 @@ SaaS de gestión clínica para LATAM. Monorepo pnpm + Turborepo.
 - **Restore:** `restore-db.sh`/`restore-db.py` (recrear esquema con `prisma migrate deploy` + cargar datos). Llave privada `age` en `~/medclinic-backup.agekey` (offline: gestor + USB `HDRIVE GH`).
 - **Reglas de oro del sistema:** (1) cada artefacto R2 debe tener nombre ÚNICO (Object Lock impide sobrescribir); (2) el slot 1200/1900 lo fija el cron (`github.event.schedule`), no la hora de ejecución (GitHub retrasa schedules ~3h); (3) el repo en iCloud genera refs git corruptos → `find .git/refs -name "* 2" -delete`.
 
+### Stack de diseño de Claude Code (instalado a nivel proyecto)
+- **Antes de diseñar UI, landing o deck:** skill `design-studio` (proceso + prohibiciones anti "AI look") → `/directions` → build → screenshots con Playwright (375/768/1440) → subagente `visual-qa` → iterar.
+- **Plugins** (`.claude/settings.json`, se ofrecen al abrir `claude` en el repo): `frontend-design`, `impeccable` (`/impeccable init|shape|critique|audit|polish…`; su hook corre el detector tras cada Edit/Write), `playwright`, `chrome-devtools-mcp`, `figma`, `document-skills` (pptx/docx/xlsx/pdf), `ppt-master`, `frontend-slides`.
+- **Skills** (`.claude/skills/`, versionadas en `skills-lock.json`; actualizar con `npx skills update`): `hallmark`, `interface-design`, Emil Kowalski (`emil-design-eng`, `animate`, `review-animations`…), `gsap-*`, `web-design-guidelines`, `vercel-react-best-practices`, `vercel-composition-patterns`, `vercel-react-view-transitions`.
+- **MCPs de proyecto** (`.mcp.json`): `context7` (docs actualizadas), `shadcn`. Se aprueban la primera vez que abres `claude`.
+- Para decks editables se necesitan en la Mac: `brew install --cask libreoffice && brew install poppler && pip3 install "markitdown[pptx]"`.
+
 ## Pendientes
 
 ### 🔴 Críticos (manual)
